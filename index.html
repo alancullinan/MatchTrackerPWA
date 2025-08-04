@@ -104,14 +104,12 @@
         <!-- Top bar with back button, timer (with period) and edit match button -->
         <div class="flex justify-between items-center my-2">
           <!-- Back button with icon -->
-          <button id="back-to-list-btn" class="secondary-btn bg-gray-600 hover:bg-gray-700 text-gray-100 px-3 py-1 rounded flex items-center space-x-1" title="Back to Matches">
-            <span class="text-lg">←</span>
-            <span>Back</span>
+          <button id="back-to-list-btn" class="cursor-pointer" title="Back to Matches">
+            <img src="icons/back.svg" alt="Back" class="w-8 h-8" />
           </button>
           <!-- Edit match button with pencil icon remains on the far right -->
-          <button id="edit-match-btn" class="secondary-btn bg-gray-600 hover:bg-gray-700 text-gray-100 px-3 py-1 rounded flex items-center space-x-1" title="Edit Match">
-            <span class="text-lg">✏️</span>
-            <span>Edit</span>
+          <button id="edit-match-btn" class="cursor-pointer" title="Edit Match">
+            <img src="icons/edit.svg" alt="Edit" class="w-8 h-8" />
           </button>
         </div>
         <!-- Timer row: place start/end button to the left of the timer and pause/resume on the right.  The
@@ -120,10 +118,8 @@
              the period/time display stays centered, and the pause/resume controls align on the right. -->
         <!-- Maintain a minimum height even when control buttons are hidden so the scoreboard does not shift upward. -->
         <div class="relative flex items-center my-2 w-full min-h-[3.5rem]">
-          <!-- Long‑press start/end half button.  Initially hidden until a period can be started or ended.
-               The button is relative so that a progress overlay can fill its background during a long press. -->
-          <button id="end-period-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg relative overflow-hidden" style="display:none;">
-            <div class="press-progress absolute left-0 top-0 h-full bg-white bg-opacity-30" style="width: 0%;"></div>
+          <!-- Start/end half button with confirmation modal -->
+          <button id="end-period-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg" style="display:none;">
             <span id="end-period-label">Start Half</span>
           </button>
           <!-- Center the period and timer absolutely so it stays centred regardless of button widths -->
@@ -151,11 +147,13 @@
           <!-- Team 1 Card -->
           <div id="team1-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
             <div class="card-header flex justify-between items-center mb-2">
-              <button class="team-event-btn flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white" data-team="team1" title="Add Event">
-                <span class="text-lg">+</span>
+              <button class="team-event-btn" data-team="team1" title="Add Event">
+                <img src="icons/plus.svg" alt="Add Event" class="w-8 h-8" />
               </button>
               <h3 class="team-name text-lg font-semibold"></h3>
-              <button class="team-edit-btn text-blue-400" data-team="team1" title="Edit Players">👥</button>
+              <button class="team-edit-btn" data-team="team1" title="Edit Players">
+                <img src="icons/players.svg" alt="Edit Players" class="w-6 h-6" />
+              </button>
             </div>
             <!-- Combine the score display and scoring buttons into a single row.  The green goal flag sits to the
                  left of the central score, while the orange two‑pointer (when applicable) and white point flags
@@ -163,22 +161,16 @@
                  between its scoring controls. -->
             <div class="score-row relative flex items-center mt-3">
               <!-- Goal flag anchored on the left side -->
-              <button class="team-goal-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600" data-team="team1" title="Goal">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#22C55E">
-                  <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
-                </svg>
+              <button class="team-goal-btn w-12 h-12 flex items-center justify-center" data-team="team1" title="Goal">
+                <img src="icons/greenflag.svg" alt="Goal" class="w-10 h-10" />
               </button>
               <!-- Right‑side flag buttons grouped together -->
               <div class="flag-buttons flex space-x-2 ml-auto">
-                <button class="team-two-pointer-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600 hidden" data-team="team1" title="2 Pointer">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#FB923C">
-                    <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
-                  </svg>
+                <button class="team-two-pointer-btn w-12 h-12 flex items-center justify-center hidden" data-team="team1" title="2 Pointer">
+                  <img src="icons/orangeflag.svg" alt="2 Pointer" class="w-10 h-10" />
                 </button>
-                <button class="team-point-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600" data-team="team1" title="Point">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#FFFFFF">
-                    <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
-                  </svg>
+                <button class="team-point-btn w-12 h-12 flex items-center justify-center" data-team="team1" title="Point">
+                  <img src="icons/whiteflag.svg" alt="Point" class="w-10 h-10" />
                 </button>
               </div>
               <!-- Scoreboard absolutely centered within the row.  Pointer events are disabled so
@@ -205,31 +197,31 @@
           is shown via JavaScript.
         -->
         <div id="score-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md">
+          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-xl h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
+              <button id="score-modal-cancel" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
               <h3 id="score-modal-title" class="text-lg font-bold flex items-center space-x-2">
                 <!-- Icon and label inserted dynamically -->
               </h3>
               <button id="score-modal-done" class="text-blue-500 hover:text-blue-400 font-semibold" title="Done">Done</button>
             </div>
-            <div id="score-modal-meta" class="text-sm text-gray-400 mb-3">
-              <!-- Filled by JS with team name, time and period -->
-            </div>
-            <div class="flex space-x-2 mb-3" style="max-height: 40vh;">
+            <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
               <!-- Shot type selection on the left.  This column remains static while
                    the player column scrolls -->
               <div id="score-type-list" class="flex-1 space-y-1">
                 <!-- Items inserted by JS -->
               </div>
-              <!-- Player selection on the right.  Allow vertical scrolling here
-                   independently of the shot type list. -->
-              <div id="score-player-list" class="flex-1 space-y-1 overflow-y-auto" style="max-height: 40vh;">
-                <!-- Items inserted by JS -->
+              <!-- Player selection on the right with fixed header -->
+              <div class="flex-1 flex flex-col">
+                <div id="score-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
+                <div id="score-player-list" class="space-y-1 overflow-y-auto rounded-lg flex-1" style="max-height: 60vh;">
+                  <!-- Items inserted by JS -->
+                </div>
               </div>
             </div>
             <div class="form-row flex flex-col mb-3">
               <label for="score-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
-              <textarea id="score-notes" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600 h-20"></textarea>
+              <textarea id="score-notes" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600 h-12 text-sm"></textarea>
             </div>
             <!-- There is no separate Save button at the bottom of the scoring modal.  The top Done button
                  handles saving the event and closing the modal. -->
@@ -238,33 +230,29 @@
           <!-- Team 2 Card -->
           <div id="team2-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
             <div class="card-header flex justify-between items-center mb-2">
-              <button class="team-event-btn flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white" data-team="team2" title="Add Event">
-                <span class="text-lg">+</span>
+              <button class="team-event-btn" data-team="team2" title="Add Event">
+                <img src="icons/plus.svg" alt="Add Event" class="w-8 h-8" />
               </button>
               <h3 class="team-name text-lg font-semibold"></h3>
-              <button class="team-edit-btn text-blue-400" data-team="team2" title="Edit Players">👥</button>
+              <button class="team-edit-btn" data-team="team2" title="Edit Players">
+                <img src="icons/players.svg" alt="Edit Players" class="w-6 h-6" />
+              </button>
             </div>
             <!-- Combine the score display and scoring buttons into a single row.  The goal flag sits
                  to the left of the central score, while the two‑pointer (when applicable) and
                  white point flags sit to the right.  This mirrors the layout for team 1. -->
             <div class="score-row relative flex items-center mt-3">
               <!-- Goal flag anchored on the left side -->
-              <button class="team-goal-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600" data-team="team2" title="Goal">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#22C55E">
-                  <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
-                </svg>
+              <button class="team-goal-btn w-12 h-12 flex items-center justify-center" data-team="team2" title="Goal">
+                <img src="icons/greenflag.svg" alt="Goal" class="w-10 h-10" />
               </button>
               <!-- Right‑side flag buttons grouped together -->
               <div class="flag-buttons flex space-x-2 ml-auto">
-                <button class="team-two-pointer-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600 hidden" data-team="team2" title="2 Pointer">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#FB923C">
-                    <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
-                  </svg>
+                <button class="team-two-pointer-btn w-12 h-12 flex items-center justify-center hidden" data-team="team2" title="2 Pointer">
+                  <img src="icons/orangeflag.svg" alt="2 Pointer" class="w-10 h-10" />
                 </button>
-                <button class="team-point-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600" data-team="team2" title="Point">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#FFFFFF">
-                    <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
-                  </svg>
+                <button class="team-point-btn w-12 h-12 flex items-center justify-center" data-team="team2" title="Point">
+                  <img src="icons/whiteflag.svg" alt="Point" class="w-10 h-10" />
                 </button>
               </div>
               <!-- Scoreboard absolutely centered within the row.  Pointer events are disabled so
@@ -291,8 +279,12 @@
         <!-- Modals for adding an event and viewing the full events list -->
         <!-- Add Event Modal -->
         <div id="add-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md">
-            <h3 class="text-lg font-bold mb-2">Add Event</h3>
+          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-2">
+              <button id="add-event-modal-cancel" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
+              <h3 class="text-lg font-bold">Add Event</h3>
+              <button id="add-event-modal-done" class="text-blue-500 hover:text-blue-400 font-semibold" title="Add">Add</button>
+            </div>
             <div class="form-row flex flex-col mb-2">
               <label for="event-type" class="mb-1">Event Type</label>
               <select id="event-type" name="event-type" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600 w-full">
@@ -305,16 +297,6 @@
               </select>
             </div>
             <div id="event-fields" class="space-y-2"></div>
-            <div class="flex justify-end mt-4 space-x-2">
-              <button id="add-event-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center space-x-1" title="Add Event">
-                <span class="text-lg">✅</span>
-                <span>Add</span>
-              </button>
-              <button id="cancel-add-event-btn" class="bg-gray-600 hover:bg-gray-700 text-gray-100 px-4 py-2 rounded flex items-center space-x-1" title="Cancel">
-                <span class="text-lg">✖️</span>
-                <span>Cancel</span>
-              </button>
-            </div>
           </div>
         </div>
         <!-- Events List Modal -->
@@ -349,6 +331,61 @@
               <button id="cancel-edit-event-btn" class="bg-gray-600 hover:bg-gray-700 text-gray-100 px-4 py-2 rounded flex items-center space-x-1" title="Cancel">
                 <span class="text-lg">✖️</span>
                 <span>Cancel</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Period action confirmation modal -->
+        <div id="period-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+          <div class="bg-gray-800 text-gray-100 p-6 rounded-lg shadow-lg w-11/12 max-w-sm">
+            <h3 id="period-confirm-title" class="text-lg font-bold mb-4 text-center">Confirm Action</h3>
+            <p id="period-confirm-message" class="text-center mb-6 text-gray-300">Are you sure you want to start the half?</p>
+            <div class="flex justify-center space-x-4">
+              <button id="period-confirm-yes" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-semibold">
+                Yes
+              </button>
+              <button id="period-confirm-no" class="bg-gray-600 hover:bg-gray-700 text-gray-100 px-6 py-2 rounded font-semibold">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Event type selection modal -->
+        <div id="event-type-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md">
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="text-lg font-bold">Add Event</h3>
+              <button id="event-type-modal-cancel" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
+            </div>
+            <div id="event-type-meta" class="text-sm text-gray-400 mb-4">
+              <!-- Team name, time and period info will be populated here -->
+            </div>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="miss">
+                <img src="icons/miss.svg" alt="Miss" class="w-8 h-8 mb-2" />
+                <span class="text-sm font-medium">Miss</span>
+              </button>
+              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="foul">
+                <img src="icons/foul.svg" alt="Foul" class="w-8 h-8 mb-2" />
+                <span class="text-sm font-medium">Foul</span>
+              </button>
+              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="kickout">
+                <img src="icons/kickout.svg" alt="Kickout" class="w-8 h-8 mb-2" />
+                <span class="text-sm font-medium">Kickout</span>
+              </button>
+              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="sub">
+                <img src="icons/sub.svg" alt="Sub" class="w-8 h-8 mb-2" />
+                <span class="text-sm font-medium">Sub</span>
+              </button>
+              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="note">
+                <img src="icons/note.svg" alt="Note" class="w-8 h-8 mb-2" />
+                <span class="text-sm font-medium">Note</span>
+              </button>
+              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="card">
+                <img src="icons/yellowcard.svg" alt="Card" class="w-8 h-8 mb-2" />
+                <span class="text-sm font-medium">Card</span>
               </button>
             </div>
           </div>

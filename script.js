@@ -750,8 +750,7 @@
     listBtn.id = 'show-events-btn';
     listBtn.className = 'absolute bottom-2 right-2 text-blue-400';
     listBtn.title = 'Show all events';
-    listBtn.innerHTML =
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="w-6 h-6 fill-current"><path d="M0 96C0 78.3 14.3 64 32 64l384 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L32 128C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32l384 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L32 288c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32L32 448c-17.7 0-32-14.3-32-32s14.3-32 32-32l384 0c17.7 0 32 14.3 32 32z"/></svg>';
+    listBtn.innerHTML = '<img src="icons/burger.svg" alt="Show all events" class="w-6 h-6" />';
     wrapper.appendChild(listBtn);
     display.appendChild(wrapper);
     display.classList.remove('hidden');
@@ -785,10 +784,56 @@
     }
   }
   /**
+   * Show the event type selection modal for a specific team. This modal
+   * presents a grid of event types with SVG icons, allowing the user to
+   * select which type of event they want to record. Once selected, it
+   * opens the appropriate event-specific modal.
+   *
+   * @param {string} teamKey - 'team1' or 'team2'
+   */
+  function showEventTypeModal(teamKey) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    // Prevent opening the event form when not in a playing period
+    if (!isPlayingPeriod(match.currentPeriod)) {
+      return;
+    }
+    
+    const modal = document.getElementById('event-type-modal');
+    const metaEl = document.getElementById('event-type-meta');
+    if (!modal || !metaEl) return;
+    
+    // Set the team context for the modal
+    modal.dataset.teamKey = teamKey;
+    
+    // Get team and current match info
+    const team = teamKey === 'team1' ? match.team1 : match.team2;
+    const minutes = Math.floor(match.elapsedTime / 60);
+    const timeStr = `${minutes} min`;
+    
+    // Populate meta information
+    metaEl.textContent = `${team.name} • ${timeStr} • ${match.currentPeriod}`;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  /**
+   * Hide the event type selection modal
+   */
+  function hideEventTypeModal() {
+    const modal = document.getElementById('event-type-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  /**
    * Show the Add Event modal and preselect the team for which the event is
    * being added.  This replaces the inline event form previously displayed
    * at the bottom of the page.  It renders dynamic fields for the selected
-   * event type and focuses the user’s attention on event creation.
+   * event type and focuses the user's attention on event creation.
    *
    * @param {string} teamKey - 'team1' or 'team2'
    */
@@ -930,95 +975,207 @@
     // References to modal elements
     const modal = document.getElementById('score-event-modal');
     const titleEl = document.getElementById('score-modal-title');
-    const metaEl = document.getElementById('score-modal-meta');
     const typeListEl = document.getElementById('score-type-list');
     const playerListEl = document.getElementById('score-player-list');
     const notesInput = document.getElementById('score-notes');
     // Clear previous content
     titleEl.innerHTML = '';
-    metaEl.textContent = '';
     typeListEl.innerHTML = '';
     playerListEl.innerHTML = '';
     notesInput.value = '';
-    // Build header with flag icon and label
-    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    icon.setAttribute('viewBox', '0 0 24 24');
-    icon.setAttribute('aria-hidden', 'true');
-    icon.classList.add('w-6', 'h-6');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('fill-rule', 'evenodd');
-    path.setAttribute('d', 'M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z');
-    path.setAttribute('clip-rule', 'evenodd');
-    // Fill color and label according to outcome.  Goals use green, points use white and two pointers use orange.
-    if (outcome === ShotOutcome.GOAL) {
-      path.setAttribute('fill', '#22C55E');
-    } else if (outcome === ShotOutcome.TWO_POINTER) {
-      path.setAttribute('fill', '#FB923C');
-    } else {
-      // Standard point
-      path.setAttribute('fill', '#FFFFFF');
-    }
-    icon.appendChild(path);
+    // Build header with appropriate icon and label
     const label = document.createElement('span');
     let labelText;
-    if (outcome === ShotOutcome.GOAL) {
-      labelText = 'Goal';
-    } else if (outcome === ShotOutcome.TWO_POINTER) {
-      labelText = '2 Pointer';
+    
+    // Check if this is a miss event (any non-scoring outcome)
+    const isMissEvent = outcome !== ShotOutcome.GOAL && outcome !== ShotOutcome.POINT && outcome !== ShotOutcome.TWO_POINTER;
+    
+    if (isMissEvent) {
+      // For miss events, use the miss icon and generic "Miss" label
+      const missIcon = document.createElement('img');
+      missIcon.src = 'icons/miss.svg';
+      missIcon.alt = 'Miss';
+      missIcon.classList.add('w-6', 'h-6');
+      titleEl.appendChild(missIcon);
+      labelText = 'Miss';
     } else {
-      labelText = 'Point';
+      // For scoring events, use the flag icon as before
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.classList.add('w-6', 'h-6');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('fill-rule', 'evenodd');
+      path.setAttribute('d', 'M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z');
+      path.setAttribute('clip-rule', 'evenodd');
+      // Fill color according to outcome
+      if (outcome === ShotOutcome.GOAL) {
+        path.setAttribute('fill', '#22C55E');
+        labelText = 'Goal';
+      } else if (outcome === ShotOutcome.TWO_POINTER) {
+        path.setAttribute('fill', '#FB923C');
+        labelText = '2 Pointer';
+      } else {
+        path.setAttribute('fill', '#FFFFFF');
+        labelText = 'Point';
+      }
+      icon.appendChild(path);
+      titleEl.appendChild(icon);
     }
+    
     label.textContent = labelText;
     label.classList.add('text-xl', 'font-semibold');
-    titleEl.appendChild(icon);
     titleEl.appendChild(label);
-    // Build meta line: Team name • time • period
-    const teamName = match[teamKey].name;
-    const timeStr = formatTime(match.elapsedTime);
-    const periodStr = match.currentPeriod;
-    metaEl.textContent = `${teamName} \u2022 ${timeStr} \u2022 ${periodStr}`;
-    // Define shot type options (display label and internal value).  45m and 65m are
-    // grouped together for brevity as in the screenshot.
-    const shotOptions = [
-      { value: ShotType.FROM_PLAY, label: 'From Play' },
-      { value: ShotType.FREE, label: 'Free' },
-      { value: ShotType.PENALTY, label: 'Penalty' },
-      { value: ShotType.FORTY_FIVE, label: '45m/65m' },
-      { value: ShotType.SIDELINE, label: 'Sideline' },
-      { value: ShotType.MARK, label: 'Mark' }
-    ];
-    // Helper to update selected shot type
-    function selectShotType(val) {
-      scoreModalData.selectedShotType = val;
-      // Highlight selected item
-      const items = typeListEl.querySelectorAll('button');
-      items.forEach((item) => {
-        if (item.dataset.value === val) {
-          item.classList.add('bg-blue-600', 'text-white');
-          item.classList.remove('bg-gray-700', 'text-gray-100');
+    // Meta section removed to save space
+    
+    if (isMissEvent) {
+      // For miss events, show both shot types AND miss types
+      // Set default values: From Play for shot type, Wide for miss type
+      if (!scoreModalData.selectedShotType) {
+        scoreModalData.selectedShotType = ShotType.FROM_PLAY;
+      }
+      if (scoreModalData.outcome === ShotOutcome.WIDE && !initial.shotType) {
+        // Only use default if this is a new miss event (not editing)
+        scoreModalData.outcome = ShotOutcome.WIDE;
+      }
+      
+      // Create shot type section
+      const shotTypeHeader = document.createElement('div');
+      shotTypeHeader.className = 'text-sm font-medium text-gray-300 mb-2';
+      shotTypeHeader.textContent = 'Shot Type';
+      typeListEl.appendChild(shotTypeHeader);
+      
+      const shotOptions = [
+        { value: ShotType.FROM_PLAY, label: 'From Play' },
+        { value: ShotType.FREE, label: 'Free' },
+        { value: ShotType.PENALTY, label: 'Penalty' },
+        { value: ShotType.FORTY_FIVE, label: '45m/65m' },
+        { value: ShotType.SIDELINE, label: 'Sideline' },
+        { value: ShotType.MARK, label: 'Mark' }
+      ];
+      
+      shotOptions.forEach(({ value, label }) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.value = value;
+        btn.dataset.section = 'shot';
+        btn.textContent = label;
+        btn.className = 'w-full text-left p-2 rounded-lg text-sm mb-1';
+        
+        if (value === scoreModalData.selectedShotType) {
+          btn.classList.add('bg-blue-600', 'text-white');
         } else {
-          item.classList.remove('bg-blue-600', 'text-white');
-          item.classList.add('bg-gray-700', 'text-gray-100');
+          btn.classList.add('bg-gray-700', 'text-gray-100');
         }
+        
+        btn.addEventListener('click', () => {
+          scoreModalData.selectedShotType = value;
+          // Highlight selected shot type
+          typeListEl.querySelectorAll('[data-section="shot"]').forEach((item) => {
+            if (item.dataset.value === value) {
+              item.classList.add('bg-blue-600', 'text-white');
+              item.classList.remove('bg-gray-700', 'text-gray-100');
+            } else {
+              item.classList.remove('bg-blue-600', 'text-white');
+              item.classList.add('bg-gray-700', 'text-gray-100');
+            }
+          });
+        });
+        typeListEl.appendChild(btn);
+      });
+      
+      // Add spacing between sections
+      const spacer = document.createElement('div');
+      spacer.className = 'mb-3';
+      typeListEl.appendChild(spacer);
+      
+      // Create miss type section
+      const missTypeHeader = document.createElement('div');
+      missTypeHeader.className = 'text-sm font-medium text-gray-300 mb-2';
+      missTypeHeader.textContent = 'Miss Type';
+      typeListEl.appendChild(missTypeHeader);
+      
+      const missOptions = [
+        { value: ShotOutcome.WIDE, label: 'Wide' },
+        { value: ShotOutcome.SAVED, label: 'Saved' },
+        { value: ShotOutcome.DROPPED_SHORT, label: 'Dropped Short' },
+        { value: ShotOutcome.OFF_POST, label: 'Off Post' }
+      ];
+      
+      missOptions.forEach(({ value, label }) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.value = value;
+        btn.dataset.section = 'miss';
+        btn.textContent = label;
+        btn.className = 'w-full text-left p-2 rounded-lg text-sm mb-1';
+        
+        if (value === scoreModalData.outcome) {
+          btn.classList.add('bg-blue-600', 'text-white');
+        } else {
+          btn.classList.add('bg-gray-700', 'text-gray-100');
+        }
+        
+        btn.addEventListener('click', () => {
+          scoreModalData.outcome = value;
+          // Highlight selected miss type
+          typeListEl.querySelectorAll('[data-section="miss"]').forEach((item) => {
+            if (item.dataset.value === value) {
+              item.classList.add('bg-blue-600', 'text-white');
+              item.classList.remove('bg-gray-700', 'text-gray-100');
+            } else {
+              item.classList.remove('bg-blue-600', 'text-white');
+              item.classList.add('bg-gray-700', 'text-gray-100');
+            }
+          });
+        });
+        typeListEl.appendChild(btn);
+      });
+    } else {
+      // For scoring events, show shot types with header
+      const shotTypeHeader = document.createElement('div');
+      shotTypeHeader.className = 'text-sm font-medium text-gray-300 mb-2';
+      shotTypeHeader.textContent = 'Shot Type';
+      typeListEl.appendChild(shotTypeHeader);
+      
+      const shotOptions = [
+        { value: ShotType.FROM_PLAY, label: 'From Play' },
+        { value: ShotType.FREE, label: 'Free' },
+        { value: ShotType.PENALTY, label: 'Penalty' },
+        { value: ShotType.FORTY_FIVE, label: '45m/65m' },
+        { value: ShotType.SIDELINE, label: 'Sideline' },
+        { value: ShotType.MARK, label: 'Mark' }
+      ];
+      
+      shotOptions.forEach(({ value, label }) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.value = value;
+        btn.textContent = label;
+        btn.className = 'w-full text-left p-2 rounded-lg text-sm';
+        
+        if (value === scoreModalData.selectedShotType) {
+          btn.classList.add('bg-blue-600', 'text-white');
+        } else {
+          btn.classList.add('bg-gray-700', 'text-gray-100');
+        }
+        
+        btn.addEventListener('click', () => {
+          scoreModalData.selectedShotType = value;
+          // Highlight selected shot type
+          typeListEl.querySelectorAll('button').forEach((item) => {
+            if (item.dataset.value === value) {
+              item.classList.add('bg-blue-600', 'text-white');
+              item.classList.remove('bg-gray-700', 'text-gray-100');
+            } else {
+              item.classList.remove('bg-blue-600', 'text-white');
+              item.classList.add('bg-gray-700', 'text-gray-100');
+            }
+          });
+        });
+        typeListEl.appendChild(btn);
       });
     }
-    // Create shot type buttons
-    shotOptions.forEach(({ value, label }) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.dataset.value = value;
-      btn.textContent = label;
-      // Base styling: block with rounded corners; selected state will override
-      btn.className = 'w-full text-left p-2 rounded-lg text-sm';
-      // If initial selection matches
-      if (value === scoreModalData.selectedShotType) {
-        btn.classList.add('bg-blue-600', 'text-white');
-      } else {
-        btn.classList.add('bg-gray-700', 'text-gray-100');
-      }
-      btn.addEventListener('click', () => selectShotType(value));
-      typeListEl.appendChild(btn);
-    });
     // Build player list.  Include a blank option at the top for None.
     const players = match[teamKey].players.slice().sort((a, b) => a.jerseyNumber - b.jerseyNumber);
     // Add None option
@@ -1026,8 +1183,8 @@
     noneBtn.type = 'button';
     noneBtn.dataset.value = '';
     // Provide default styling; highlight logic will override when selected
-    noneBtn.className = 'w-full text-left bg-gray-700 text-gray-100';
-    noneBtn.innerHTML = `<div class="flex items-center space-x-2 p-2 rounded-lg text-sm"><span class="w-6 h-6 flex items-center justify-center bg-gray-600 rounded-full">--</span><span>None</span></div>`;
+    noneBtn.className = 'w-full text-left p-2 rounded-lg text-sm mb-1 bg-gray-700 text-gray-100';
+    noneBtn.innerHTML = `<div class="flex items-center space-x-2"><span class="w-6 h-6 flex items-center justify-center bg-gray-600 rounded-full">--</span><span>None</span></div>`;
     noneBtn.addEventListener('click', () => selectPlayer(null));
     playerListEl.appendChild(noneBtn);
     // Helper to highlight selected player
@@ -1051,8 +1208,8 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.dataset.value = p.id;
-      btn.innerHTML = `<div class="flex items-center space-x-2 p-2 rounded-lg text-sm"><span class="w-6 h-6 flex items-center justify-center bg-gray-700 rounded-full">${p.jerseyNumber}</span><span>${p.name}</span></div>`;
-      btn.className = 'w-full text-left bg-gray-700 text-gray-100';
+      btn.innerHTML = `<div class="flex items-center space-x-2"><span class="w-6 h-6 flex items-center justify-center bg-gray-600 rounded-full">${p.jerseyNumber}</span><span>${p.name}</span></div>`;
+      btn.className = 'w-full text-left p-2 rounded-lg text-sm mb-1 bg-gray-700 text-gray-100';
       btn.addEventListener('click', () => selectPlayer(p.id));
       playerListEl.appendChild(btn);
     });
@@ -1450,6 +1607,14 @@
     }
   }
 
+  // Helper to create a section header
+  function createSectionHeader(title) {
+    const header = document.createElement('div');
+    header.className = 'text-sm font-medium text-gray-300 mb-2 mt-4 first:mt-0';
+    header.textContent = title;
+    return header;
+  }
+
   // Render dynamic fields for the selected event type
   function renderEventFields(eventType) {
     const container = document.getElementById('event-fields');
@@ -1494,6 +1659,9 @@
       return sel;
     }
     if (eventType === EventType.SHOT) {
+      // Team & Player section
+      container.appendChild(createSectionHeader('Team & Player'));
+      
       // Team select
       const rowTeam = document.createElement('div');
       rowTeam.className = 'form-row';
@@ -1516,6 +1684,10 @@
         const newPlayerSelect = createPlayerSelect('event-player', teamSelect.value);
         rowPlayer.replaceChild(newPlayerSelect, playerSelect);
       });
+      
+      // Shot Details section
+      container.appendChild(createSectionHeader('Shot Details'));
+      
       // Shot type select
       const rowType = document.createElement('div');
       rowType.className = 'form-row';
@@ -1559,6 +1731,9 @@
       rowOutcome.appendChild(outcomeSelect);
       container.appendChild(rowOutcome);
     } else if (eventType === EventType.CARD) {
+      // Team & Player section
+      container.appendChild(createSectionHeader('Team & Player'));
+      
       // Team select
       const rowTeam = document.createElement('div');
       rowTeam.className = 'form-row';
@@ -1581,6 +1756,10 @@
         const newPlayerSelect = createPlayerSelect('event-player', teamSelect.value);
         rowPlayer.replaceChild(newPlayerSelect, playerSelect);
       });
+      
+      // Card Details section
+      container.appendChild(createSectionHeader('Card Details'));
+      
       // Card type
       const rowCard = document.createElement('div');
       rowCard.className = 'form-row';
@@ -1601,6 +1780,9 @@
       rowCard.appendChild(cardSelect);
       container.appendChild(rowCard);
     } else if (eventType === EventType.FOUL_CONCEDED) {
+      // Team & Player section
+      container.appendChild(createSectionHeader('Team & Player'));
+      
       // Team and player
       const rowTeam = document.createElement('div');
       rowTeam.className = 'form-row';
@@ -1622,6 +1804,10 @@
         const newPlayerSelect = createPlayerSelect('event-player', teamSelect.value);
         rowPlayer.replaceChild(newPlayerSelect, playerSelect);
       });
+      
+      // Foul Details section
+      container.appendChild(createSectionHeader('Foul Details'));
+      
       // Foul outcome
       const rowOutcome = document.createElement('div');
       rowOutcome.className = 'form-row';
@@ -1642,6 +1828,9 @@
       rowOutcome.appendChild(foulSelect);
       container.appendChild(rowOutcome);
     } else if (eventType === EventType.KICKOUT) {
+      // Team section
+      container.appendChild(createSectionHeader('Team'));
+      
       // Team select
       const rowTeam = document.createElement('div');
       rowTeam.className = 'form-row';
@@ -1651,6 +1840,10 @@
       rowTeam.appendChild(labelTeam);
       rowTeam.appendChild(teamSelect);
       container.appendChild(rowTeam);
+      
+      // Kickout Details section
+      container.appendChild(createSectionHeader('Kickout Details'));
+      
       // Kickout outcome
       const rowOutcome = document.createElement('div');
       rowOutcome.className = 'form-row';
@@ -1671,6 +1864,9 @@
       rowOutcome.appendChild(wonSelect);
       container.appendChild(rowOutcome);
     } else if (eventType === EventType.SUBSTITUTION) {
+      // Team section
+      container.appendChild(createSectionHeader('Team'));
+      
       // Team select
       const rowTeam = document.createElement('div');
       rowTeam.className = 'form-row';
@@ -1680,6 +1876,10 @@
       rowTeam.appendChild(labelTeam);
       rowTeam.appendChild(teamSelect);
       container.appendChild(rowTeam);
+      
+      // Players section
+      container.appendChild(createSectionHeader('Players'));
+      
       // Player out
       const rowPlayerOut = document.createElement('div');
       rowPlayerOut.className = 'form-row';
@@ -1705,6 +1905,9 @@
         rowPlayerIn.replaceChild(newIn, playerInSelect);
       });
     } else if (eventType === EventType.NOTE) {
+      // Note section
+      container.appendChild(createSectionHeader('Note'));
+      
       const rowNote = document.createElement('div');
       rowNote.className = 'form-row';
       const labelNote = document.createElement('label');
@@ -2458,17 +2661,20 @@
     }
     document.getElementById('pause-timer-btn').addEventListener('click', pauseMatch);
     document.getElementById('resume-timer-btn').addEventListener('click', resumeMatch);
-    // Remove default click handler for the long‑press button; long press logic will trigger
-    // start/end period actions instead of a simple click.
-    // End‑period button long‑press handlers are attached below after the core event listeners.
+    // End‑period button click handler with confirmation modal
     // Event type selector change
     document.getElementById('event-type').addEventListener('change', (e) => {
       renderEventFields(e.target.value);
     });
-    // Add event button (in modal): create handler that adds the event then hides the modal
-    const addEventBtn = document.getElementById('add-event-btn');
-    if (addEventBtn) {
-      addEventBtn.addEventListener('click', () => {
+    // Add event modal buttons: Cancel and Add (Done)
+    const addEventModalCancel = document.getElementById('add-event-modal-cancel');
+    if (addEventModalCancel) {
+      addEventModalCancel.addEventListener('click', () => hideAddEventModal());
+    }
+    
+    const addEventModalDone = document.getElementById('add-event-modal-done');
+    if (addEventModalDone) {
+      addEventModalDone.addEventListener('click', () => {
         addEvent();
         hideAddEventModal();
       });
@@ -2496,61 +2702,133 @@
       closeEventsBtn.addEventListener('click', () => hideEventsModal());
     }
 
-    // Cancel add event button
-    const cancelAddEventBtn = document.getElementById('cancel-add-event-btn');
-    if (cancelAddEventBtn) {
-      cancelAddEventBtn.addEventListener('click', () => hideAddEventModal());
+
+    // Period action confirmation modal logic
+    const periodButton = document.getElementById('end-period-btn');
+    const periodModal = document.getElementById('period-confirm-modal');
+    const periodTitle = document.getElementById('period-confirm-title');
+    const periodMessage = document.getElementById('period-confirm-message');
+    const periodYes = document.getElementById('period-confirm-yes');
+    const periodNo = document.getElementById('period-confirm-no');
+    
+    if (periodButton && periodModal) {
+      periodButton.addEventListener('click', () => {
+        const label = periodButton.querySelector('#end-period-label');
+        const text = label ? label.textContent.trim() : '';
+        
+        // Set modal content based on action
+        if (text.startsWith('Start')) {
+          periodTitle.textContent = 'Start Period';
+          periodMessage.textContent = `Are you sure you want to ${text.toLowerCase()}?`;
+        } else {
+          periodTitle.textContent = 'End Period';
+          periodMessage.textContent = `Are you sure you want to ${text.toLowerCase()}?`;
+        }
+        
+        // Show modal
+        periodModal.classList.remove('hidden');
+        periodModal.classList.add('flex');
+        
+        // Store the action to perform
+        periodModal.dataset.action = text.startsWith('Start') ? 'start' : 'end';
+      });
+      
+      // Handle confirmation
+      if (periodYes) {
+        periodYes.addEventListener('click', () => {
+          const action = periodModal.dataset.action;
+          
+          // Hide modal
+          periodModal.classList.add('hidden');
+          periodModal.classList.remove('flex');
+          
+          // Perform action
+          if (action === 'start') {
+            startMatch();
+          } else {
+            endPeriod();
+          }
+        });
+      }
+      
+      // Handle cancellation
+      if (periodNo) {
+        periodNo.addEventListener('click', () => {
+          periodModal.classList.add('hidden');
+          periodModal.classList.remove('flex');
+        });
+      }
+      
+      // Handle clicking outside modal to close
+      periodModal.addEventListener('click', (e) => {
+        if (e.target === periodModal) {
+          periodModal.classList.add('hidden');
+          periodModal.classList.remove('flex');
+        }
+      });
     }
 
-    // Long‑press logic for starting and ending halves.  Users must hold the button for
-    // approximately 2 seconds to trigger the action.  A translucent progress bar fills the
-    // button during the hold to indicate progress.  If released early, the action is
-    // cancelled and the progress resets.
-    const lpButton = document.getElementById('end-period-btn');
-    if (lpButton) {
-      let lpInterval = null;
-      let lpStart = 0;
-      const progressEl = lpButton.querySelector('.press-progress');
-      function clearLongPress() {
-        if (lpInterval) {
-          clearInterval(lpInterval);
-          lpInterval = null;
+    // Event type selection modal handlers
+    const eventTypeModal = document.getElementById('event-type-modal');
+    const eventTypeCancel = document.getElementById('event-type-modal-cancel');
+    
+    if (eventTypeCancel) {
+      eventTypeCancel.addEventListener('click', hideEventTypeModal);
+    }
+    
+    if (eventTypeModal) {
+      // Handle clicking outside modal to close
+      eventTypeModal.addEventListener('click', (e) => {
+        if (e.target === eventTypeModal) {
+          hideEventTypeModal();
         }
-        if (progressEl) progressEl.style.width = '0%';
-      }
-      lpButton.addEventListener('pointerdown', (e) => {
-        // Only respond to primary pointer (left click or touch)
-        if (e.button !== undefined && e.button !== 0) return;
-        // Show progress; record start time
-        lpStart = Date.now();
-        if (progressEl) progressEl.style.width = '0%';
-        lpInterval = setInterval(() => {
-          const elapsed = Date.now() - lpStart;
-          const pct = Math.min(elapsed / 2000, 1);
-          if (progressEl) progressEl.style.width = `${pct * 100}%`;
-          if (elapsed >= 2000) {
-            clearLongPress();
-            // Determine whether to start or end the period based on the label.  If the label
-            // begins with "Start", call startMatch(); otherwise end the current period.
-            const label = lpButton.querySelector('#end-period-label');
-            const text = label ? label.textContent : '';
-            if (text && text.trim().startsWith('Start')) {
-              startMatch();
-            } else {
-              endPeriod();
+      });
+      
+      // Handle event type option clicks
+      document.querySelectorAll('.event-type-option').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const eventType = btn.dataset.eventType;
+          const teamKey = eventTypeModal.dataset.teamKey;
+          
+          // Hide the event type modal
+          hideEventTypeModal();
+          
+          // Show the appropriate event-specific modal based on type
+          if (eventType === 'miss') {
+            // For miss, we can reuse the score modal but with a default miss outcome
+            showScoreModal(teamKey, ShotOutcome.WIDE);
+          } else {
+            // For other event types, show the general add event modal with preselected type
+            showAddEventModal(teamKey);
+            // Set the event type in the modal
+            const eventTypeSelect = document.getElementById('event-type');
+            if (eventTypeSelect) {
+              // Map our event types to the existing event type values
+              const eventTypeMap = {
+                'foul': 'foulConceded',
+                'kickout': 'kickout', 
+                'sub': 'substitution',
+                'note': 'note',
+                'card': 'card'
+              };
+              eventTypeSelect.value = eventTypeMap[eventType] || eventType;
+              renderEventFields(eventTypeSelect.value);
             }
           }
-        }, 50);
+        });
       });
-      const cancelHandler = () => {
-        clearLongPress();
-      };
-      lpButton.addEventListener('pointerup', cancelHandler);
-      lpButton.addEventListener('pointerleave', cancelHandler);
-      lpButton.addEventListener('pointercancel', cancelHandler);
     }
 
-    // Score event modal buttons: the top "Done" button and bottom "Save" button
+    // Score event modal buttons: Cancel, Done buttons
+    const scoreCancelBtn = document.getElementById('score-modal-cancel');
+    if (scoreCancelBtn) {
+      scoreCancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideScoreModal();
+      });
+    }
+    
     const scoreDoneBtn = document.getElementById('score-modal-done');
     if (scoreDoneBtn) {
       scoreDoneBtn.addEventListener('click', (e) => {
@@ -2606,7 +2884,7 @@
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const teamKey = btn.dataset.team;
-        showAddEventModal(teamKey);
+        showEventTypeModal(teamKey);
       });
     });
   }
