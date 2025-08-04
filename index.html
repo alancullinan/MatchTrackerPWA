@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Match Tracker</title>
+    <!-- Load Tailwind via CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom fallback styles -->
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+    <body class="bg-gray-900 text-gray-100 min-h-screen">
+    <!-- Use the same background colour as the rest of the app for a seamless header.  Reduce padding to
+         free vertical space and remove the drop shadow. -->
+    <!-- Hide the header by default; it will be shown only on match details view via JavaScript. -->
+    <header class="bg-gray-900 text-gray-100 px-4 py-2 text-center" style="display:none;">
+      <!-- The app title will be updated dynamically to show the competition name when viewing a match -->
+      <!-- The app title displays the competition name when viewing a match. We use a slightly larger font for better hierarchy -->
+      <!-- Make the title slightly smaller to provide more space for other elements. -->
+      <h1 id="app-title" class="text-xl font-bold tracking-wide">Match Tracker</h1>
+    </header>
+    <main class="max-w-4xl mx-auto p-4">
+      <!-- Match list view -->
+      <section id="match-list-view" class="view">
+        <!-- Title for the match list.  Use a larger font to mirror the native app and remove "Your" to
+             simply label it as Matches. -->
+        <!-- Use a large heading for the match list to mirror the native app.  The title is bold and
+             slightly larger than the default header to help it stand out. -->
+        <!-- Header row for the match list: show the title on the left and an add
+             match button next to it.  Align items to the start so the button sits
+             beside the heading. -->
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-3xl font-bold">Matches</h2>
+          <!-- Add Match button aligned to the right of the header -->
+          <button id="add-match-btn" title="Add Match">
+            <img src="icons/plus.svg" alt="Add Match" class="w-8 h-8" />
+          </button>
+        </div>
+        <div id="match-list" class="match-list space-y-2"></div>
+      </section>
+
+      <!-- Match form view (create/edit) -->
+      <section id="match-form-view" class="view" style="display: none;">
+        <!-- Top bar for the match form: Cancel on the left and Done on the right.  The
+             Cancel button calls cancelMatchForm() and the Done button submits the form. -->
+        <!-- Top bar: match the Cancel/Done style used on the player edit screen.  Plain text links with blue
+             colour provide a lightweight navigation style. -->
+        <div class="flex justify-between items-center my-2">
+          <button type="button" id="cancel-form-top" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
+          <h2 id="form-title" class="text-xl font-semibold">New Match</h2>
+          <button type="submit" form="match-form" id="save-form-top" class="text-blue-500 hover:text-blue-400 font-semibold" title="Done">Done</button>
+        </div>
+        <form id="match-form" class="form space-y-0">
+          <!-- Competition -->
+          <div class="form-row flex flex-col mb-2">
+            <label for="competition" class="mb-1">Competition</label>
+            <input type="text" id="competition" name="competition" placeholder="Competition" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+          </div>
+          <!-- Team 1 -->
+          <div class="form-row flex flex-col mb-2">
+            <label for="team1" class="mb-1">Team 1 Name</label>
+            <input type="text" id="team1" name="team1" placeholder="Team 1 Name" required class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+          </div>
+          <!-- Team 2 -->
+          <div class="form-row flex flex-col mb-2">
+            <label for="team2" class="mb-1">Team 2 Name</label>
+            <input type="text" id="team2" name="team2" placeholder="Team 2 Name" required class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+          </div>
+          <!-- Date -->
+          <div class="form-row flex flex-col mb-2">
+            <label for="dateTime" class="mb-1">Date</label>
+            <!-- Use a date picker instead of a datetime picker.  Users only need to specify the day and
+                 not the exact time. -->
+            <input type="date" id="dateTime" name="dateTime" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+          </div>
+          <!-- Match Type -->
+          <div class="form-row flex flex-col mb-2">
+            <label for="matchType" class="mb-1">Match Type</label>
+            <select id="matchType" name="matchType" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600">
+              <option value="football">Football</option>
+              <option value="hurling">Hurling</option>
+              <option value="ladiesFootball">Ladies Football</option>
+              <option value="camogie">Camogie</option>
+            </select>
+          </div>
+          <!-- Venue -->
+          <div class="form-row flex flex-col mb-2">
+            <label for="venue" class="mb-1">Venue</label>
+            <input type="text" id="venue" name="venue" placeholder="Venue" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+          </div>
+          <!-- Referee -->
+          <div class="form-row flex flex-col mb-2">
+            <label for="referee" class="mb-1">Referee</label>
+            <input type="text" id="referee" name="referee" placeholder="Referee" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+          </div>
+          <!-- Removed half length and extra half length inputs as these durations are not used in the current
+               implementation.  Users no longer need to specify playing or extra‑time durations. -->
+          <!-- Bottom buttons removed in favour of top Cancel/Done bar. -->
+        </form>
+      </section>
+
+      <!-- Match details view -->
+      <section id="match-details-view" class="view" style="display: none;">
+        <!-- Top bar with back button, timer (with period) and edit match button -->
+        <div class="flex justify-between items-center my-2">
+          <!-- Back button with icon -->
+          <button id="back-to-list-btn" class="secondary-btn bg-gray-600 hover:bg-gray-700 text-gray-100 px-3 py-1 rounded flex items-center space-x-1" title="Back to Matches">
+            <span class="text-lg">←</span>
+            <span>Back</span>
+          </button>
+          <!-- Edit match button with pencil icon remains on the far right -->
+          <button id="edit-match-btn" class="secondary-btn bg-gray-600 hover:bg-gray-700 text-gray-100 px-3 py-1 rounded flex items-center space-x-1" title="Edit Match">
+            <span class="text-lg">✏️</span>
+            <span>Edit</span>
+          </button>
+        </div>
+        <!-- Timer row: place start/end button to the left of the timer and pause/resume on the right.  The
+             period label sits above the timer display to mirror the iOS layout. -->
+        <!-- Spread the timer controls across the full width.  The start/end button sits on the left,
+             the period/time display stays centered, and the pause/resume controls align on the right. -->
+        <!-- Maintain a minimum height even when control buttons are hidden so the scoreboard does not shift upward. -->
+        <div class="relative flex items-center my-2 w-full min-h-[3.5rem]">
+          <!-- Long‑press start/end half button.  Initially hidden until a period can be started or ended.
+               The button is relative so that a progress overlay can fill its background during a long press. -->
+          <button id="end-period-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg relative overflow-hidden" style="display:none;">
+            <div class="press-progress absolute left-0 top-0 h-full bg-white bg-opacity-30" style="width: 0%;"></div>
+            <span id="end-period-label">Start Half</span>
+          </button>
+          <!-- Center the period and timer absolutely so it stays centred regardless of button widths -->
+          <div class="flex flex-col items-center absolute left-1/2 transform -translate-x-1/2">
+            <!-- Current period name -->
+            <div id="period-display" class="text-sm font-semibold tracking-wide"></div>
+            <!-- Timer display; prominent font size -->
+            <div id="timer-display" class="text-3xl font-mono font-bold">00:00</div>
+          </div>
+          <!-- Timer control buttons.  Only one of these (start, pause, resume) is visible at a time.  They
+               are placed to the right of the timer to match the iOS layout. -->
+          <div class="flex items-center space-x-2 ml-auto">
+            <button id="pause-timer-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg" style="display:none;" title="Pause">
+              Pause
+            </button>
+            <button id="resume-timer-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg" style="display:none;" title="Resume">
+              Resume
+            </button>
+          </div>
+        </div>
+        <!-- Timer controls moved directly below the match title so the clock is prominently displayed at the top
+             of the screen. -->
+        <!-- Team cards styled similar to native app screenshot -->
+        <div id="team-cards" class="space-y-4 my-2">
+          <!-- Team 1 Card -->
+          <div id="team1-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
+            <div class="card-header flex justify-between items-center mb-2">
+              <button class="team-event-btn flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white" data-team="team1" title="Add Event">
+                <span class="text-lg">+</span>
+              </button>
+              <h3 class="team-name text-lg font-semibold"></h3>
+              <button class="team-edit-btn text-blue-400" data-team="team1" title="Edit Players">👥</button>
+            </div>
+            <!-- Combine the score display and scoring buttons into a single row.  The green goal flag sits to the
+                 left of the central score, while the orange two‑pointer (when applicable) and white point flags
+                 sit to the right.  This layout mirrors the native app screenshot where the score is centered
+                 between its scoring controls. -->
+            <div class="score-row relative flex items-center mt-3">
+              <!-- Goal flag anchored on the left side -->
+              <button class="team-goal-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600" data-team="team1" title="Goal">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#22C55E">
+                  <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <!-- Right‑side flag buttons grouped together -->
+              <div class="flag-buttons flex space-x-2 ml-auto">
+                <button class="team-two-pointer-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600 hidden" data-team="team1" title="2 Pointer">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#FB923C">
+                    <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+                <button class="team-point-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600" data-team="team1" title="Point">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#FFFFFF">
+                    <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+              <!-- Scoreboard absolutely centered within the row.  Pointer events are disabled so
+                   clicking the flags still works. -->
+              <div class="score-display absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <div class="flex items-baseline">
+                  <span class="score-goals text-5xl font-bold"></span>
+                  <span class="mx-1 text-4xl font-bold">-</span>
+                  <span class="score-points text-5xl font-bold"></span>
+                </div>
+                <span class="score-total text-xs text-gray-400 mt-1"></span>
+              </div>
+            </div>
+          </div>
+        <!-- Score event modal -->
+        <!--
+          This modal is displayed when a user taps the goal or point button on a team card.
+          Instead of immediately logging a default shot, the app prompts the user to
+          select the shot type (e.g. free, penalty) and the player responsible for
+          the score.  The modal is styled to resemble the native app screenshot: a header
+          with an icon and the score type, a meta line showing team/time/period
+          information, side‑by‑side lists for shot types and players, an optional notes
+          field, and a single Done button.  The modal remains hidden by default and
+          is shown via JavaScript.
+        -->
+        <div id="score-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md">
+            <div class="flex justify-between items-center mb-2">
+              <h3 id="score-modal-title" class="text-lg font-bold flex items-center space-x-2">
+                <!-- Icon and label inserted dynamically -->
+              </h3>
+              <button id="score-modal-done" class="text-blue-500 hover:text-blue-400 font-semibold" title="Done">Done</button>
+            </div>
+            <div id="score-modal-meta" class="text-sm text-gray-400 mb-3">
+              <!-- Filled by JS with team name, time and period -->
+            </div>
+            <div class="flex space-x-2 mb-3" style="max-height: 40vh;">
+              <!-- Shot type selection on the left.  This column remains static while
+                   the player column scrolls -->
+              <div id="score-type-list" class="flex-1 space-y-1">
+                <!-- Items inserted by JS -->
+              </div>
+              <!-- Player selection on the right.  Allow vertical scrolling here
+                   independently of the shot type list. -->
+              <div id="score-player-list" class="flex-1 space-y-1 overflow-y-auto" style="max-height: 40vh;">
+                <!-- Items inserted by JS -->
+              </div>
+            </div>
+            <div class="form-row flex flex-col mb-3">
+              <label for="score-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
+              <textarea id="score-notes" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600 h-20"></textarea>
+            </div>
+            <!-- There is no separate Save button at the bottom of the scoring modal.  The top Done button
+                 handles saving the event and closing the modal. -->
+          </div>
+        </div>
+          <!-- Team 2 Card -->
+          <div id="team2-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
+            <div class="card-header flex justify-between items-center mb-2">
+              <button class="team-event-btn flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white" data-team="team2" title="Add Event">
+                <span class="text-lg">+</span>
+              </button>
+              <h3 class="team-name text-lg font-semibold"></h3>
+              <button class="team-edit-btn text-blue-400" data-team="team2" title="Edit Players">👥</button>
+            </div>
+            <!-- Combine the score display and scoring buttons into a single row.  The goal flag sits
+                 to the left of the central score, while the two‑pointer (when applicable) and
+                 white point flags sit to the right.  This mirrors the layout for team 1. -->
+            <div class="score-row relative flex items-center mt-3">
+              <!-- Goal flag anchored on the left side -->
+              <button class="team-goal-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600" data-team="team2" title="Goal">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#22C55E">
+                  <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <!-- Right‑side flag buttons grouped together -->
+              <div class="flag-buttons flex space-x-2 ml-auto">
+                <button class="team-two-pointer-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600 hidden" data-team="team2" title="2 Pointer">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#FB923C">
+                    <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+                <button class="team-point-btn w-12 h-12 flex items-center justify-center rounded-full bg-gray-600" data-team="team2" title="Point">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" class="w-8 h-8" fill="#FFFFFF">
+                    <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+              <!-- Scoreboard absolutely centered within the row.  Pointer events are disabled so
+                   clicking the flags still works. -->
+              <div class="score-display absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <div class="flex items-baseline">
+                  <span class="score-goals text-5xl font-bold"></span>
+                  <span class="mx-1 text-4xl font-bold">-</span>
+                  <span class="score-points text-5xl font-bold"></span>
+                </div>
+                <span class="score-total text-xs text-gray-400 mt-1"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- The old quick scoring button group and central edit players button were removed.  Each
+          team card now includes its own goal/point and edit icons. -->
+        <!-- Last event display and toggle for full list -->
+        <div id="last-event-display" class="bg-gray-800 border border-gray-700 rounded-lg p-4 my-4 hidden cursor-pointer text-gray-100">
+          <!-- This content will be populated dynamically -->
+        </div>
+
+        <!-- Modals for adding an event and viewing the full events list -->
+        <!-- Add Event Modal -->
+        <div id="add-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md">
+            <h3 class="text-lg font-bold mb-2">Add Event</h3>
+            <div class="form-row flex flex-col mb-2">
+              <label for="event-type" class="mb-1">Event Type</label>
+              <select id="event-type" name="event-type" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600 w-full">
+                <option value="shot">Shot</option>
+                <option value="card">Card</option>
+                <option value="foulConceded">Foul Conceded</option>
+                <option value="kickout">Kick‑out</option>
+                <option value="substitution">Substitution</option>
+                <option value="note">Note</option>
+              </select>
+            </div>
+            <div id="event-fields" class="space-y-2"></div>
+            <div class="flex justify-end mt-4 space-x-2">
+              <button id="add-event-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center space-x-1" title="Add Event">
+                <span class="text-lg">✅</span>
+                <span>Add</span>
+              </button>
+              <button id="cancel-add-event-btn" class="bg-gray-600 hover:bg-gray-700 text-gray-100 px-4 py-2 rounded flex items-center space-x-1" title="Cancel">
+                <span class="text-lg">✖️</span>
+                <span>Cancel</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Events List Modal -->
+        <div id="events-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-2">
+              <h3 class="font-semibold">Events</h3>
+              <!-- Use a "Done" button for closing the events list to match
+                   the other modals and maintain consistent navigation.  It
+                   omits the X icon and relies on the blue text styling. -->
+              <button id="close-events-modal-btn" class="text-blue-500 hover:text-blue-400 font-semibold" title="Done">
+                Done
+              </button>
+            </div>
+            <!-- The events list will be populated dynamically.  Remove the divide classes
+                 so our card styling (margins and borders) stand alone without
+                 extra lines. -->
+            <ul id="events-list" class="events-list"></ul>
+          </div>
+        </div>
+
+        <!-- Edit event modal overlay -->
+        <div id="edit-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md">
+            <h3 class="text-lg font-bold mb-2">Edit Event</h3>
+            <div id="edit-event-fields" class="space-y-2"></div>
+            <div class="flex justify-end mt-4 space-x-2">
+              <button id="save-edit-event-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center space-x-1" title="Save">
+                <span class="text-lg">✅</span>
+                <span>Save</span>
+              </button>
+              <button id="cancel-edit-event-btn" class="bg-gray-600 hover:bg-gray-700 text-gray-100 px-4 py-2 rounded flex items-center space-x-1" title="Cancel">
+                <span class="text-lg">✖️</span>
+                <span>Cancel</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+        <!-- Edit players view -->
+      <section id="edit-players-view" class="view" style="display: none;">
+        <!-- Top bar for player editing: Cancel on the left, title centred, Done on the right -->
+        <div class="flex justify-between items-center my-2">
+          <button id="cancel-players-btn" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
+          <h2 class="text-lg font-semibold">Edit Players</h2>
+          <button id="save-players-btn" class="text-blue-500 hover:text-blue-400 font-semibold" title="Done">Done</button>
+        </div>
+        <!-- Container for the editable list of players.  Sections for each team will be inserted here dynamically. -->
+        <div id="players-edit-container" class="players-edit-container space-y-4"></div>
+      </section>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
