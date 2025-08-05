@@ -42,6 +42,20 @@ input[type="date"] {
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: none;
+  padding: 0.5rem !important;
+  border: 1px solid #4b5563 !important;
+  background-color: #374151 !important;
+  color: #f3f4f6 !important;
+  border-radius: 0;
+}
+
+/* Remove date input calendar icon on Webkit browsers if it causes width issues */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
 }
 
 :root {
