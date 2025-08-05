@@ -121,6 +121,818 @@
     editingMatchId: null // holds ID of match being edited via the form
   };
 
+  /* Enhanced Storage System with IndexedDB fallback */
+  
+  const StorageManager = {
+    DB_NAME: 'MatchTrackerDB',
+    DB_VERSION: 1,
+    STORE_NAME: 'matches',
+    
+    // Initialize IndexedDB
+    async initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+            const store = db.createObjectStore(this.STORE_NAME, { keyPath: 'key' });
+            store.createIndex('timestamp', 'timestamp', { unique: false });
+          }
+        };
+      });
+    },
+    
+    // Save data with fallback strategy
+    async saveData(key, data) {
+      const dataToStore = {
+        key: key,
+        data: data,
+        timestamp: Date.now()
+      };
+      
+      // Try localStorage first (faster)
+      try {
+        localStorage.setItem(key, JSON.stringify(data));
+        console.log(`Saved to localStorage: ${key}`);
+      } catch (localStorageError) {
+        console.warn('localStorage failed, trying IndexedDB:', localStorageError);
+        
+        // Fallback to IndexedDB
+        try {
+          const db = await this.initDB();
+          const transaction = db.transaction([this.STORE_NAME], 'readwrite');
+          const store = transaction.objectStore(this.STORE_NAME);
+          store.put(dataToStore);
+          await new Promise((resolve, reject) => {
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+          });
+          console.log(`Saved to IndexedDB: ${key}`);
+        } catch (indexedDBError) {
+          console.error('Both storage methods failed:', indexedDBError);
+          this.showStorageWarning();
+        }
+      }
+    },
+    
+    // Load data with fallback strategy
+    async loadData(key) {
+      // Try localStorage first
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          return JSON.parse(stored);
+        }
+      } catch (localStorageError) {
+        console.warn('localStorage read failed, trying IndexedDB:', localStorageError);
+      }
+      
+      // Fallback to IndexedDB
+      try {
+        const db = await this.initDB();
+        const transaction = db.transaction([this.STORE_NAME], 'readonly');
+        const store = transaction.objectStore(this.STORE_NAME);
+        const request = store.get(key);
+        
+        return new Promise((resolve, reject) => {
+          request.onsuccess = () => {
+            const result = request.result;
+            resolve(result ? result.data : null);
+          };
+          request.onerror = () => reject(request.error);
+        });
+      } catch (indexedDBError) {
+        console.error('Both storage methods failed for reading:', indexedDBError);
+        return null;
+      }
+    },
+    
+    // Get storage usage info
+    async getStorageInfo() {
+      const info = {
+        localStorage: { available: false, used: 0, total: 0 },
+        indexedDB: { available: false, used: 0, total: 0 }
+      };
+      
+      // Check localStorage
+      if (typeof Storage !== 'undefined') {
+        try {
+          const testKey = 'storage_test';
+          localStorage.setItem(testKey, 'test');
+          localStorage.removeItem(testKey);
+          info.localStorage.available = true;
+          
+          // Estimate localStorage usage
+          let used = 0;
+          for (let key in localStorage) {
+            if (localStorage.hasOwnProperty(key)) {
+              used += localStorage.getItem(key).length;
+            }
+          }
+          info.localStorage.used = used;
+          info.localStorage.total = 10 * 1024 * 1024; // ~10MB typical limit
+        } catch (e) {
+          console.warn('localStorage not available:', e);
+        }
+      }
+      
+      // Check IndexedDB
+      if ('indexedDB' in window) {
+        try {
+          await this.initDB();
+          info.indexedDB.available = true;
+          // Note: Getting exact usage requires more complex implementation
+          info.indexedDB.total = 50 * 1024 * 1024; // Estimated available space
+        } catch (e) {
+          console.warn('IndexedDB not available:', e);
+        }
+      }
+      
+      return info;
+    },
+    
+    // Show storage warning to user
+    showStorageWarning() {
+      const warning = document.createElement('div');
+      warning.className = 'fixed top-4 left-4 right-4 bg-yellow-600 text-white p-3 rounded-lg z-50';
+      warning.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span>⚠️</span>
+          <div>
+            <div class="font-semibold">Storage Warning</div>
+            <div class="text-sm">Unable to save data. Please free up space or backup your matches.</div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(warning);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (warning.parentNode) {
+          warning.parentNode.removeChild(warning);
+        }
+      }, 5000);
+    }
+  };
+
+  /* Data Export/Import System */
+  
+  const DataManager = {
+    // Export all match data to JSON
+    exportData() {
+      try {
+        const exportData = {
+          version: '1.0.0',
+          exportDate: new Date().toISOString(),
+          matches: appState.matches,
+          matchCount: appState.matches.length
+        };
+        
+        const jsonString = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `match-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        return { success: true, message: `Exported ${exportData.matchCount} matches` };
+      } catch (error) {
+        console.error('Export failed:', error);
+        return { success: false, message: `Export failed: ${error.message}` };
+      }
+    },
+    
+    // Import match data from JSON file
+    async importData(file) {
+      try {
+        const text = await this.readFileAsText(file);
+        const importData = JSON.parse(text);
+        
+        // Validate import data structure
+        if (!importData.matches || !Array.isArray(importData.matches)) {
+          throw new Error('Invalid backup file format');
+        }
+        
+        // Validate match structure (basic validation)
+        for (const match of importData.matches) {
+          if (!match.id || !match.team1 || !match.team2) {
+            throw new Error('Invalid match data in backup file');
+          }
+        }
+        
+        // Merge with existing matches (avoid duplicates by ID)
+        const existingIds = new Set(appState.matches.map(m => m.id));
+        const newMatches = importData.matches.filter(m => !existingIds.has(m.id));
+        
+        appState.matches.push(...newMatches);
+        await saveAppState();
+        renderMatchList();
+        
+        return { 
+          success: true, 
+          message: `Imported ${newMatches.length} new matches (${importData.matches.length - newMatches.length} duplicates skipped)` 
+        };
+      } catch (error) {
+        console.error('Import failed:', error);
+        return { success: false, message: `Import failed: ${error.message}` };
+      }
+    },
+    
+    // Helper to read file as text
+    readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(new Error('Failed to read file'));
+        reader.readAsText(file);
+      });
+    },
+    
+    // Format storage info for display
+    async formatStorageInfo() {
+      const info = await StorageManager.getStorageInfo();
+      const formatBytes = (bytes) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      };
+      
+      let html = '';
+      
+      if (info.localStorage.available) {
+        const usedPercent = ((info.localStorage.used / info.localStorage.total) * 100).toFixed(1);
+        html += `<div>localStorage: ${formatBytes(info.localStorage.used)} / ${formatBytes(info.localStorage.total)} (${usedPercent}%)</div>`;
+      }
+      
+      if (info.indexedDB.available) {
+        html += `<div>IndexedDB: Available (~${formatBytes(info.indexedDB.total)} space)</div>`;
+      }
+      
+      if (!info.localStorage.available && !info.indexedDB.available) {
+        html = '<div class="text-yellow-400">⚠️ No storage available</div>';
+      }
+      
+      return html;
+    }
+  };
+
+  /* Data Management UI Functions */
+  
+  function showDataManagementModal() {
+    const modal = document.getElementById('data-management-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    // Load storage info
+    loadStorageInfo();
+  }
+  
+  function hideDataManagementModal() {
+    const modal = document.getElementById('data-management-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    
+    // Reset import state
+    resetImportState();
+  }
+  
+  async function loadStorageInfo() {
+    const storageInfoDiv = document.getElementById('storage-info');
+    storageInfoDiv.innerHTML = await DataManager.formatStorageInfo();
+  }
+  
+  function exportData() {
+    const statusDiv = document.getElementById('export-status');
+    const result = DataManager.exportData();
+    
+    statusDiv.textContent = result.message;
+    statusDiv.className = result.success ? 'text-sm text-green-400' : 'text-sm text-red-400';
+    
+    // Clear status after 3 seconds
+    setTimeout(() => {
+      statusDiv.textContent = '';
+      statusDiv.className = 'text-sm text-gray-400';
+    }, 3000);
+  }
+  
+  let selectedImportFile = null;
+  
+  function handleFileSelect(event) {
+    const file = event.target.files[0];
+    const selectBtn = document.getElementById('select-import-file-btn');
+    const importBtn = document.getElementById('import-data-btn');
+    const statusDiv = document.getElementById('import-status');
+    
+    if (file) {
+      selectedImportFile = file;
+      selectBtn.textContent = `Selected: ${file.name}`;
+      importBtn.classList.remove('hidden');
+      statusDiv.textContent = 'File ready to import';
+      statusDiv.className = 'text-sm text-blue-400';
+    } else {
+      resetImportState();
+    }
+  }
+  
+  async function importData() {
+    if (!selectedImportFile) return;
+    
+    const importBtn = document.getElementById('import-data-btn');
+    const statusDiv = document.getElementById('import-status');
+    
+    // Show loading state
+    importBtn.textContent = 'Importing...';
+    importBtn.disabled = true;
+    statusDiv.textContent = 'Processing import file...';
+    statusDiv.className = 'text-sm text-blue-400';
+    
+    try {
+      const result = await DataManager.importData(selectedImportFile);
+      
+      statusDiv.textContent = result.message;
+      statusDiv.className = result.success ? 'text-sm text-green-400' : 'text-sm text-red-400';
+      
+      if (result.success) {
+        // Clear after successful import
+        setTimeout(() => {
+          hideDataManagementModal();
+        }, 2000);
+      }
+    } finally {
+      // Reset button state
+      importBtn.textContent = 'Import Matches';
+      importBtn.disabled = false;
+    }
+  }
+  
+  function resetImportState() {
+    selectedImportFile = null;
+    const selectBtn = document.getElementById('select-import-file-btn');
+    const importBtn = document.getElementById('import-data-btn');
+    const statusDiv = document.getElementById('import-status');
+    const fileInput = document.getElementById('import-file-input');
+    
+    selectBtn.textContent = 'Select Import File';
+    importBtn.classList.add('hidden');
+    statusDiv.textContent = '';
+    statusDiv.className = 'text-sm text-gray-400';
+    if (fileInput) fileInput.value = '';
+  }
+
+  /* Match Statistics System */
+  
+  const StatsCalculator = {
+    // Calculate comprehensive match statistics
+    calculateMatchStats(match) {
+      const stats = {
+        match: {
+          id: match.id,
+          competition: match.competition,
+          date: match.dateTime,
+          venue: match.venue,
+          matchType: match.matchType,
+          duration: this.formatMatchDuration(match),
+          final: match.period === MatchPeriod.MATCH_OVER
+        },
+        teams: {
+          [match.team1.name]: this.calculateTeamStats(match, 'team1'),
+          [match.team2.name]: this.calculateTeamStats(match, 'team2')
+        },
+        summary: this.calculateMatchSummary(match)
+      };
+      
+      return stats;
+    },
+    
+    // Calculate statistics for a specific team
+    calculateTeamStats(match, teamKey) {
+      const teamEvents = match.events.filter(e => e.team === teamKey);
+      const team = match[teamKey];
+      
+      const shots = teamEvents.filter(e => e.type === EventType.SHOT);
+      const fouls = teamEvents.filter(e => e.type === EventType.FOUL_CONCEDED);
+      const cards = teamEvents.filter(e => e.type === EventType.CARD);
+      const subs = teamEvents.filter(e => e.type === EventType.SUBSTITUTION);
+      
+      // Shooting stats
+      const goals = shots.filter(s => s.outcome === ShotOutcome.GOAL).length;
+      const points = shots.filter(s => s.outcome === ShotOutcome.POINT).length;
+      const twoPointers = shots.filter(s => s.outcome === ShotOutcome.TWO_POINTER).length;
+      const wides = shots.filter(s => s.outcome === ShotOutcome.WIDE).length;
+      const saved = shots.filter(s => s.outcome === ShotOutcome.SAVED).length;
+      const blocked = shots.filter(s => s.outcome === ShotOutcome.DROPPED_SHORT || s.outcome === ShotOutcome.OFF_POST).length;
+      
+      const totalShots = shots.length;
+      const successfulShots = goals + points + twoPointers;
+      const shootingAccuracy = totalShots > 0 ? ((successfulShots / totalShots) * 100).toFixed(1) : '0.0';
+      
+      // Score calculation
+      let totalScore = goals * 3 + points;
+      if (match.matchType === 'football' || match.matchType === 'ladies_football') {
+        totalScore += twoPointers * 2;
+      }
+      
+      // Card stats
+      const yellowCards = cards.filter(c => c.cardType === CardType.YELLOW).length;
+      const redCards = cards.filter(c => c.cardType === CardType.RED).length;
+      const blackCards = cards.filter(c => c.cardType === CardType.BLACK).length;
+      
+      // Player stats
+      const playerStats = this.calculatePlayerStats(teamEvents, team.players);
+      
+      return {
+        name: team.name,
+        score: {
+          goals,
+          points,
+          twoPointers,
+          total: totalScore,
+          display: match.matchType === 'football' || match.matchType === 'ladies_football' 
+            ? `${goals}-${points}-${twoPointers}` 
+            : `${goals}-${points}`
+        },
+        shooting: {
+          total: totalShots,
+          successful: successfulShots,
+          accuracy: `${shootingAccuracy}%`,
+          breakdown: { goals, points, twoPointers, wides, saved, blocked }
+        },
+        fouls: fouls.length,
+        cards: { yellow: yellowCards, red: redCards, black: blackCards, total: yellowCards + redCards + blackCards },
+        substitutions: subs.length,
+        topScorers: this.getTopScorers(playerStats),
+        periods: this.calculatePeriodStats(teamEvents)
+      };
+    },
+    
+    // Calculate player-specific statistics
+    calculatePlayerStats(teamEvents, players) {
+      const playerMap = {};
+      
+      // Initialize all players
+      players.forEach(player => {
+        playerMap[player.id] = {
+          id: player.id,
+          name: player.name,
+          jerseyNumber: player.jerseyNumber,
+          goals: 0,
+          points: 0,
+          twoPointers: 0,
+          totalScore: 0,
+          shots: 0,
+          fouls: 0,
+          cards: 0,
+          events: []
+        };
+      });
+      
+      // Process events
+      teamEvents.forEach(event => {
+        if (!event.playerId || !playerMap[event.playerId]) return;
+        
+        const player = playerMap[event.playerId];
+        player.events.push(event);
+        
+        if (event.type === EventType.SHOT) {
+          player.shots++;
+          if (event.outcome === ShotOutcome.GOAL) {
+            player.goals++;
+            player.totalScore += 3;
+          } else if (event.outcome === ShotOutcome.POINT) {
+            player.points++;
+            player.totalScore += 1;
+          } else if (event.outcome === ShotOutcome.TWO_POINTER) {
+            player.twoPointers++;
+            player.totalScore += 2;
+          }
+        } else if (event.type === EventType.FOUL_CONCEDED) {
+          player.fouls++;
+        } else if (event.type === EventType.CARD) {
+          player.cards++;
+        }
+      });
+      
+      return Object.values(playerMap).filter(p => p.shots > 0 || p.fouls > 0 || p.cards > 0);
+    },
+    
+    // Get top scorers for a team
+    getTopScorers(playerStats) {
+      return playerStats
+        .filter(p => p.totalScore > 0)
+        .sort((a, b) => b.totalScore - a.totalScore)
+        .slice(0, 5)
+        .map(p => ({
+          name: p.name,
+          jerseyNumber: p.jerseyNumber,
+          goals: p.goals,
+          points: p.points,
+          twoPointers: p.twoPointers,
+          totalScore: p.totalScore
+        }));
+    },
+    
+    // Calculate statistics by match period
+    calculatePeriodStats(teamEvents) {
+      const periods = {};
+      
+      teamEvents.forEach(event => {
+        const period = event.period || 'Unknown';
+        if (!periods[period]) {
+          periods[period] = { shots: 0, goals: 0, points: 0, fouls: 0 };
+        }
+        
+        if (event.type === EventType.SHOT) {
+          periods[period].shots++;
+          if (event.outcome === ShotOutcome.GOAL) periods[period].goals++;
+          else if (event.outcome === ShotOutcome.POINT) periods[period].points++;
+        } else if (event.type === EventType.FOUL_CONCEDED) {
+          periods[period].fouls++;
+        }
+      });
+      
+      return periods;
+    },
+    
+    // Calculate match summary statistics
+    calculateMatchSummary(match) {
+      const team1Stats = this.calculateTeamStats(match, 'team1');
+      const team2Stats = this.calculateTeamStats(match, 'team2');
+      
+      return {
+        totalShots: team1Stats.shooting.total + team2Stats.shooting.total,
+        totalFouls: team1Stats.fouls + team2Stats.fouls,
+        totalCards: team1Stats.cards.total + team2Stats.cards.total,
+        winner: team1Stats.score.total > team2Stats.score.total ? team1Stats.name : 
+                team2Stats.score.total > team1Stats.score.total ? team2Stats.name : 'Draw',
+        margin: Math.abs(team1Stats.score.total - team2Stats.score.total)
+      };
+    },
+    
+    // Format match duration for display
+    formatMatchDuration(match) {
+      if (!match.elapsedTime) return 'Not started';
+      
+      const minutes = Math.floor(match.elapsedTime / 60);
+      const seconds = match.elapsedTime % 60;
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    },
+    
+    // Generate shareable text summary
+    generateShareableStats(stats) {
+      const { match, teams, summary } = stats;
+      const teamNames = Object.keys(teams);
+      const team1 = teams[teamNames[0]];
+      const team2 = teams[teamNames[1]];
+      
+      let shareText = `🏈 ${match.competition || 'Match'} Results\n\n`;
+      shareText += `${team1.name} ${team1.score.display} - ${team2.score.display} ${team2.name}\n\n`;
+      
+      if (summary.winner !== 'Draw') {
+        shareText += `🏆 Winner: ${summary.winner} (by ${summary.margin})\n\n`;
+      } else {
+        shareText += `🤝 Match ended in a draw\n\n`;
+      }
+      
+      shareText += `📊 Match Stats:\n`;
+      shareText += `• Total Shots: ${summary.totalShots}\n`;
+      shareText += `• Total Fouls: ${summary.totalFouls}\n`;
+      if (summary.totalCards > 0) {
+        shareText += `• Cards: ${summary.totalCards}\n`;
+      }
+      shareText += `• Duration: ${match.duration}\n\n`;
+      
+      // Top scorers
+      const allScorers = [...team1.topScorers, ...team2.topScorers]
+        .sort((a, b) => b.totalScore - a.totalScore)
+        .slice(0, 3);
+      
+      if (allScorers.length > 0) {
+        shareText += `⭐ Top Scorers:\n`;
+        allScorers.forEach((scorer, i) => {
+          shareText += `${i + 1}. ${scorer.name} (${scorer.totalScore} pts)\n`;
+        });
+      }
+      
+      shareText += `\n📱 Tracked with Match Tracker PWA`;
+      
+      return shareText;
+    }
+  };
+
+  /* Statistics UI Functions */
+  
+  let currentMatchStats = null;
+  
+  function showMatchStats() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    
+    currentMatchStats = StatsCalculator.calculateMatchStats(match);
+    renderMatchStats(currentMatchStats);
+    
+    const modal = document.getElementById('match-stats-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+  
+  function hideMatchStats() {
+    const modal = document.getElementById('match-stats-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    currentMatchStats = null;
+  }
+  
+  function renderMatchStats(stats) {
+    // Match info
+    const matchInfo = document.getElementById('stats-match-info');
+    matchInfo.innerHTML = `
+      <div class="text-lg font-semibold">${stats.match.competition || 'Match'}</div>
+      <div class="text-sm text-gray-300">
+        ${stats.match.venue ? `${stats.match.venue} • ` : ''}
+        ${stats.match.date ? new Date(stats.match.date).toLocaleDateString() : 'No date'}
+        ${stats.match.duration ? ` • Duration: ${stats.match.duration}` : ''}
+      </div>
+      ${stats.match.final ? '<div class="text-xs text-green-400 mt-1">✓ Final Result</div>' : '<div class="text-xs text-yellow-400 mt-1">⏱️ Live Match</div>'}
+    `;
+    
+    // Score summary
+    const teamNames = Object.keys(stats.teams);
+    const team1 = stats.teams[teamNames[0]];
+    const team2 = stats.teams[teamNames[1]];
+    
+    const scoreSummary = document.getElementById('stats-score-summary');
+    scoreSummary.innerHTML = `
+      <div class="bg-gray-700 rounded p-4 text-center">
+        <div class="text-2xl font-bold mb-2">
+          ${team1.name} <span class="text-blue-400">${team1.score.display}</span> - 
+          <span class="text-blue-400">${team2.score.display}</span> ${team2.name}
+        </div>
+        <div class="text-sm text-gray-300">
+          ${stats.summary.winner === 'Draw' 
+            ? '🤝 Match ended in a draw' 
+            : `🏆 ${stats.summary.winner} wins by ${stats.summary.margin} points`}
+        </div>
+      </div>
+    `;
+    
+    // Team statistics
+    const teamsContainer = document.getElementById('stats-teams');
+    teamsContainer.innerHTML = teamNames.map(teamName => {
+      const team = stats.teams[teamName];
+      return `
+        <div class="bg-gray-700 rounded p-4">
+          <h4 class="text-lg font-semibold mb-3">${team.name}</h4>
+          
+          <!-- Shooting Stats -->
+          <div class="mb-3">
+            <h5 class="font-medium text-blue-400 mb-2">🎯 Shooting</h5>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div>Total Shots: <span class="font-medium">${team.shooting.total}</span></div>
+              <div>Accuracy: <span class="font-medium">${team.shooting.accuracy}</span></div>
+              <div>Goals: <span class="font-medium">${team.shooting.breakdown.goals}</span></div>
+              <div>Points: <span class="font-medium">${team.shooting.breakdown.points}</span></div>
+              ${team.shooting.breakdown.twoPointers > 0 ? `<div>2-Pointers: <span class="font-medium">${team.shooting.breakdown.twoPointers}</span></div>` : ''}
+              <div>Wides: <span class="font-medium">${team.shooting.breakdown.wides}</span></div>
+            </div>
+          </div>
+          
+          <!-- Other Stats -->
+          <div class="grid grid-cols-3 gap-4 text-sm mb-3">
+            <div class="text-center">
+              <div class="font-medium text-red-400">${team.fouls}</div>
+              <div class="text-gray-400">Fouls</div>
+            </div>
+            <div class="text-center">
+              <div class="font-medium text-yellow-400">${team.cards.total}</div>
+              <div class="text-gray-400">Cards</div>
+            </div>
+            <div class="text-center">
+              <div class="font-medium text-blue-400">${team.substitutions}</div>
+              <div class="text-gray-400">Subs</div>
+            </div>
+          </div>
+          
+          <!-- Top Scorers -->
+          ${team.topScorers.length > 0 ? `
+            <div>
+              <h5 class="font-medium text-green-400 mb-2">⭐ Top Scorers</h5>
+              <div class="space-y-1 text-sm">
+                ${team.topScorers.slice(0, 3).map(scorer => `
+                  <div class="flex justify-between">
+                    <span>${scorer.name} (#${scorer.jerseyNumber})</span>
+                    <span class="font-medium">${scorer.totalScore} pts</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+    
+    // Match summary
+    const summary = document.getElementById('stats-summary');
+    summary.innerHTML = `
+      <h4 class="font-semibold mb-2">📊 Match Overview</h4>
+      <div class="grid grid-cols-3 gap-4 text-sm">
+        <div class="text-center">
+          <div class="font-medium text-blue-400">${stats.summary.totalShots}</div>
+          <div class="text-gray-400">Total Shots</div>
+        </div>
+        <div class="text-center">
+          <div class="font-medium text-red-400">${stats.summary.totalFouls}</div>
+          <div class="text-gray-400">Total Fouls</div>
+        </div>
+        <div class="text-center">
+          <div class="font-medium text-yellow-400">${stats.summary.totalCards}</div>
+          <div class="text-gray-400">Total Cards</div>
+        </div>
+      </div>
+    `;
+  }
+  
+  async function shareMatchStats() {
+    if (!currentMatchStats) return;
+    
+    const shareText = StatsCalculator.generateShareableStats(currentMatchStats);
+    
+    // Try using Web Share API first (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Match Statistics',
+          text: shareText
+        });
+        return;
+      } catch (err) {
+        console.log('Native sharing failed, falling back to clipboard');
+      }
+    }
+    
+    // Fallback to clipboard
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showShareSuccessMessage('Statistics copied to clipboard! You can now paste it in WhatsApp or any messaging app.');
+    } catch (err) {
+      // Ultimate fallback - create a text area for manual copy
+      createManualCopyFallback(shareText);
+    }
+  }
+  
+  function showShareSuccessMessage(message) {
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 left-4 right-4 bg-green-600 text-white p-3 rounded-lg z-50';
+    notification.innerHTML = `
+      <div class="flex items-center space-x-2">
+        <span>✅</span>
+        <div class="text-sm">${message}</div>
+      </div>
+    `;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 3000);
+  }
+  
+  function createManualCopyFallback(text) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md">
+        <h3 class="text-lg font-bold mb-2">Copy Statistics</h3>
+        <p class="text-sm text-gray-300 mb-3">Select all text below and copy it:</p>
+        <textarea readonly class="w-full h-64 p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-sm">${text}</textarea>
+        <button id="close-copy-modal" class="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Close</button>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Select the text
+    const textarea = modal.querySelector('textarea');
+    textarea.select();
+    
+    // Close modal handler
+    modal.querySelector('#close-copy-modal').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+  }
+
   /* Data Model Helpers */
 
   // Generate a unique ID using current timestamp and random suffix
@@ -142,22 +954,28 @@
     return players;
   }
 
-  // Load matches from localStorage into appState
-  function loadAppState() {
+  // Load matches using enhanced storage system
+  async function loadAppState() {
     try {
-      const stored = localStorage.getItem('matches');
+      const stored = await StorageManager.loadData('matches');
       if (stored) {
-        appState.matches = JSON.parse(stored);
+        appState.matches = stored;
+      } else {
+        appState.matches = [];
       }
     } catch (err) {
-      console.warn('Failed to load matches from localStorage', err);
+      console.warn('Failed to load matches from storage', err);
       appState.matches = [];
     }
   }
 
-  // Save matches to localStorage
-  function saveAppState() {
-    localStorage.setItem('matches', JSON.stringify(appState.matches));
+  // Save matches using enhanced storage system
+  async function saveAppState() {
+    try {
+      await StorageManager.saveData('matches', appState.matches);
+    } catch (err) {
+      console.error('Failed to save matches', err);
+    }
   }
 
   // Find a match by ID
@@ -303,7 +1121,7 @@
       // the button element itself.
       const del = document.createElement('button');
       del.title = 'Delete match';
-      del.className = 'absolute top-2 right-2 text-gray-300 hover:text-gray-100';
+      del.className = 'absolute bottom-2 right-2 text-gray-300 hover:text-gray-100';
       del.innerHTML =
         '<img src="icons/delete.svg" alt="Add Match" class="w-8 h-8" />';
       del.addEventListener('click', (e) => {
@@ -629,7 +1447,11 @@
     } else if (last.type === EventType.CARD) {
       outcomeText = `${last.cardType ? last.cardType.charAt(0).toUpperCase() + last.cardType.slice(1) : ''} Card`;
     } else if (last.type === EventType.FOUL_CONCEDED) {
-      outcomeText = `Foul${last.foulOutcome ? ' (' + last.foulOutcome.charAt(0).toUpperCase() + last.foulOutcome.slice(1) + ')' : ''}`;
+      let foulText = `Foul${last.foulOutcome ? ' (' + last.foulOutcome.charAt(0).toUpperCase() + last.foulOutcome.slice(1) + ')' : ''}`;
+      if (last.cardType) {
+        foulText += ` + ${last.cardType.charAt(0).toUpperCase() + last.cardType.slice(1)} Card`;
+      }
+      outcomeText = foulText;
     } else if (last.type === EventType.KICKOUT) {
       outcomeText = `Kick‑out ${last.wonKickout ? 'Won' : 'Lost'}`;
     } else if (last.type === EventType.SUBSTITUTION) {
@@ -719,8 +1541,8 @@
         details.appendChild(pLine);
       }
     }
-    // Note text line
-    if (last.type === EventType.NOTE) {
+    // Note text line for any event with notes
+    if (last.noteText && last.noteText.trim()) {
       const nLine = document.createElement('div');
       nLine.className = 'text-gray-300 text-sm';
       nLine.textContent = last.noteText;
@@ -1060,7 +1882,7 @@
         btn.dataset.value = value;
         btn.dataset.section = 'shot';
         btn.textContent = label;
-        btn.className = 'w-full text-left p-2 rounded-lg text-sm mb-1';
+        btn.className = 'w-full text-left px-3 py-1 border border-gray-600 rounded text-sm mb-1';
         
         if (value === scoreModalData.selectedShotType) {
           btn.classList.add('bg-blue-600', 'text-white');
@@ -1108,7 +1930,7 @@
         btn.dataset.value = value;
         btn.dataset.section = 'miss';
         btn.textContent = label;
-        btn.className = 'w-full text-left p-2 rounded-lg text-sm mb-1';
+        btn.className = 'w-full text-left px-3 py-1 border border-gray-600 rounded text-sm mb-1';
         
         if (value === scoreModalData.outcome) {
           btn.classList.add('bg-blue-600', 'text-white');
@@ -1152,7 +1974,7 @@
         btn.type = 'button';
         btn.dataset.value = value;
         btn.textContent = label;
-        btn.className = 'w-full text-left p-2 rounded-lg text-sm';
+        btn.className = 'w-full text-left p-2 border border-gray-600 rounded text-sm';
         
         if (value === scoreModalData.selectedShotType) {
           btn.classList.add('bg-blue-600', 'text-white');
@@ -1183,8 +2005,8 @@
     noneBtn.type = 'button';
     noneBtn.dataset.value = '';
     // Provide default styling; highlight logic will override when selected
-    noneBtn.className = 'w-full text-left p-2 rounded-lg text-sm mb-1 bg-gray-700 text-gray-100';
-    noneBtn.innerHTML = `<div class="flex items-center space-x-2"><span class="w-6 h-6 flex items-center justify-center bg-gray-600 rounded-full">--</span><span>None</span></div>`;
+    noneBtn.className = 'w-full text-left px-3 py-1 border border-gray-600 rounded text-sm mb-1 bg-gray-700 text-gray-100';
+    noneBtn.innerHTML = `<div class="flex items-center space-x-2"><span class="w-6 h-6 flex items-center justify-center bg-gray-600 border border-gray-500 rounded">--</span><span>None</span></div>`;
     noneBtn.addEventListener('click', () => selectPlayer(null));
     playerListEl.appendChild(noneBtn);
     // Helper to highlight selected player
@@ -1208,8 +2030,8 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.dataset.value = p.id;
-      btn.innerHTML = `<div class="flex items-center space-x-2"><span class="w-6 h-6 flex items-center justify-center bg-gray-600 rounded-full">${p.jerseyNumber}</span><span>${p.name}</span></div>`;
-      btn.className = 'w-full text-left p-2 rounded-lg text-sm mb-1 bg-gray-700 text-gray-100';
+      btn.innerHTML = `<div class="flex items-center space-x-2"><span class="w-6 h-6 flex items-center justify-center bg-gray-600 border border-gray-500 rounded">${p.jerseyNumber}</span><span>${p.name}</span></div>`;
+      btn.className = 'w-full text-left px-3 py-1 border border-gray-600 rounded text-sm mb-1 bg-gray-700 text-gray-100';
       btn.addEventListener('click', () => selectPlayer(p.id));
       playerListEl.appendChild(btn);
     });
@@ -1279,6 +2101,816 @@
     saveAppState();
     // Close modal
     hideScoreModal();
+  }
+
+  // Foul modal data
+  let foulModalData = null;
+
+  // Show foul modal for combined foul + card event
+  function showFoulModal(teamKey, initial = {}) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    
+    // Only allow foul events during playing periods (except when editing)
+    if (!initial.isEdit && !isPlayingPeriod(match.currentPeriod)) {
+      return;
+    }
+    
+    // Prepare state for modal
+    foulModalData = {
+      teamKey,
+      selectedFoulType: initial.foulType || 'free',
+      selectedCardType: initial.cardType || 'none',
+      selectedPlayerId: initial.playerId != null ? initial.playerId : null,
+      isEdit: initial.isEdit || false,
+      eventId: initial.eventId || null
+    };
+    
+    // If editing, set notes from existing event
+    if (initial.isEdit && initial.eventId) {
+      const match = findMatchById(appState.currentMatchId);
+      const existingEvent = match?.events.find(e => e.id === initial.eventId);
+      if (existingEvent && existingEvent.noteText) {
+        setTimeout(() => {
+          const notesInput = document.getElementById('foul-notes');
+          if (notesInput) notesInput.value = existingEvent.noteText;
+        }, 0);
+      }
+    }
+    
+    // References to modal elements
+    const modal = document.getElementById('foul-event-modal');
+    const metaEl = document.getElementById('foul-event-meta');
+    const playerListEl = document.getElementById('foul-player-list');
+    const notesInput = document.getElementById('foul-notes');
+    
+    // Clear previous content
+    playerListEl.innerHTML = '';
+    notesInput.value = '';
+    
+    // Set up meta info (team name, time, period)
+    const team = match[teamKey];
+    const formattedTime = Math.floor(match.elapsedTime / 60).toString().padStart(2, '0') + ':' + 
+                         (match.elapsedTime % 60).toString().padStart(2, '0');
+    metaEl.textContent = `${team.name} • ${formattedTime} • ${match.currentPeriod}`;
+    
+    // Build player list
+    const players = match[teamKey].players.slice().sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+    
+    // Add None option
+    const noneBtn = document.createElement('button');
+    noneBtn.type = 'button';
+    noneBtn.dataset.playerId = '';
+    noneBtn.className = 'w-full text-left p-2 text-sm flex items-center space-x-2 border border-gray-600 rounded';
+    
+    if (foulModalData.selectedPlayerId === null) {
+      noneBtn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+    } else {
+      noneBtn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+    }
+    
+    const noneCircle = document.createElement('div');
+    noneCircle.className = 'w-6 h-6 rounded bg-gray-500 flex items-center justify-center text-xs font-bold';
+    noneCircle.textContent = '--';
+    const noneSpan = document.createElement('span');
+    noneSpan.textContent = 'None';
+    
+    noneBtn.appendChild(noneCircle);
+    noneBtn.appendChild(noneSpan);
+    
+    noneBtn.addEventListener('click', () => {
+      foulModalData.selectedPlayerId = null;
+      // Update button styles
+      playerListEl.querySelectorAll('button').forEach((item) => {
+        if (item.dataset.playerId === '') {
+          item.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+          item.classList.remove('bg-gray-700', 'text-gray-100', 'border-gray-600');
+        } else {
+          item.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+          item.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+        }
+      });
+    });
+    
+    playerListEl.appendChild(noneBtn);
+    
+    // Add player buttons
+    players.forEach((player) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.playerId = player.id;
+      btn.className = 'w-full text-left p-2 text-sm flex items-center space-x-2 border border-gray-600 rounded';
+      
+      if (player.id === foulModalData.selectedPlayerId) {
+        btn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+      } else {
+        btn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+      }
+      
+      const circle = document.createElement('div');
+      circle.className = 'w-6 h-6 rounded bg-gray-600 flex items-center justify-center text-xs font-bold';
+      circle.textContent = player.jerseyNumber;
+      
+      const nameSpan = document.createElement('span');
+      const defaultName = `No.${player.jerseyNumber}`;
+      nameSpan.textContent = player.name && player.name !== defaultName ? player.name : defaultName;
+      
+      btn.appendChild(circle);
+      btn.appendChild(nameSpan);
+      
+      btn.addEventListener('click', () => {
+        foulModalData.selectedPlayerId = player.id;
+        // Update button styles
+        playerListEl.querySelectorAll('button').forEach((item) => {
+          if (item.dataset.playerId === player.id) {
+            item.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+            item.classList.remove('bg-gray-700', 'text-gray-100', 'border-gray-600');
+          } else {
+            item.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+            item.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+          }
+        });
+      });
+      
+      playerListEl.appendChild(btn);
+    });
+    
+    // Update foul type and card type selection display
+    updateFoulTypeSelection();
+    updateCardTypeSelection();
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+
+  // Update foul type button styles
+  function updateFoulTypeSelection() {
+    const freeBtn = document.getElementById('foul-type-free');
+    const penaltyBtn = document.getElementById('foul-type-penalty');
+    
+    [freeBtn, penaltyBtn].forEach(btn => {
+      const foulType = btn.dataset.foulType;
+      if (foulType === foulModalData.selectedFoulType) {
+        btn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+        btn.classList.remove('bg-gray-700', 'text-gray-100', 'border-gray-600');
+      } else {
+        btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+        btn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+      }
+    });
+  }
+
+
+  // Update card type button styles
+  function updateCardTypeSelection() {
+    const cardButtons = ['none', 'yellow', 'red', 'black'];
+    
+    cardButtons.forEach(cardType => {
+      const btn = document.getElementById(`card-type-${cardType}`);
+      if (cardType === foulModalData.selectedCardType) {
+        btn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+        btn.classList.remove('bg-gray-700', 'text-gray-100', 'border-gray-600');
+      } else {
+        btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+        btn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+      }
+    });
+  }
+
+  // Hide foul modal
+  function hideFoulModal() {
+    const modal = document.getElementById('foul-event-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    foulModalData = null;
+  }
+
+  // Save foul event and close modal
+  function saveFoulEvent() {
+    if (!foulModalData) return;
+    
+    const { teamKey, selectedFoulType, selectedCardType, selectedPlayerId } = foulModalData;
+    const notesInput = document.getElementById('foul-notes');
+    const noteText = notesInput ? notesInput.value.trim() : null;
+    
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) {
+      hideFoulModal();
+      return;
+    }
+    
+    if (foulModalData.isEdit && foulModalData.eventId) {
+      // Update existing event
+      const existing = match.events.find((ev) => ev.id === foulModalData.eventId);
+      if (existing) {
+        existing.teamId = match[teamKey].id;
+        existing.player1Id = selectedPlayerId || null;
+        existing.foulOutcome = selectedFoulType;
+        existing.cardType = selectedCardType !== 'none' ? selectedCardType : null;
+        existing.noteText = noteText || null;
+      }
+    } else {
+      // Create foul event
+      const foulEvent = {
+        id: generateId(),
+        type: EventType.FOUL_CONCEDED,
+        period: match.currentPeriod,
+        timeElapsed: match.elapsedTime,
+        teamId: match[teamKey].id,
+        player1Id: selectedPlayerId || null,
+        player2Id: null,
+        shotOutcome: null,
+        shotType: null,
+        foulOutcome: selectedFoulType,
+        cardType: selectedCardType !== 'none' ? selectedCardType : null,
+        wonKickout: null,
+        noteText: noteText || null
+      };
+      match.events.push(foulEvent);
+    }
+    
+    // Update UI and storage
+    updateScoreboard(match);
+    renderEventsList(match);
+    renderLastEvent(match);
+    saveAppState();
+    
+    // Close modal
+    hideFoulModal();
+  }
+
+  // Kickout modal data
+  let kickoutModalData = null;
+
+  // Show kickout modal
+  function showKickoutModal(teamKey, initial = {}) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    
+    // Only allow kickout events during playing periods (except when editing)
+    if (!initial.isEdit && !isPlayingPeriod(match.currentPeriod)) {
+      return;
+    }
+    
+    // Prepare state for modal
+    kickoutModalData = {
+      teamKey,
+      selectedOutcome: initial.outcome || 'won',
+      selectedPlayerId: initial.playerId != null ? initial.playerId : null,
+      isEdit: initial.isEdit || false,
+      eventId: initial.eventId || null
+    };
+    
+    // If editing, set notes from existing event
+    if (initial.isEdit && initial.eventId) {
+      const match = findMatchById(appState.currentMatchId);
+      const existingEvent = match?.events.find(e => e.id === initial.eventId);
+      if (existingEvent && existingEvent.noteText) {
+        setTimeout(() => {
+          const notesInput = document.getElementById('kickout-notes');
+          if (notesInput) notesInput.value = existingEvent.noteText;
+        }, 0);
+      }
+    }
+    
+    // References to modal elements
+    const modal = document.getElementById('kickout-event-modal');
+    const metaEl = document.getElementById('kickout-event-meta');
+    const playerListEl = document.getElementById('kickout-player-list');
+    const notesInput = document.getElementById('kickout-notes');
+    
+    // Clear previous content
+    playerListEl.innerHTML = '';
+    notesInput.value = '';
+    
+    // Set up meta info (team name, time, period)
+    const team = match[teamKey];
+    const formattedTime = Math.floor(match.elapsedTime / 60).toString().padStart(2, '0') + ':' + 
+                         (match.elapsedTime % 60).toString().padStart(2, '0');
+    metaEl.textContent = `${team.name} • ${formattedTime} • ${match.currentPeriod}`;
+    
+    // Build player list (same as foul modal)
+    const players = match[teamKey].players.slice().sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+    
+    // Add None option
+    const noneBtn = document.createElement('button');
+    noneBtn.type = 'button';
+    noneBtn.dataset.playerId = '';
+    noneBtn.className = 'w-full text-left p-2 text-sm flex items-center space-x-2 border border-gray-600 rounded';
+    
+    if (kickoutModalData.selectedPlayerId === null) {
+      noneBtn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+    } else {
+      noneBtn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+    }
+    
+    const noneCircle = document.createElement('div');
+    noneCircle.className = 'w-6 h-6 rounded bg-gray-500 flex items-center justify-center text-xs font-bold';
+    noneCircle.textContent = '--';
+    const noneSpan = document.createElement('span');
+    noneSpan.textContent = 'None';
+    
+    noneBtn.appendChild(noneCircle);
+    noneBtn.appendChild(noneSpan);
+    
+    noneBtn.addEventListener('click', () => {
+      kickoutModalData.selectedPlayerId = null;
+      // Update button styles
+      playerListEl.querySelectorAll('button').forEach((item) => {
+        if (item.dataset.playerId === '') {
+          item.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+          item.classList.remove('bg-gray-700', 'text-gray-100', 'border-gray-600');
+        } else {
+          item.classList.remove('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+          item.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+        }
+      });
+    });
+    
+    playerListEl.appendChild(noneBtn);
+    
+    // Add player buttons
+    players.forEach((player) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.playerId = player.id;
+      btn.className = 'w-full text-left p-2 text-sm flex items-center space-x-2 border border-gray-600 rounded';
+      
+      if (player.id === kickoutModalData.selectedPlayerId) {
+        btn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+      } else {
+        btn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+      }
+      
+      const circle = document.createElement('div');
+      circle.className = 'w-6 h-6 rounded bg-gray-600 flex items-center justify-center text-xs font-bold';
+      circle.textContent = player.jerseyNumber;
+      
+      const nameSpan = document.createElement('span');
+      const defaultName = `No.${player.jerseyNumber}`;
+      nameSpan.textContent = player.name && player.name !== defaultName ? player.name : defaultName;
+      
+      btn.appendChild(circle);
+      btn.appendChild(nameSpan);
+      
+      btn.addEventListener('click', () => {
+        kickoutModalData.selectedPlayerId = player.id;
+        // Update button styles
+        playerListEl.querySelectorAll('button').forEach((item) => {
+          if (item.dataset.playerId === player.id) {
+            item.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+            item.classList.remove('bg-gray-700', 'text-gray-100', 'border-gray-600');
+          } else {
+            item.classList.remove('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+            item.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+          }
+        });
+      });
+      
+      playerListEl.appendChild(btn);
+    });
+    
+    // Update outcome selection display
+    updateKickoutOutcomeSelection();
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  // Update kickout outcome button styles
+  function updateKickoutOutcomeSelection() {
+    const wonBtn = document.getElementById('kickout-outcome-won');
+    const lostBtn = document.getElementById('kickout-outcome-lost');
+    
+    [wonBtn, lostBtn].forEach(btn => {
+      const outcome = btn.dataset.kickoutOutcome;
+      if (outcome === kickoutModalData.selectedOutcome) {
+        btn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+        btn.classList.remove('bg-gray-700', 'text-gray-100', 'border-gray-600');
+      } else {
+        btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+        btn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+      }
+    });
+  }
+
+  // Hide kickout modal
+  function hideKickoutModal() {
+    const modal = document.getElementById('kickout-event-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    kickoutModalData = null;
+  }
+
+  // Save kickout event and close modal
+  function saveKickoutEvent() {
+    if (!kickoutModalData) return;
+    
+    const { teamKey, selectedOutcome, selectedPlayerId } = kickoutModalData;
+    const notesInput = document.getElementById('kickout-notes');
+    const noteText = notesInput ? notesInput.value.trim() : null;
+    
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) {
+      hideKickoutModal();
+      return;
+    }
+    
+    if (kickoutModalData.isEdit && kickoutModalData.eventId) {
+      // Update existing event
+      const existing = match.events.find((ev) => ev.id === kickoutModalData.eventId);
+      if (existing) {
+        existing.teamId = match[teamKey].id;
+        existing.player1Id = selectedPlayerId || null;
+        existing.wonKickout = selectedOutcome === 'won';
+        existing.noteText = noteText || null;
+      }
+    } else {
+      // Create kickout event
+      const kickoutEvent = {
+        id: generateId(),
+        type: EventType.KICKOUT,
+        period: match.currentPeriod,
+        timeElapsed: match.elapsedTime,
+        teamId: match[teamKey].id,
+        player1Id: selectedPlayerId || null,
+        player2Id: null,
+        shotOutcome: null,
+        shotType: null,
+        foulOutcome: null,
+        cardType: null,
+        wonKickout: selectedOutcome === 'won',
+        noteText: noteText || null
+      };
+      match.events.push(kickoutEvent);
+    }
+    
+    // Update UI and storage
+    updateScoreboard(match);
+    renderEventsList(match);
+    renderLastEvent(match);
+    saveAppState();
+    
+    // Close modal
+    hideKickoutModal();
+  }
+
+  // Substitution modal data
+  let substitutionModalData = null;
+
+  // Show substitution modal
+  function showSubstitutionModal(teamKey, initial = {}) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    
+    // Only allow substitution events during playing periods (except when editing)
+    if (!initial.isEdit && !isPlayingPeriod(match.currentPeriod)) {
+      return;
+    }
+    
+    // Prepare state for modal
+    substitutionModalData = {
+      teamKey,
+      selectedPlayerOffId: initial.playerOffId != null ? initial.playerOffId : null,
+      selectedPlayerOnId: initial.playerOnId != null ? initial.playerOnId : null,
+      isEdit: initial.isEdit || false,
+      eventId: initial.eventId || null
+    };
+    
+    // If editing, set notes from existing event
+    if (initial.isEdit && initial.eventId) {
+      const match = findMatchById(appState.currentMatchId);
+      const existingEvent = match?.events.find(e => e.id === initial.eventId);
+      if (existingEvent && existingEvent.noteText) {
+        setTimeout(() => {
+          const notesInput = document.getElementById('substitution-notes');
+          if (notesInput) notesInput.value = existingEvent.noteText;
+        }, 0);
+      }
+    }
+    
+    // References to modal elements
+    const modal = document.getElementById('substitution-event-modal');
+    const metaEl = document.getElementById('substitution-event-meta');
+    const playerOffListEl = document.getElementById('substitution-player-off-list');
+    const playerOnListEl = document.getElementById('substitution-player-on-list');
+    const notesInput = document.getElementById('substitution-notes');
+    
+    // Clear previous content
+    playerOffListEl.innerHTML = '';
+    playerOnListEl.innerHTML = '';
+    notesInput.value = '';
+    
+    // Set up meta info (team name, time, period)
+    const team = match[teamKey];
+    const formattedTime = Math.floor(match.elapsedTime / 60).toString().padStart(2, '0') + ':' + 
+                         (match.elapsedTime % 60).toString().padStart(2, '0');
+    metaEl.textContent = `${team.name} • ${formattedTime} • ${match.currentPeriod}`;
+    
+    // Build player lists
+    const players = match[teamKey].players.slice().sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+    
+    // Helper function to create player button
+    function createPlayerButton(player, isPlayerOff) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.playerId = player.id;
+      btn.className = 'w-full text-left p-2 text-sm flex items-center space-x-2 border border-gray-600 rounded';
+      
+      const isSelected = isPlayerOff ? 
+        (player.id === substitutionModalData.selectedPlayerOffId) :
+        (player.id === substitutionModalData.selectedPlayerOnId);
+      
+      if (isSelected) {
+        btn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+      } else {
+        btn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+      }
+      
+      const circle = document.createElement('div');
+      circle.className = 'w-6 h-6 rounded bg-gray-600 flex items-center justify-center text-xs font-bold';
+      circle.textContent = player.jerseyNumber;
+      
+      const nameSpan = document.createElement('span');
+      const defaultName = `No.${player.jerseyNumber}`;
+      nameSpan.textContent = player.name && player.name !== defaultName ? player.name : defaultName;
+      
+      btn.appendChild(circle);
+      btn.appendChild(nameSpan);
+      
+      btn.addEventListener('click', () => {
+        if (isPlayerOff) {
+          substitutionModalData.selectedPlayerOffId = player.id;
+        } else {
+          substitutionModalData.selectedPlayerOnId = player.id;
+        }
+        updateSubstitutionPlayerSelection();
+      });
+      
+      return btn;
+    }
+    
+    // Add None option for Player Off
+    const noneOffBtn = document.createElement('button');
+    noneOffBtn.type = 'button';
+    noneOffBtn.dataset.playerId = '';
+    noneOffBtn.className = 'w-full text-left p-2 text-sm flex items-center space-x-2 border border-gray-600 rounded';
+    
+    if (substitutionModalData.selectedPlayerOffId === null) {
+      noneOffBtn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+    } else {
+      noneOffBtn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+    }
+    
+    const noneOffCircle = document.createElement('div');
+    noneOffCircle.className = 'w-6 h-6 rounded bg-gray-500 flex items-center justify-center text-xs font-bold';
+    noneOffCircle.textContent = '--';
+    const noneOffSpan = document.createElement('span');
+    noneOffSpan.textContent = 'None';
+    
+    noneOffBtn.appendChild(noneOffCircle);
+    noneOffBtn.appendChild(noneOffSpan);
+    
+    noneOffBtn.addEventListener('click', () => {
+      substitutionModalData.selectedPlayerOffId = null;
+      updateSubstitutionPlayerSelection();
+    });
+    
+    playerOffListEl.appendChild(noneOffBtn);
+    
+    // Add None option for Player On
+    const noneOnBtn = document.createElement('button');
+    noneOnBtn.type = 'button';
+    noneOnBtn.dataset.playerId = '';
+    noneOnBtn.className = 'w-full text-left p-2 text-sm flex items-center space-x-2 border border-gray-600 rounded';
+    
+    if (substitutionModalData.selectedPlayerOnId === null) {
+      noneOnBtn.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+    } else {
+      noneOnBtn.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+    }
+    
+    const noneOnCircle = document.createElement('div');
+    noneOnCircle.className = 'w-6 h-6 rounded bg-gray-500 flex items-center justify-center text-xs font-bold';
+    noneOnCircle.textContent = '--';
+    const noneOnSpan = document.createElement('span');
+    noneOnSpan.textContent = 'None';
+    
+    noneOnBtn.appendChild(noneOnCircle);
+    noneOnBtn.appendChild(noneOnSpan);
+    
+    noneOnBtn.addEventListener('click', () => {
+      substitutionModalData.selectedPlayerOnId = null;
+      updateSubstitutionPlayerSelection();
+    });
+    
+    playerOnListEl.appendChild(noneOnBtn);
+    
+    // Add player buttons
+    players.forEach((player) => {
+      playerOffListEl.appendChild(createPlayerButton(player, true));
+      playerOnListEl.appendChild(createPlayerButton(player, false));
+    });
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  // Update substitution player selection
+  function updateSubstitutionPlayerSelection() {
+    const playerOffListEl = document.getElementById('substitution-player-off-list');
+    const playerOnListEl = document.getElementById('substitution-player-on-list');
+    
+    // Update Player Off list
+    playerOffListEl.querySelectorAll('button').forEach((item) => {
+      const playerId = item.dataset.playerId || null;
+      if (playerId === substitutionModalData.selectedPlayerOffId || 
+          (playerId === '' && substitutionModalData.selectedPlayerOffId === null)) {
+        item.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+        item.classList.remove('bg-gray-700', 'text-gray-100', 'border-gray-600');
+      } else {
+        item.classList.remove('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+        item.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+      }
+    });
+    
+    // Update Player On list
+    playerOnListEl.querySelectorAll('button').forEach((item) => {
+      const playerId = item.dataset.playerId || null;
+      if (playerId === substitutionModalData.selectedPlayerOnId || 
+          (playerId === '' && substitutionModalData.selectedPlayerOnId === null)) {
+        item.classList.add('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+        item.classList.remove('bg-gray-700', 'text-gray-100', 'border-gray-600');
+      } else {
+        item.classList.remove('bg-blue-600', 'text-white', 'border', 'border-blue-600');
+        item.classList.add('bg-gray-700', 'text-gray-100', 'border', 'border-gray-600');
+      }
+    });
+  }
+
+  // Hide substitution modal
+  function hideSubstitutionModal() {
+    const modal = document.getElementById('substitution-event-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    substitutionModalData = null;
+  }
+
+  // Save substitution event and close modal
+  function saveSubstitutionEvent() {
+    if (!substitutionModalData) return;
+    
+    const { teamKey, selectedPlayerOffId, selectedPlayerOnId } = substitutionModalData;
+    const notesInput = document.getElementById('substitution-notes');
+    const noteText = notesInput ? notesInput.value.trim() : null;
+    
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) {
+      hideSubstitutionModal();
+      return;
+    }
+    
+    if (substitutionModalData.isEdit && substitutionModalData.eventId) {
+      // Update existing event
+      const existing = match.events.find((ev) => ev.id === substitutionModalData.eventId);
+      if (existing) {
+        existing.teamId = match[teamKey].id;
+        existing.player1Id = selectedPlayerOffId || null;
+        existing.player2Id = selectedPlayerOnId || null;
+        existing.noteText = noteText || null;
+      }
+    } else {
+      // Create substitution event
+      const substitutionEvent = {
+        id: generateId(),
+        type: EventType.SUBSTITUTION,
+        period: match.currentPeriod,
+        timeElapsed: match.elapsedTime,
+        teamId: match[teamKey].id,
+        player1Id: selectedPlayerOffId || null,
+        player2Id: selectedPlayerOnId || null,
+        shotOutcome: null,
+        shotType: null,
+        foulOutcome: null,
+        cardType: null,
+        wonKickout: null,
+        noteText: noteText || null
+      };
+      match.events.push(substitutionEvent);
+    }
+    
+    // Update UI and storage
+    updateScoreboard(match);
+    renderEventsList(match);
+    renderLastEvent(match);
+    saveAppState();
+    
+    // Close modal
+    hideSubstitutionModal();
+  }
+
+  // Note modal data
+  let noteModalData = null;
+
+  // Show note modal
+  function showNoteModal(teamKey, initial = {}) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    
+    // Prepare state for modal
+    noteModalData = {
+      teamKey,
+      noteText: initial.noteText || '',
+      isEdit: initial.isEdit || false,
+      eventId: initial.eventId || null
+    };
+    
+    // References to modal elements
+    const modal = document.getElementById('note-event-modal');
+    const metaEl = document.getElementById('note-event-meta');
+    const noteTextEl = document.getElementById('note-text');
+    
+    // Clear previous content
+    noteTextEl.value = noteModalData.noteText;
+    
+    // Set up meta info (team name, time, period)
+    const team = match[teamKey];
+    const formattedTime = Math.floor(match.elapsedTime / 60).toString().padStart(2, '0') + ':' + 
+                         (match.elapsedTime % 60).toString().padStart(2, '0');
+    metaEl.textContent = `${team.name} • ${formattedTime} • ${match.currentPeriod}`;
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  // Hide note modal
+  function hideNoteModal() {
+    const modal = document.getElementById('note-event-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    noteModalData = null;
+  }
+
+  // Save note event and close modal
+  function saveNoteEvent() {
+    if (!noteModalData) return;
+    
+    const { teamKey } = noteModalData;
+    const noteTextEl = document.getElementById('note-text');
+    const noteText = noteTextEl ? noteTextEl.value.trim() : '';
+    
+    if (!noteText) {
+      // Don't save empty notes
+      hideNoteModal();
+      return;
+    }
+    
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) {
+      hideNoteModal();
+      return;
+    }
+    
+    if (noteModalData.isEdit && noteModalData.eventId) {
+      // Update existing event
+      const existing = match.events.find((ev) => ev.id === noteModalData.eventId);
+      if (existing) {
+        existing.teamId = match[teamKey].id;
+        existing.noteText = noteText;
+      }
+    } else {
+      // Create note event
+      const noteEvent = {
+        id: generateId(),
+        type: EventType.NOTE,
+        period: match.currentPeriod,
+        timeElapsed: match.elapsedTime,
+        teamId: match[teamKey].id,
+        player1Id: null,
+        player2Id: null,
+        shotOutcome: null,
+        shotType: null,
+        foulOutcome: null,
+        cardType: null,
+        wonKickout: null,
+        noteText: noteText
+      };
+      match.events.push(noteEvent);
+    }
+    
+    // Update UI and storage
+    updateScoreboard(match);
+    renderEventsList(match);
+    renderLastEvent(match);
+    saveAppState();
+    
+    // Close modal
+    hideNoteModal();
   }
 
   // Show edit players view.  When a team key ("team1" or "team2") is provided, only
@@ -2064,17 +3696,12 @@
     }
     sorted.forEach((ev) => {
       const item = document.createElement('li');
-      // Use a card‑like appearance with border and subtle hover effect.  The
-      // overall layout uses flex with space between the left details and
-      // right‑aligned time/period/actions.
-      item.className =
-        'event-item px-4 py-3 mb-2 flex justify-between items-start cursor-pointer bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg';
-      // Left column (details)
+      // Use a card-like appearance with border and subtle hover effect
+      item.className = 'event-item px-4 py-3 mb-2 cursor-pointer bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg min-h-20 relative';
+      
+      // Event details (left side content)
       const details = document.createElement('div');
-      details.className = 'event-details flex-1';
-      // Right column (time and actions)
-      const rightCol = document.createElement('div');
-      rightCol.className = 'event-right flex flex-col items-end ml-4 flex-shrink-0';
+      details.className = 'event-details pr-20';
       // Format minutes as whole number (no seconds)
       const minutes = Math.floor(ev.timeElapsed / 60);
       const timeStr = `${minutes} min`;
@@ -2105,7 +3732,11 @@
       } else if (ev.type === EventType.CARD) {
         outcomeText = `${ev.cardType ? ev.cardType.charAt(0).toUpperCase() + ev.cardType.slice(1) : ''} Card`;
       } else if (ev.type === EventType.FOUL_CONCEDED) {
-        outcomeText = `Foul${ev.foulOutcome ? ' (' + ev.foulOutcome.charAt(0).toUpperCase() + ev.foulOutcome.slice(1) + ')' : ''}`;
+        let foulText = `Foul${ev.foulOutcome ? ' (' + ev.foulOutcome.charAt(0).toUpperCase() + ev.foulOutcome.slice(1) + ')' : ''}`;
+        if (ev.cardType) {
+          foulText += ` + ${ev.cardType.charAt(0).toUpperCase() + ev.cardType.slice(1)} Card`;
+        }
+        outcomeText = foulText;
       } else if (ev.type === EventType.KICKOUT) {
         outcomeText = `Kick‑out ${ev.wonKickout ? 'Won' : 'Lost'}`;
       } else if (ev.type === EventType.SUBSTITUTION) {
@@ -2195,24 +3826,21 @@
           details.appendChild(cardPlayerLine);
         }
       }
-      // For note events, show note text on separate line
-      if (ev.type === EventType.NOTE) {
+      // For any event with notes, show note text on separate line
+      if (ev.noteText && ev.noteText.trim()) {
         const noteLine = document.createElement('div');
         noteLine.className = 'text-gray-300 text-sm';
         noteLine.textContent = ev.noteText;
         details.appendChild(noteLine);
       }
-      // Append left column to item
+      // Append details to item
       item.appendChild(details);
-      // Build right column: time/period and delete button
+      
+      // Timestamp in top-right corner of the event box
       const timeDiv = document.createElement('div');
-      timeDiv.className = 'text-gray-200 text-sm font-medium';
-      timeDiv.textContent = timeStr;
-      rightCol.appendChild(timeDiv);
-      const periodDiv = document.createElement('div');
-      periodDiv.className = 'text-gray-400 text-xs';
-      periodDiv.textContent = ev.period;
-      rightCol.appendChild(periodDiv);
+      timeDiv.className = 'absolute top-2 right-2 text-gray-200 text-xs font-medium text-right';
+      timeDiv.innerHTML = `${timeStr}<br><span class="text-gray-400">${ev.period}</span>`;
+      item.appendChild(timeDiv);
       // Delete button: render a trash icon instead of an “X” and position it at the
       // bottom right of the event card.  Using absolute positioning allows the
       // icon to float to the card’s corner independent of the right column.
@@ -2227,7 +3855,7 @@
       // colour slightly darkens the stroke to indicate interactivity.
       delBtn.className = 'event-actions absolute bottom-2 right-2 text-gray-200 hover:text-gray-100';
       delBtn.innerHTML =
-        '<img src="icons/delete.svg" alt="Add Match" class="w-8 h-8" />';
+        '<img src="icons/delete.svg" alt="Delete Event" class="w-6 h-6" />';
       delBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (confirm('Delete this event?')) {
@@ -2237,13 +3865,12 @@
           saveAppState();
         }
       });
-      // Append the time/period column and the delete button to the event item.  The
-      // item is marked as relative so the absolute positioning works correctly.
-      item.appendChild(rightCol);
+      // Add delete button to bottom-right corner
       item.appendChild(delBtn);
-      item.classList.add('relative');
+      
       list.appendChild(item);
-      // Attach click handler to edit event when clicking on list item (excluding delete button)
+      
+      // Attach click handler to edit event when clicking on item (excluding delete button)
       item.addEventListener('click', (e) => {
         if (e.target.closest('button')) return;
         showEditEventForm(ev.id);
@@ -2258,27 +3885,56 @@
     if (!match) return;
     const ev = match.events.find((e) => e.id === eventId);
     if (!ev) return;
-    // If the event being edited is a shot, use the scoring modal instead of the generic form
+    
+    // Determine which team key this event belongs to
+    const teamKey = ev.teamId === match.team1.id ? 'team1' : 'team2';
+    
+    // Route to appropriate modal based on event type
     if (ev.type === EventType.SHOT) {
-      // Determine which team key this event belongs to
-      const teamKey = ev.teamId === match.team1.id ? 'team1' : 'team2';
       showScoreModal(teamKey, ev.shotOutcome, {
         shotType: ev.shotType,
         playerId: ev.player1Id != null ? ev.player1Id : null,
         isEdit: true,
         eventId: ev.id
       });
-      return;
+    } else if (ev.type === EventType.FOUL_CONCEDED) {
+      showFoulModal(teamKey, {
+        foulType: ev.foulOutcome,
+        cardType: ev.cardType || 'none',
+        playerId: ev.player1Id,
+        isEdit: true,
+        eventId: ev.id
+      });
+    } else if (ev.type === EventType.KICKOUT) {
+      showKickoutModal(teamKey, {
+        outcome: ev.wonKickout ? 'won' : 'lost',
+        playerId: ev.player1Id,
+        isEdit: true,
+        eventId: ev.id
+      });
+    } else if (ev.type === EventType.SUBSTITUTION) {
+      showSubstitutionModal(teamKey, {
+        playerOffId: ev.player1Id,
+        playerOnId: ev.player2Id,
+        isEdit: true,
+        eventId: ev.id
+      });
+    } else if (ev.type === EventType.NOTE) {
+      showNoteModal(teamKey, {
+        noteText: ev.noteText,
+        isEdit: true,
+        eventId: ev.id
+      });
+    } else if (ev.type === EventType.CARD) {
+      // For standalone card events, still use the old modal since we don't have a dedicated card modal
+      appState.editingEventId = eventId;
+      const fieldsContainer = document.getElementById('edit-event-fields');
+      fieldsContainer.innerHTML = '';
+      renderEditEventFields(ev);
+      const modal = document.getElementById('edit-event-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
     }
-    appState.editingEventId = eventId;
-    // Populate edit fields based on existing event
-    const fieldsContainer = document.getElementById('edit-event-fields');
-    fieldsContainer.innerHTML = '';
-    renderEditEventFields(ev);
-    // Show modal
-    const modal = document.getElementById('edit-event-modal');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
   }
 
   // Render input fields for editing event based on its type
@@ -2639,6 +4295,21 @@
   /* Event Listeners Setup */
 
   function initEventListeners() {
+    // Data management modal
+    document.getElementById('data-management-btn').addEventListener('click', showDataManagementModal);
+    document.getElementById('close-data-management-btn').addEventListener('click', hideDataManagementModal);
+    document.getElementById('export-data-btn').addEventListener('click', exportData);
+    document.getElementById('select-import-file-btn').addEventListener('click', () => {
+      document.getElementById('import-file-input').click();
+    });
+    document.getElementById('import-file-input').addEventListener('change', handleFileSelect);
+    document.getElementById('import-data-btn').addEventListener('click', importData);
+    
+    // Statistics modal
+    document.getElementById('view-stats-btn').addEventListener('click', showMatchStats);
+    document.getElementById('close-stats-modal-btn').addEventListener('click', hideMatchStats);
+    document.getElementById('share-stats-btn').addEventListener('click', shareMatchStats);
+    
     // Add match button
     document.getElementById('add-match-btn').addEventListener('click', showAddMatchForm);
     // Form submission
@@ -2798,23 +4469,18 @@
           if (eventType === 'miss') {
             // For miss, we can reuse the score modal but with a default miss outcome
             showScoreModal(teamKey, ShotOutcome.WIDE);
-          } else {
-            // For other event types, show the general add event modal with preselected type
-            showAddEventModal(teamKey);
-            // Set the event type in the modal
-            const eventTypeSelect = document.getElementById('event-type');
-            if (eventTypeSelect) {
-              // Map our event types to the existing event type values
-              const eventTypeMap = {
-                'foul': 'foulConceded',
-                'kickout': 'kickout', 
-                'sub': 'substitution',
-                'note': 'note',
-                'card': 'card'
-              };
-              eventTypeSelect.value = eventTypeMap[eventType] || eventType;
-              renderEventFields(eventTypeSelect.value);
-            }
+          } else if (eventType === 'foul') {
+            // For foul, show the new foul-specific modal
+            showFoulModal(teamKey);
+          } else if (eventType === 'kickout') {
+            // For kickout, show the new kickout-specific modal
+            showKickoutModal(teamKey);
+          } else if (eventType === 'sub') {
+            // For substitution, show the new substitution-specific modal
+            showSubstitutionModal(teamKey);
+          } else if (eventType === 'note') {
+            // For note, show the new note-specific modal
+            showNoteModal(teamKey);
           }
         });
       });
@@ -2843,6 +4509,126 @@
         saveScoreEvent();
       });
     }
+
+    // Foul modal event listeners
+    const foulCancelBtn = document.getElementById('foul-modal-cancel');
+    if (foulCancelBtn) {
+      foulCancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideFoulModal();
+      });
+    }
+    
+    const foulDoneBtn = document.getElementById('foul-modal-done');
+    if (foulDoneBtn) {
+      foulDoneBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        saveFoulEvent();
+      });
+    }
+
+    // Kickout modal event listeners
+    const kickoutCancelBtn = document.getElementById('kickout-modal-cancel');
+    if (kickoutCancelBtn) {
+      kickoutCancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideKickoutModal();
+      });
+    }
+    
+    const kickoutDoneBtn = document.getElementById('kickout-modal-done');
+    if (kickoutDoneBtn) {
+      kickoutDoneBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        saveKickoutEvent();
+      });
+    }
+
+    // Substitution modal event listeners
+    const substitutionCancelBtn = document.getElementById('substitution-modal-cancel');
+    if (substitutionCancelBtn) {
+      substitutionCancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideSubstitutionModal();
+      });
+    }
+    
+    const substitutionDoneBtn = document.getElementById('substitution-modal-done');
+    if (substitutionDoneBtn) {
+      substitutionDoneBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        saveSubstitutionEvent();
+      });
+    }
+
+    // Note modal event listeners
+    const noteCancelBtn = document.getElementById('note-modal-cancel');
+    if (noteCancelBtn) {
+      noteCancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        hideNoteModal();
+      });
+    }
+    
+    const noteDoneBtn = document.getElementById('note-modal-done');
+    if (noteDoneBtn) {
+      noteDoneBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        saveNoteEvent();
+      });
+    }
+
+    // Kickout outcome selection setup (one-time initialization)
+    const kickoutWonBtn = document.getElementById('kickout-outcome-won');
+    const kickoutLostBtn = document.getElementById('kickout-outcome-lost');
+    if (kickoutWonBtn && kickoutLostBtn) {
+      kickoutWonBtn.addEventListener('click', () => {
+        if (kickoutModalData) {
+          kickoutModalData.selectedOutcome = 'won';
+          updateKickoutOutcomeSelection();
+        }
+      });
+      
+      kickoutLostBtn.addEventListener('click', () => {
+        if (kickoutModalData) {
+          kickoutModalData.selectedOutcome = 'lost';
+          updateKickoutOutcomeSelection();
+        }
+      });
+    }
+
+    // Foul type selection setup (one-time initialization)
+    const freeBtn = document.getElementById('foul-type-free');
+    const penaltyBtn = document.getElementById('foul-type-penalty');
+    if (freeBtn && penaltyBtn) {
+      freeBtn.addEventListener('click', () => {
+        if (foulModalData) {
+          foulModalData.selectedFoulType = 'free';
+          updateFoulTypeSelection();
+        }
+      });
+      
+      penaltyBtn.addEventListener('click', () => {
+        if (foulModalData) {
+          foulModalData.selectedFoulType = 'penalty';
+          updateFoulTypeSelection();
+        }
+      });
+    }
+
+    // Card type selection setup (one-time initialization)
+    const cardButtons = ['none', 'yellow', 'red', 'black'];
+    cardButtons.forEach(cardType => {
+      const btn = document.getElementById(`card-type-${cardType}`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          if (foulModalData) {
+            foulModalData.selectedCardType = cardType;
+            updateCardTypeSelection();
+          }
+        });
+      }
+    });
 
     // Team-specific buttons (goal, point, event, edit players)
     document.querySelectorAll('.team-goal-btn').forEach((btn) => {
@@ -2890,8 +4676,8 @@
   }
 
   // Initialise application
-  function init() {
-    loadAppState();
+  async function init() {
+    await loadAppState();
     renderMatchList();
     initEventListeners();
     // Hide the header by default since the list view does not display a title.  It will

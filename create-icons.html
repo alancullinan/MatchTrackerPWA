@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+</head>
+<body>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <div id="download-links"></div>
+
+    <script>
+        // Simple icon generator for Match Tracker PWA
+        function createIcon(size) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Background
+            ctx.fillStyle = '#111827'; // Gray-900
+            ctx.fillRect(0, 0, size, size);
+            
+            // Border radius effect (approximate)
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, size, size, size * 0.1);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Score display
+            const fontSize = size * 0.15;
+            ctx.fillStyle = '#f3f4f6'; // Gray-100
+            ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Mock score
+            ctx.fillText('2-10', size/2, size * 0.35);
+            ctx.fillText('1-8', size/2, size * 0.55);
+            
+            // Timer
+            const timerSize = size * 0.08;
+            ctx.font = `${timerSize}px monospace`;
+            ctx.fillText('45:32', size/2, size * 0.75);
+            
+            // Download link
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `icon-${size}x${size}.png`;
+                link.textContent = `Download ${size}x${size} icon`;
+                link.style.display = 'block';
+                link.style.margin = '5px';
+                document.getElementById('download-links').appendChild(link);
+            });
+        }
+        
+        // Generate all required sizes
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        sizes.forEach(size => createIcon(size));
+        
+        // Add instructions
+        const instructions = document.createElement('div');
+        instructions.innerHTML = `
+            <h2>Icon Generator for Match Tracker PWA</h2>
+            <p>Click the links below to download the app icons, then save them in the /icons/ folder:</p>
+        `;
+        document.body.insertBefore(instructions, document.getElementById('download-links'));
+    </script>
+</body>
+</html>

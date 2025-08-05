@@ -4,8 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Match Tracker</title>
-    <!-- Load Tailwind via CDN for modern styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json" />
+    
+    <!-- iOS Safari PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Match Tracker" />
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png" />
+    
+    <!-- Theme color for browser chrome -->
+    <meta name="theme-color" content="#111827" />
+    <meta name="msapplication-TileColor" content="#111827" />
+    
+    <!-- Local Tailwind CSS for offline functionality -->
+    <link rel="stylesheet" href="tailwind-minimal.css" />
     <!-- Custom fallback styles -->
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -31,10 +45,16 @@
              beside the heading. -->
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-3xl font-bold">Matches</h2>
-          <!-- Add Match button aligned to the right of the header -->
-          <button id="add-match-btn" title="Add Match">
-            <img src="icons/plus.svg" alt="Add Match" class="w-8 h-8" />
-          </button>
+          <div class="flex items-center">
+            <!-- Data Management button -->
+            <button id="data-management-btn" class="cursor-pointer mr-3" title="Export/Import Data">
+              <img src="icons/export.svg" alt="Export/Import Data" class="w-8 h-8" />
+            </button>
+            <!-- Add Match button aligned to the right of the header -->
+            <button id="add-match-btn" class="cursor-pointer" title="Add Match">
+              <img src="icons/plus.svg" alt="Add Match" class="w-8 h-8" />
+            </button>
+          </div>
         </div>
         <div id="match-list" class="match-list space-y-2"></div>
       </section>
@@ -54,29 +74,29 @@
           <!-- Competition -->
           <div class="form-row flex flex-col mb-2">
             <label for="competition" class="mb-1">Competition</label>
-            <input type="text" id="competition" name="competition" placeholder="Competition" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+            <input type="text" id="competition" name="competition" placeholder="Competition" class="p-2 border bg-gray-700 text-gray-100 border-gray-600" />
           </div>
           <!-- Team 1 -->
           <div class="form-row flex flex-col mb-2">
             <label for="team1" class="mb-1">Team 1 Name</label>
-            <input type="text" id="team1" name="team1" placeholder="Team 1 Name" required class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+            <input type="text" id="team1" name="team1" placeholder="Team 1 Name" required class="p-2 border bg-gray-700 text-gray-100 border-gray-600" />
           </div>
           <!-- Team 2 -->
           <div class="form-row flex flex-col mb-2">
             <label for="team2" class="mb-1">Team 2 Name</label>
-            <input type="text" id="team2" name="team2" placeholder="Team 2 Name" required class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+            <input type="text" id="team2" name="team2" placeholder="Team 2 Name" required class="p-2 border bg-gray-700 text-gray-100 border-gray-600" />
           </div>
           <!-- Date -->
           <div class="form-row flex flex-col mb-2">
             <label for="dateTime" class="mb-1">Date</label>
             <!-- Use a date picker instead of a datetime picker.  Users only need to specify the day and
                  not the exact time. -->
-            <input type="date" id="dateTime" name="dateTime" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+            <input type="date" id="dateTime" name="dateTime" class="p-2 border bg-gray-700 text-gray-100 border-gray-600" />
           </div>
           <!-- Match Type -->
           <div class="form-row flex flex-col mb-2">
             <label for="matchType" class="mb-1">Match Type</label>
-            <select id="matchType" name="matchType" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600">
+            <select id="matchType" name="matchType" class="p-2 border bg-gray-700 text-gray-100 border-gray-600">
               <option value="football">Football</option>
               <option value="hurling">Hurling</option>
               <option value="ladiesFootball">Ladies Football</option>
@@ -86,12 +106,12 @@
           <!-- Venue -->
           <div class="form-row flex flex-col mb-2">
             <label for="venue" class="mb-1">Venue</label>
-            <input type="text" id="venue" name="venue" placeholder="Venue" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+            <input type="text" id="venue" name="venue" placeholder="Venue" class="p-2 border bg-gray-700 text-gray-100 border-gray-600" />
           </div>
           <!-- Referee -->
           <div class="form-row flex flex-col mb-2">
             <label for="referee" class="mb-1">Referee</label>
-            <input type="text" id="referee" name="referee" placeholder="Referee" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600" />
+            <input type="text" id="referee" name="referee" placeholder="Referee" class="p-2 border bg-gray-700 text-gray-100 border-gray-600" />
           </div>
           <!-- Removed half length and extra half length inputs as these durations are not used in the current
                implementation.  Users no longer need to specify playing or extra‑time durations. -->
@@ -107,10 +127,16 @@
           <button id="back-to-list-btn" class="cursor-pointer" title="Back to Matches">
             <img src="icons/back.svg" alt="Back" class="w-8 h-8" />
           </button>
-          <!-- Edit match button with pencil icon remains on the far right -->
-          <button id="edit-match-btn" class="cursor-pointer" title="Edit Match">
-            <img src="icons/edit.svg" alt="Edit" class="w-8 h-8" />
-          </button>
+          <div class="flex items-center">
+            <!-- Stats button -->
+            <button id="view-stats-btn" class="cursor-pointer mr-3" title="View Statistics">
+              <img src="icons/stats.svg" alt="Statistics" class="w-8 h-8" />
+            </button>
+            <!-- Edit match button with pencil icon remains on the far right -->
+            <button id="edit-match-btn" class="cursor-pointer" title="Edit Match">
+              <img src="icons/edit.svg" alt="Edit" class="w-8 h-8" />
+            </button>
+          </div>
         </div>
         <!-- Timer row: place start/end button to the left of the timer and pause/resume on the right.  The
              period label sits above the timer display to mirror the iOS layout. -->
@@ -197,7 +223,7 @@
           is shown via JavaScript.
         -->
         <div id="score-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
               <button id="score-modal-cancel" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
               <h3 id="score-modal-title" class="text-lg font-bold flex items-center space-x-2">
@@ -221,12 +247,215 @@
             </div>
             <div class="form-row flex flex-col mb-3">
               <label for="score-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
-              <textarea id="score-notes" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600 h-12 text-sm"></textarea>
+              <textarea id="score-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 h-12 text-sm"></textarea>
             </div>
             <!-- There is no separate Save button at the bottom of the scoring modal.  The top Done button
                  handles saving the event and closing the modal. -->
           </div>
         </div>
+
+        <!-- Foul event modal -->
+        <div id="foul-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-2">
+              <button id="foul-modal-cancel" class="text-blue-500 font-semibold" title="Cancel">Cancel</button>
+              <h3 id="foul-modal-title" class="text-lg font-bold flex items-center space-x-2">
+                <img src="icons/foul.svg" alt="Foul" class="w-6 h-6" />
+                <span>Foul</span>
+              </h3>
+              <button id="foul-modal-done" class="text-blue-500 font-semibold" title="Done">Done</button>
+            </div>
+            
+            <!-- Team name and time info -->
+            <div id="foul-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+              <!-- Team name, time and period info will be populated here -->
+            </div>
+            
+            <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
+              <!-- Foul type and card selection on the left -->
+              <div class="flex-1 space-y-2">
+                <!-- Foul Type Section -->
+                <div class="space-y-1">
+                  <div class="text-sm font-medium text-gray-300 mb-2">Foul Type</div>
+                  <button id="foul-type-free" class="foul-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-foul-type="free">
+                    <div class="flex items-center space-x-2">
+                      <div class="w-4 h-4 bg-blue-500 flex items-center justify-center text-xs font-bold">F</div>
+                      <span>Free</span>
+                    </div>
+                  </button>
+                  <button id="foul-type-penalty" class="foul-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-foul-type="penalty">
+                    <div class="flex items-center space-x-2">
+                      <div class="w-4 h-4 bg-orange-500 flex items-center justify-center text-xs font-bold">P</div>
+                      <span>Penalty</span>
+                    </div>
+                  </button>
+                </div>
+                
+                <!-- Card Section -->
+                <div class="space-y-1">
+                  <div class="text-sm font-medium text-gray-300 mb-2">Card</div>
+                  <button id="card-type-none" class="card-type-option w-full p-2 bg-blue-600 text-white border border-blue-600 rounded text-left" data-card-type="none">
+                    <div class="flex items-center space-x-2">
+                      <div class="w-4 h-4 bg-gray-500"></div>
+                      <span>None</span>
+                    </div>
+                  </button>
+                  <button id="card-type-yellow" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="yellow">
+                    <div class="flex items-center space-x-2">
+                      <div class="w-4 h-4 bg-yellow-400"></div>
+                      <span>Yellow Card</span>
+                    </div>
+                  </button>
+                  <button id="card-type-red" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="red">
+                    <div class="flex items-center space-x-2">
+                      <div class="w-4 h-4 bg-red-500"></div>
+                      <span>Red Card</span>
+                    </div>
+                  </button>
+                  <button id="card-type-black" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="black">
+                    <div class="flex items-center space-x-2">
+                      <div class="w-4 h-4 bg-gray-900 border border-gray-600"></div>
+                      <span>Black Card</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Player selection on the right with fixed header -->
+              <div class="flex-1 flex flex-col">
+                <div id="foul-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
+                <div id="foul-player-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
+                  <!-- Items inserted by JS -->
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-row flex flex-col mb-3">
+              <label for="foul-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
+              <textarea id="foul-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-12 text-sm"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kickout event modal -->
+        <div id="kickout-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-2">
+              <button id="kickout-modal-cancel" class="text-blue-500 font-semibold" title="Cancel">Cancel</button>
+              <h3 id="kickout-modal-title" class="text-lg font-bold flex items-center space-x-2">
+                <img src="icons/kickout.svg" alt="Kickout" class="w-6 h-6" />
+                <span>Kickout</span>
+              </h3>
+              <button id="kickout-modal-done" class="text-blue-500 font-semibold" title="Done">Done</button>
+            </div>
+            
+            <!-- Team name and time info -->
+            <div id="kickout-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+              <!-- Team name, time and period info will be populated here -->
+            </div>
+            
+            <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
+              <!-- Kickout outcome selection on the left -->
+              <div class="flex-1 space-y-2">
+                <div class="space-y-1">
+                  <div class="text-sm font-medium text-gray-300 mb-2">Outcome</div>
+                  <button id="kickout-outcome-won" class="kickout-outcome-option w-full p-2 bg-blue-600 text-white border border-blue-600 rounded text-left" data-kickout-outcome="won">
+                    <div class="flex items-center space-x-2">
+                      <div class="w-4 h-4 bg-green-500 flex items-center justify-center text-xs font-bold">✓</div>
+                      <span>Won Own Kickout</span>
+                    </div>
+                  </button>
+                  <button id="kickout-outcome-lost" class="kickout-outcome-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-kickout-outcome="lost">
+                    <div class="flex items-center space-x-2">
+                      <div class="w-4 h-4 bg-red-500 flex items-center justify-center text-xs font-bold">✗</div>
+                      <span>Lost Own Kickout</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Player selection on the right with fixed header -->
+              <div class="flex-1 flex flex-col">
+                <div id="kickout-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
+                <div id="kickout-player-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
+                  <!-- Items inserted by JS -->
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-row flex flex-col mb-3">
+              <label for="kickout-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
+              <textarea id="kickout-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-12 text-sm"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Substitution event modal -->
+        <div id="substitution-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-2">
+              <button id="substitution-modal-cancel" class="text-blue-500 font-semibold" title="Cancel">Cancel</button>
+              <h3 id="substitution-modal-title" class="text-lg font-bold flex items-center space-x-2">
+                <img src="icons/sub.svg" alt="Substitution" class="w-6 h-6" />
+                <span>Substitution</span>
+              </h3>
+              <button id="substitution-modal-done" class="text-blue-500 font-semibold" title="Done">Done</button>
+            </div>
+            
+            <!-- Team name and time info -->
+            <div id="substitution-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+              <!-- Team name, time and period info will be populated here -->
+            </div>
+            
+            <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
+              <!-- Player Off selection on the left -->
+              <div class="flex-1 flex flex-col">
+                <div id="substitution-player-off-header" class="text-sm font-medium text-gray-300 mb-2">Player Off</div>
+                <div id="substitution-player-off-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
+                  <!-- Items inserted by JS -->
+                </div>
+              </div>
+              
+              <!-- Player On selection on the right -->
+              <div class="flex-1 flex flex-col">
+                <div id="substitution-player-on-header" class="text-sm font-medium text-gray-300 mb-2">Player On</div>
+                <div id="substitution-player-on-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
+                  <!-- Items inserted by JS -->
+                </div>
+              </div>
+            </div>
+            
+            <div class="form-row flex flex-col mb-3">
+              <label for="substitution-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
+              <textarea id="substitution-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-12 text-sm"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note event modal -->
+        <div id="note-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-2">
+              <button id="note-modal-cancel" class="text-blue-500 font-semibold" title="Cancel">Cancel</button>
+              <h3 id="note-modal-title" class="text-lg font-bold flex items-center space-x-2">
+                <img src="icons/note.svg" alt="Note" class="w-6 h-6" />
+                <span>Note</span>
+              </h3>
+              <button id="note-modal-done" class="text-blue-500 font-semibold" title="Done">Done</button>
+            </div>
+            
+            <!-- Team name and time info -->
+            <div id="note-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+              <!-- Team name, time and period info will be populated here -->
+            </div>
+            
+            <div class="form-row flex flex-col mb-3">
+              <label for="note-text" class="mb-1 text-sm text-gray-300">Enter note details</label>
+              <textarea id="note-text" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-32 text-sm" placeholder="Enter note details"></textarea>
+            </div>
+          </div>
+        </div>
+
           <!-- Team 2 Card -->
           <div id="team2-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
             <div class="card-header flex justify-between items-center mb-2">
@@ -279,7 +508,7 @@
         <!-- Modals for adding an event and viewing the full events list -->
         <!-- Add Event Modal -->
         <div id="add-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
               <button id="add-event-modal-cancel" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
               <h3 class="text-lg font-bold">Add Event</h3>
@@ -287,9 +516,8 @@
             </div>
             <div class="form-row flex flex-col mb-2">
               <label for="event-type" class="mb-1">Event Type</label>
-              <select id="event-type" name="event-type" class="p-2 border rounded bg-gray-700 text-gray-100 border-gray-600 w-full">
+              <select id="event-type" name="event-type" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 w-full">
                 <option value="shot">Shot</option>
-                <option value="card">Card</option>
                 <option value="foulConceded">Foul Conceded</option>
                 <option value="kickout">Kick‑out</option>
                 <option value="substitution">Substitution</option>
@@ -301,7 +529,7 @@
         </div>
         <!-- Events List Modal -->
         <div id="events-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md max-h-[80vh] overflow-y-auto">
+          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-md max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
               <h3 class="font-semibold">Events</h3>
               <!-- Use a "Done" button for closing the events list to match
@@ -320,7 +548,7 @@
 
         <!-- Edit event modal overlay -->
         <div id="edit-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md">
+          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-md">
             <h3 class="text-lg font-bold mb-2">Edit Event</h3>
             <div id="edit-event-fields" class="space-y-2"></div>
             <div class="flex justify-end mt-4 space-x-2">
@@ -338,7 +566,7 @@
 
         <!-- Period action confirmation modal -->
         <div id="period-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-6 rounded-lg shadow-lg w-11/12 max-w-sm">
+          <div class="bg-gray-800 text-gray-100 p-6 border border-gray-700 w-11/12 max-w-sm">
             <h3 id="period-confirm-title" class="text-lg font-bold mb-4 text-center">Confirm Action</h3>
             <p id="period-confirm-message" class="text-center mb-6 text-gray-300">Are you sure you want to start the half?</p>
             <div class="flex justify-center space-x-4">
@@ -354,43 +582,108 @@
 
         <!-- Event type selection modal -->
         <div id="event-type-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg w-11/12 max-w-md">
-            <div class="flex justify-between items-center mb-2">
-              <h3 class="text-lg font-bold">Add Event</h3>
+          <div class="bg-gray-800 text-gray-100 p-6 rounded-xl shadow-xl w-11/12 max-w-lg">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="text-xl font-bold">Add Event</h3>
               <button id="event-type-modal-cancel" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
             </div>
-            <div id="event-type-meta" class="text-sm text-gray-400 mb-4">
+            <div id="event-type-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 rounded-lg">
               <!-- Team name, time and period info will be populated here -->
             </div>
-            <div class="grid grid-cols-2 gap-3 mb-4">
-              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="miss">
-                <img src="icons/miss.svg" alt="Miss" class="w-8 h-8 mb-2" />
-                <span class="text-sm font-medium">Miss</span>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+              <button class="event-type-option flex flex-col items-center p-4 bg-gray-700 text-gray-100 border border-gray-600" data-event-type="miss">
+                <img src="icons/miss.svg" alt="Miss" class="w-10 h-10 mb-3" />
+                <span class="text-sm font-semibold">Miss</span>
               </button>
-              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="foul">
-                <img src="icons/foul.svg" alt="Foul" class="w-8 h-8 mb-2" />
-                <span class="text-sm font-medium">Foul</span>
+              <button class="event-type-option flex flex-col items-center p-4 bg-gray-700 text-gray-100 border border-gray-600" data-event-type="foul">
+                <img src="icons/foul.svg" alt="Foul" class="w-10 h-10 mb-3" />
+                <span class="text-sm font-semibold">Foul</span>
               </button>
-              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="kickout">
-                <img src="icons/kickout.svg" alt="Kickout" class="w-8 h-8 mb-2" />
-                <span class="text-sm font-medium">Kickout</span>
+              <button class="event-type-option flex flex-col items-center p-4 bg-gray-700 text-gray-100 border border-gray-600" data-event-type="kickout">
+                <img src="icons/kickout.svg" alt="Kickout" class="w-10 h-10 mb-3" />
+                <span class="text-sm font-semibold">Kickout</span>
               </button>
-              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="sub">
-                <img src="icons/sub.svg" alt="Sub" class="w-8 h-8 mb-2" />
-                <span class="text-sm font-medium">Sub</span>
+              <button class="event-type-option flex flex-col items-center p-4 bg-gray-700 text-gray-100 border border-gray-600" data-event-type="sub">
+                <img src="icons/sub.svg" alt="Sub" class="w-10 h-10 mb-3" />
+                <span class="text-sm font-semibold">Sub</span>
               </button>
-              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="note">
-                <img src="icons/note.svg" alt="Note" class="w-8 h-8 mb-2" />
-                <span class="text-sm font-medium">Note</span>
-              </button>
-              <button class="event-type-option flex flex-col items-center p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors" data-event-type="card">
-                <img src="icons/yellowcard.svg" alt="Card" class="w-8 h-8 mb-2" />
-                <span class="text-sm font-medium">Card</span>
+              <button class="event-type-option flex flex-col items-center p-4 bg-gray-700 text-gray-100 border border-gray-600" data-event-type="note">
+                <img src="icons/note.svg" alt="Note" class="w-10 h-10 mb-3" />
+                <span class="text-sm font-semibold">Note</span>
               </button>
             </div>
           </div>
         </div>
       </section>
+
+      <!-- Data Management Modal -->
+      <div id="data-management-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-md">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">Data Management</h3>
+            <button id="close-data-management-btn" class="text-blue-500 hover:text-blue-400 font-semibold">Close</button>
+          </div>
+          
+          <!-- Export Section -->
+          <div class="mb-6">
+            <h4 class="font-semibold mb-2">Export Data</h4>
+            <p class="text-sm text-gray-300 mb-3">Backup all your matches to a JSON file</p>
+            <button id="export-data-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded mb-2">
+              Export All Matches
+            </button>
+            <div id="export-status" class="text-sm text-gray-400"></div>
+          </div>
+          
+          <!-- Import Section -->
+          <div class="mb-4">
+            <h4 class="font-semibold mb-2">Import Data</h4>
+            <p class="text-sm text-gray-300 mb-3">Restore matches from a backup file</p>
+            <input type="file" id="import-file-input" accept=".json" class="hidden" />
+            <button id="select-import-file-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded mb-2">
+              Select Import File
+            </button>
+            <button id="import-data-btn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded hidden">
+              Import Matches
+            </button>
+            <div id="import-status" class="text-sm text-gray-400"></div>
+          </div>
+          
+          <!-- Storage Info -->
+          <div>
+            <h4 class="font-semibold mb-2">Storage Information</h4>
+            <div id="storage-info" class="text-sm text-gray-300">
+              <div>Loading storage info...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Match Statistics Modal -->
+      <div id="match-stats-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-2xl max-h-[80vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">Match Statistics</h3>
+            <div class="flex items-center space-x-2">
+              <button id="share-stats-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+                Share
+              </button>
+              <button id="close-stats-modal-btn" class="text-blue-500 hover:text-blue-400 font-semibold">Close</button>
+            </div>
+          </div>
+          
+          <!-- Match Info -->
+          <div id="stats-match-info" class="mb-4 p-3 bg-gray-700 rounded"></div>
+          
+          <!-- Score Summary -->
+          <div id="stats-score-summary" class="mb-4"></div>
+          
+          <!-- Team Statistics -->
+          <div id="stats-teams" class="space-y-4"></div>
+          
+          <!-- Match Summary -->
+          <div id="stats-summary" class="mt-4 p-3 bg-gray-700 rounded"></div>
+        </div>
+      </div>
 
         <!-- Edit players view -->
       <section id="edit-players-view" class="view" style="display: none;">
@@ -405,5 +698,20 @@
       </section>
     </main>
     <script src="script.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('SW registered: ', registration);
+            })
+            .catch(registrationError => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

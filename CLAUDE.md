@@ -39,10 +39,11 @@ The app uses a view-based architecture with sections that are shown/hidden via J
 
 Since this is a vanilla JavaScript app with no build system:
 
-- **Testing**: Open index.html directly in a browser
+- **Testing**: Open index.html directly in a browser or use a local server
 - **No build commands**: Files can be edited directly
-- **No package.json**: Uses CDN for Tailwind CSS only
+- **No package.json**: Uses local Tailwind CSS (tailwind-minimal.css) for offline functionality
 - **Mobile-first**: Designed primarily for mobile devices
+- **PWA Features**: Includes service worker (sw.js) for offline caching and manifest.json for app installation
 
 ## Data Structure
 
@@ -59,3 +60,19 @@ Matches are stored in localStorage with this structure:
 - Modal-based forms and event entry
 - Real-time score updates
 - Period-sensitive button states (disabled during non-playing periods)
+
+## Technical Implementation
+
+- **View Management**: JavaScript-controlled section visibility (view classes with display: none/block)
+- **Timer System**: setInterval-based timer with pause/resume functionality and period transitions
+- **Event System**: Comprehensive event logging with timestamps and detailed metadata
+- **Data Export/Import**: JSON-based data management for backup and transfer
+- **Service Worker**: Caches all static assets for offline functionality (cache version: v1.1.7)
+
+## Core JavaScript Modules
+
+- **Match Management**: CRUD operations for matches with localStorage persistence
+- **Timer Logic**: Period-based match timing with automatic transitions
+- **Event Recording**: Structured event logging (shots, cards, fouls, substitutions, notes)
+- **Player Management**: Auto-generated 30-player rosters per team
+- **Score Calculation**: Real-time score computation based on match type and events
