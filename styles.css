@@ -30,6 +30,20 @@ input, textarea, [contenteditable] {
   user-select: text;
 }
 
+/* Fix input width overflow issues */
+input, select, textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Specific fix for date inputs which can have different default widths */
+input[type="date"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+}
+
 :root {
   --primary: #1e90ff;
   --secondary: #6c757d;
