@@ -7,6 +7,29 @@
  * gracefully, but the primary focus is on usability on phones.
  */
 
+/* Prevent zooming and unwanted touch gestures */
+* {
+  touch-action: manipulation;
+}
+
+html, body {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection for input fields and textareas */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
 :root {
   --primary: #1e90ff;
   --secondary: #6c757d;
