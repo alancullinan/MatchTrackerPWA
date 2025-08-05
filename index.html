@@ -66,9 +66,9 @@
         <!-- Top bar: match the Cancel/Done style used on the player edit screen.  Plain text links with blue
              colour provide a lightweight navigation style. -->
         <div class="flex justify-between items-center my-2">
-          <button type="button" id="cancel-form-top" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
+          <button type="button" id="cancel-form-top" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
           <h2 id="form-title" class="text-xl font-semibold">New Match</h2>
-          <button type="submit" form="match-form" id="save-form-top" class="text-blue-500 hover:text-blue-400 font-semibold" title="Done">Done</button>
+          <button type="submit" form="match-form" id="save-form-top" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
         </div>
         <form id="match-form" class="form space-y-0">
           <!-- Competition -->
@@ -145,7 +145,7 @@
         <!-- Maintain a minimum height even when control buttons are hidden so the scoreboard does not shift upward. -->
         <div class="relative flex items-center my-2 w-full min-h-[3.5rem]">
           <!-- Start/end half button with confirmation modal -->
-          <button id="end-period-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg" style="display:none;">
+          <button id="end-period-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" style="display:none;">
             <span id="end-period-label">Start Half</span>
           </button>
           <!-- Center the period and timer absolutely so it stays centred regardless of button widths -->
@@ -158,10 +158,10 @@
           <!-- Timer control buttons.  Only one of these (start, pause, resume) is visible at a time.  They
                are placed to the right of the timer to match the iOS layout. -->
           <div class="flex items-center space-x-2 ml-auto">
-            <button id="pause-timer-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg" style="display:none;" title="Pause">
+            <button id="pause-timer-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" style="display:none;" title="Pause">
               Pause
             </button>
-            <button id="resume-timer-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg" style="display:none;" title="Resume">
+            <button id="resume-timer-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" style="display:none;" title="Resume">
               Resume
             </button>
           </div>
@@ -225,11 +225,11 @@
         <div id="score-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
           <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
-              <button id="score-modal-cancel" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
+              <button id="score-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
               <h3 id="score-modal-title" class="text-lg font-bold flex items-center space-x-2">
                 <!-- Icon and label inserted dynamically -->
               </h3>
-              <button id="score-modal-done" class="text-blue-500 hover:text-blue-400 font-semibold" title="Done">Done</button>
+              <button id="score-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
             </div>
             <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
               <!-- Shot type selection on the left.  This column remains static while
@@ -240,7 +240,7 @@
               <!-- Player selection on the right with fixed header -->
               <div class="flex-1 flex flex-col">
                 <div id="score-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
-                <div id="score-player-list" class="space-y-1 overflow-y-auto rounded-lg flex-1" style="max-height: 60vh;">
+                <div id="score-player-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
                   <!-- Items inserted by JS -->
                 </div>
               </div>
@@ -258,12 +258,12 @@
         <div id="foul-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
           <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
-              <button id="foul-modal-cancel" class="text-blue-500 font-semibold" title="Cancel">Cancel</button>
+              <button id="foul-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
               <h3 id="foul-modal-title" class="text-lg font-bold flex items-center space-x-2">
                 <img src="icons/foul.svg" alt="Foul" class="w-6 h-6" />
                 <span>Foul</span>
               </h3>
-              <button id="foul-modal-done" class="text-blue-500 font-semibold" title="Done">Done</button>
+              <button id="foul-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
             </div>
             
             <!-- Team name and time info -->
@@ -341,12 +341,12 @@
         <div id="kickout-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
           <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
-              <button id="kickout-modal-cancel" class="text-blue-500 font-semibold" title="Cancel">Cancel</button>
+              <button id="kickout-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
               <h3 id="kickout-modal-title" class="text-lg font-bold flex items-center space-x-2">
                 <img src="icons/kickout.svg" alt="Kickout" class="w-6 h-6" />
                 <span>Kickout</span>
               </h3>
-              <button id="kickout-modal-done" class="text-blue-500 font-semibold" title="Done">Done</button>
+              <button id="kickout-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
             </div>
             
             <!-- Team name and time info -->
@@ -394,12 +394,12 @@
         <div id="substitution-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
           <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
-              <button id="substitution-modal-cancel" class="text-blue-500 font-semibold" title="Cancel">Cancel</button>
+              <button id="substitution-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
               <h3 id="substitution-modal-title" class="text-lg font-bold flex items-center space-x-2">
                 <img src="icons/sub.svg" alt="Substitution" class="w-6 h-6" />
                 <span>Substitution</span>
               </h3>
-              <button id="substitution-modal-done" class="text-blue-500 font-semibold" title="Done">Done</button>
+              <button id="substitution-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
             </div>
             
             <!-- Team name and time info -->
@@ -436,12 +436,12 @@
         <div id="note-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
           <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
-              <button id="note-modal-cancel" class="text-blue-500 font-semibold" title="Cancel">Cancel</button>
+              <button id="note-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
               <h3 id="note-modal-title" class="text-lg font-bold flex items-center space-x-2">
                 <img src="icons/note.svg" alt="Note" class="w-6 h-6" />
                 <span>Note</span>
               </h3>
-              <button id="note-modal-done" class="text-blue-500 font-semibold" title="Done">Done</button>
+              <button id="note-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
             </div>
             
             <!-- Team name and time info -->
@@ -501,7 +501,7 @@
         <!-- The old quick scoring button group and central edit players button were removed.  Each
           team card now includes its own goal/point and edit icons. -->
         <!-- Last event display and toggle for full list -->
-        <div id="last-event-display" class="bg-gray-800 border border-gray-700 rounded-lg p-4 my-4 hidden cursor-pointer text-gray-100">
+        <div id="last-event-display" class="bg-gray-800 border border-gray-700 rounded p-4 my-4 hidden cursor-pointer text-gray-100">
           <!-- This content will be populated dynamically -->
         </div>
 
@@ -510,9 +510,9 @@
         <div id="add-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
           <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-2">
-              <button id="add-event-modal-cancel" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
+              <button id="add-event-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
               <h3 class="text-lg font-bold">Add Event</h3>
-              <button id="add-event-modal-done" class="text-blue-500 hover:text-blue-400 font-semibold" title="Add">Add</button>
+              <button id="add-event-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Add">Add</button>
             </div>
             <div class="form-row flex flex-col mb-2">
               <label for="event-type" class="mb-1">Event Type</label>
@@ -535,7 +535,7 @@
               <!-- Use a "Done" button for closing the events list to match
                    the other modals and maintain consistent navigation.  It
                    omits the X icon and relies on the blue text styling. -->
-              <button id="close-events-modal-btn" class="text-blue-500 hover:text-blue-400 font-semibold" title="Done">
+              <button id="close-events-modal-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">
                 Done
               </button>
             </div>
@@ -585,9 +585,9 @@
           <div class="bg-gray-800 text-gray-100 p-6 rounded-xl shadow-xl w-11/12 max-w-lg">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-xl font-bold">Add Event</h3>
-              <button id="event-type-modal-cancel" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
+              <button id="event-type-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
             </div>
-            <div id="event-type-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 rounded-lg">
+            <div id="event-type-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
               <!-- Team name, time and period info will be populated here -->
             </div>
             <div class="grid grid-cols-2 gap-4 mb-6">
@@ -664,10 +664,10 @@
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-bold">Match Statistics</h3>
             <div class="flex items-center space-x-2">
-              <button id="share-stats-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+              <button id="share-stats-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2">
                 Share
               </button>
-              <button id="close-stats-modal-btn" class="text-blue-500 hover:text-blue-400 font-semibold">Close</button>
+              <button id="close-stats-modal-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2">Close</button>
             </div>
           </div>
           
@@ -689,9 +689,9 @@
       <section id="edit-players-view" class="view" style="display: none;">
         <!-- Top bar for player editing: Cancel on the left, title centred, Done on the right -->
         <div class="flex justify-between items-center my-2">
-          <button id="cancel-players-btn" class="text-blue-500 hover:text-blue-400 font-semibold" title="Cancel">Cancel</button>
+          <button id="cancel-players-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
           <h2 class="text-lg font-semibold">Edit Players</h2>
-          <button id="save-players-btn" class="text-blue-500 hover:text-blue-400 font-semibold" title="Done">Done</button>
+          <button id="save-players-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
         </div>
         <!-- Container for the editable list of players.  Sections for each team will be inserted here dynamically. -->
         <div id="players-edit-container" class="players-edit-container space-y-4"></div>
