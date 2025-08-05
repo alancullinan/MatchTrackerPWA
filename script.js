@@ -888,7 +888,7 @@
     shareText += `${team1Name.padEnd(maxNameLength)} ${team1Score.goals}-${team1Score.points}\n`;
     shareText += `${team2Name.padEnd(maxNameLength)} ${team2Score.goals}-${team2Score.points}\n`;
     shareText += '```\n\n';
-    shareText += `⏱️ ${formatTime(match.elapsedTime)} - ${match.currentPeriod}\n`;
+    shareText += `⏱️ ${formatTimeForSharing(match.elapsedTime)} - ${match.currentPeriod}\n`;
     
     // Add venue if available
     if (match.venue) {
@@ -1079,8 +1079,19 @@
     return { goals, points, total };
   }
 
-  // Convert seconds to minutes elapsed string (e.g., "12 min")
+  // Convert seconds to mm:ss string for display
   function formatTime(seconds) {
+    const m = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, '0');
+    const s = Math.floor(seconds % 60)
+      .toString()
+      .padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  // Convert seconds to minutes elapsed string for sharing (e.g., "12 min")
+  function formatTimeForSharing(seconds) {
     const m = Math.floor(seconds / 60);
     return `${m} min`;
   }
