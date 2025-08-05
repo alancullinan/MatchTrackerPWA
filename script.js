@@ -872,7 +872,7 @@
     const team2Score = computeTeamScore(match, 'team2');
     
     // Format the share text
-    let shareText = `**${match.competition || 'Match Update'}**\n\n`;
+    let shareText = `*${match.competition || 'Match Update'}*\n\n`;
     
     // Format team names with truncation and padding for alignment
     const maxNameLength = 12;
@@ -890,20 +890,12 @@
     shareText += '```\n\n';
     shareText += `⏱️ ${formatTime(match.elapsedTime)} - ${match.currentPeriod}\n`;
     
-    // Add venue and date if available
+    // Add venue if available
     if (match.venue) {
-      shareText += `📍 ${match.venue}`;
-      if (match.dateTime) {
-        const matchDate = new Date(match.dateTime);
-        shareText += ` | 📅 ${matchDate.toLocaleDateString()}`;
-      }
-      shareText += '\n';
-    } else if (match.dateTime) {
-      const matchDate = new Date(match.dateTime);
-      shareText += `📅 ${matchDate.toLocaleDateString()}\n`;
+      shareText += `📍 ${match.venue}\n`;
     }
     
-    shareText += `\n📱 Live from Match Tracker`;
+    shareText += `\n📱 Alans Match Tracker`;
     
     // Try using Web Share API first (mobile)
     if (navigator.share) {
@@ -1087,15 +1079,10 @@
     return { goals, points, total };
   }
 
-  // Convert seconds to mm:ss string
+  // Convert seconds to minutes elapsed string (e.g., "12 min")
   function formatTime(seconds) {
-    const m = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, '0');
-    const s = Math.floor(seconds % 60)
-      .toString()
-      .padStart(2, '0');
-    return `${m}:${s}`;
+    const m = Math.floor(seconds / 60);
+    return `${m} min`;
   }
 
   // Get next period given current period and whether match has extra time enabled
