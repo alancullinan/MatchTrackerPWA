@@ -37,11 +37,26 @@ input, select, textarea {
   box-sizing: border-box;
 }
 
+/* Ensure form rows use flexbox for consistent input sizing */
+.form-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.form-row input,
+.form-row select,
+.form-row textarea {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
 /* Specific fix for date inputs which can have different default widths */
 input[type="date"] {
   width: 100% !important;
   max-width: 100% !important;
-  min-width: 0;
+  min-width: 0 !important;
   -webkit-appearance: none;
   -moz-appearance: textfield;
   appearance: none;
@@ -50,6 +65,18 @@ input[type="date"] {
   background-color: #374151 !important;
   color: #f3f4f6 !important;
   border-radius: 0;
+  /* Force iOS Safari to respect width constraints */
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Extra iOS Safari targeting */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"] {
+    width: calc(100% - 2px) !important;
+    max-width: calc(100% - 2px) !important;
+  }
 }
 
 /* Remove date input calendar icon on Webkit browsers if it causes width issues */
