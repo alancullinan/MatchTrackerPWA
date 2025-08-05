@@ -863,6 +863,71 @@
     `;
   }
   
+  async function shareBasicMatchInfo() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    
+    // Calculate current scores
+    const team1Score = computeTeamScore(match, 'team1');
+    const team2Score = computeTeamScore(match, 'team2');
+    
+    // Format the share text
+    let shareText = `**${match.competition || 'Match Update'}**\n\n`;
+    
+    // Format team names with truncation and padding for alignment
+    const maxNameLength = 12;
+    const team1Name = match.team1.name.length > maxNameLength ? 
+      match.team1.name.substring(0, maxNameLength - 1) + '…' : 
+      match.team1.name;
+    const team2Name = match.team2.name.length > maxNameLength ? 
+      match.team2.name.substring(0, maxNameLength - 1) + '…' : 
+      match.team2.name;
+    
+    // Create aligned score block using monospace formatting
+    shareText += '```\n';
+    shareText += `${team1Name.padEnd(maxNameLength)} ${team1Score.goals}-${team1Score.points}\n`;
+    shareText += `${team2Name.padEnd(maxNameLength)} ${team2Score.goals}-${team2Score.points}\n`;
+    shareText += '```\n\n';
+    shareText += `⏱️ ${formatTime(match.elapsedTime)} - ${match.currentPeriod}\n`;
+    
+    // Add venue and date if available
+    if (match.venue) {
+      shareText += `📍 ${match.venue}`;
+      if (match.dateTime) {
+        const matchDate = new Date(match.dateTime);
+        shareText += ` | 📅 ${matchDate.toLocaleDateString()}`;
+      }
+      shareText += '\n';
+    } else if (match.dateTime) {
+      const matchDate = new Date(match.dateTime);
+      shareText += `📅 ${matchDate.toLocaleDateString()}\n`;
+    }
+    
+    shareText += `\n📱 Live from Match Tracker`;
+    
+    // Try using Web Share API first (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Match Update',
+          text: shareText
+        });
+        return;
+      } catch (err) {
+        console.log('Native sharing failed, falling back to clipboard');
+      }
+    }
+    
+    // Fallback to clipboard
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showShareSuccessMessage('Match update copied to clipboard! You can now paste it in WhatsApp or any messaging app.');
+    } catch (err) {
+      // Ultimate fallback - create a text area for manual copy
+      createManualCopyFallback(shareText);
+    }
+  }
+  
   async function shareMatchStats() {
     if (!currentMatchStats) return;
     
@@ -4309,6 +4374,9 @@
     document.getElementById('view-stats-btn').addEventListener('click', showMatchStats);
     document.getElementById('close-stats-modal-btn').addEventListener('click', hideMatchStats);
     document.getElementById('share-stats-btn').addEventListener('click', shareMatchStats);
+    
+    // Share match button
+    document.getElementById('share-match-btn').addEventListener('click', shareBasicMatchInfo);
     
     // Add match button
     document.getElementById('add-match-btn').addEventListener('click', showAddMatchForm);
