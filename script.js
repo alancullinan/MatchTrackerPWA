@@ -4000,6 +4000,7 @@
           match.events = match.events.filter((m) => m.id !== ev.id);
           updateScoreboard(match);
           renderEventsList(match);
+          renderLastEvent(match);
           saveAppState();
         }
       });
@@ -4418,7 +4419,10 @@
     // Update scoreboard, events list and last event display
     updateScoreboard(match);
     renderEventsList(match);
-    renderLastEvent(match);
+    // Use setTimeout to ensure DOM updates are applied before rendering last event
+    setTimeout(() => {
+      renderLastEvent(match);
+    }, 0);
     saveAppState();
   }
 
