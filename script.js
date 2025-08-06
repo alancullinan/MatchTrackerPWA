@@ -1530,12 +1530,14 @@
     if (!display) return;
     // If no events, hide
     if (!match || !match.events || match.events.length === 0) {
+      display.innerHTML = '';
       display.classList.add('hidden');
       return;
     }
     // Latest event is the last one in the array because events are appended sequentially.
     const last = match.events[match.events.length - 1];
     if (!last) {
+      display.innerHTML = '';
       display.classList.add('hidden');
       return;
     }
