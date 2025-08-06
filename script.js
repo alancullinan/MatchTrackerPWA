@@ -946,11 +946,60 @@
     }
   }
   
-  // Share individual team card (placeholder for future implementation)
-  function shareTeamCard(teamName) {
-    // TODO: Implement individual team card sharing
-    console.log('Share team card for:', teamName);
+  // Share individual team card
+  async function shareTeamCard(teamName) {
+    console.log('shareTeamCard called with teamName:', teamName);
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) {
+      console.error('No match found');
+      return;
+    }
+    
+    const stats = StatsCalculator.calculateMatchStats(match);
+    console.log('Stats calculated:', stats);
+    const teamStats = stats.teams[teamName];
+    if (!teamStats) {
+      console.error('Team stats not found for:', teamName);
+      return;
+    }
+    
+    const isFootball = stats.match.matchType === 'football' || stats.match.matchType === 'ladies_football';
+    const scorers = calculatePlayerScorers(match, teamName, isFootball);
+    console.log('Scorers calculated:', scorers);
+    
+    try {
+      // Generate scorer card image
+      const imageBlob = await generateScorerCardImage(match, teamName, teamStats, scorers);
+      
+      // Try using Web Share API first (mobile)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'scorer-card.png', { type: 'image/png' })] })) {
+        const file = new File([imageBlob], `${teamName.replace(/\s+/g, '-')}-scorers.png`, { type: 'image/png' });
+        await navigator.share({
+          title: `${teamName} Scorers`,
+          text: `${teamName} scoring statistics`,
+          files: [file]
+        });
+        return;
+      }
+      
+      // Fallback: Create download link
+      const url = URL.createObjectURL(imageBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${teamName.replace(/\s+/g, '-')}-scorers.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Error sharing scorer card:', error);
+      alert('Unable to share scorer card. Please try again.');
+    }
   }
+  
+  // Make shareTeamCard globally accessible for onclick handlers
+  window.shareTeamCard = shareTeamCard;
   
   // Generate match share image using Canvas
   function generateMatchShareImage(match, team1Score, team2Score) {
@@ -1035,6 +1084,144 @@
       ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('Alans Match Tracker', canvas.width / 2, brandingY);
+      
+      // Convert to blob
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/png', 0.9);
+    });
+  }
+
+  // Generate team scorer card share image using Canvas
+  function generateScorerCardImage(match, teamName, teamStats, scorers) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Calculate dynamic height based on number of scorers
+      canvas.width = 800;
+      const maxScorers = Math.min(scorers.length, 10);
+      const headerHeight = 280; // Space for team name, score, and "Scorers" header
+      const rowHeight = 85;
+      const scorersHeight = maxScorers * rowHeight;
+      const footerHeight = 120; // Space for branding and bottom padding
+      const extraHeight = scorers.length > maxScorers ? 40 : 0; // Space for "and X more" text
+      
+      canvas.height = Math.max(800, headerHeight + scorersHeight + footerHeight + extraHeight);
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#374151'); // gray-700
+      gradient.addColorStop(1, '#1f2937'); // gray-800
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Team name header
+      ctx.fillStyle = '#f3f4f6'; // gray-100
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(teamName, canvas.width / 2, 80);
+      
+      // Team score
+      ctx.fillStyle = '#60a5fa'; // blue-400
+      ctx.font = 'bold 64px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(teamStats.score.display, canvas.width / 2, 160);
+      
+      // Score total in parentheses
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillText(`(${teamStats.score.total})`, canvas.width / 2, 200);
+      
+      // Scorers header
+      if (scorers.length > 0) {
+        ctx.fillStyle = '#10b981'; // green-500
+        ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Scorers', 80, 280);
+        
+        // Scorer list with dividing lines
+        let currentY = 340;
+        const rowHeight = 85; // More space for better visual separation below divider lines
+        const maxScorers = Math.min(scorers.length, 10); // Limit to top 10 scorers
+        
+        for (let i = 0; i < maxScorers; i++) {
+          const scorer = scorers[i];
+          const isFootball = match.matchType === 'football' || match.matchType === 'ladies_football';
+          
+          // Calculate centered text position within the row
+          const textY = currentY + (rowHeight / 2); // Center text within the row space
+          
+          // Player name - bigger for mobile readability
+          ctx.fillStyle = '#f3f4f6'; // gray-100
+          ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(scorer.name, 80, textY);
+          
+          // Build score display and breakdown
+          const scoreDisplay = formatScoreDisplay(scorer.total, isFootball);
+          
+          // Breakdown (frees/penalties) 
+          const breakdowns = [];
+          if (scorer.freeBreakdown) {
+            breakdowns.push(`${formatScoreDisplay(scorer.freeBreakdown, isFootball)} f`);
+          }
+          if (scorer.penaltyBreakdown) {
+            breakdowns.push(`${formatScoreDisplay(scorer.penaltyBreakdown, isFootball)} p`);
+          }
+          
+          // Main score - always positioned consistently at a fixed location
+          ctx.fillStyle = '#f3f4f6'; // gray-100
+          ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.textAlign = 'right';
+          // Reserve space for breakdown - position main score at a consistent location
+          const mainScoreX = canvas.width - 200; // Fixed position leaving room for breakdown
+          ctx.fillText(scoreDisplay, mainScoreX, textY);
+          
+          // Position breakdown at right edge if it exists
+          if (breakdowns.length > 0) {
+            ctx.fillStyle = '#9ca3af'; // gray-400
+            ctx.font = '18px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+            ctx.textAlign = 'right';
+            const breakdownText = `(${breakdowns.join(', ')})`;
+            ctx.fillText(breakdownText, canvas.width - 80, textY);
+          }
+          
+          // Add dividing line between entries (except for last entry)
+          if (i < maxScorers - 1) {
+            ctx.strokeStyle = '#9ca3af'; // gray-400
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            // Position divider at the bottom of the row
+            ctx.moveTo(80, currentY + rowHeight);
+            ctx.lineTo(canvas.width - 80, currentY + rowHeight);
+            ctx.stroke();
+          }
+          
+          // Move to next row with more space
+          currentY += rowHeight;
+        }
+        
+        // Show "and X more" if there are additional scorers
+        if (scorers.length > maxScorers) {
+          ctx.fillStyle = '#9ca3af'; // gray-400
+          ctx.font = '20px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`...and ${scorers.length - maxScorers} more`, canvas.width / 2, currentY);
+        }
+      } else {
+        // No scorers message
+        ctx.fillStyle = '#9ca3af'; // gray-400
+        ctx.font = '24px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No scorers yet', canvas.width / 2, 320);
+      }
+      
+      // App branding
+      ctx.fillStyle = '#60a5fa'; // blue-400  
+      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Alans Match Tracker', canvas.width / 2, 750);
       
       // Convert to blob
       canvas.toBlob((blob) => {
