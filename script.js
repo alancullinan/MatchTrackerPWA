@@ -560,8 +560,8 @@
           twoPointers,
           total: totalScore,
           display: match.matchType === 'football' || match.matchType === 'ladies_football' 
-            ? `${goals}-${points}-${twoPointers}` 
-            : `${goals}-${points}`
+            ? `${goals}-${(points + twoPointers * 2).toString().padStart(2, '0')}` 
+            : `${goals}-${points.toString().padStart(2, '0')}`
         },
         shooting: {
           total: totalShots,
@@ -818,6 +818,9 @@
                     if (scorer.penaltyBreakdown) {
                       breakdowns.push(`${formatScoreDisplay(scorer.penaltyBreakdown, isFootball)} p`);
                     }
+                    if (isFootball && scorer.total.twoPointers > 0) {
+                      breakdowns.push(`<span style="color: #f97316">2p</span>:${scorer.total.twoPointers}`);
+                    }
                     const breakdownText = breakdowns.length > 0 ? `(${breakdowns.join(', ')})` : '';
                     const isLast = index === scorers.length - 1;
                     
@@ -940,7 +943,9 @@
   // Format score display based on match type
   function formatScoreDisplay(score, isFootball) {
     if (isFootball) {
-      return `${score.goals}-${score.points.toString().padStart(2, '0')}-${score.twoPointers.toString().padStart(2, '0')}`;
+      // For football, combine points and two-pointers in the points total
+      const totalPoints = score.points + (score.twoPointers || 0);
+      return `${score.goals}-${totalPoints.toString().padStart(2, '0')}`;
     } else {
       return `${score.goals}-${score.points.toString().padStart(2, '0')}`;
     }
@@ -1162,13 +1167,16 @@
           // Build score display and breakdown
           const scoreDisplay = formatScoreDisplay(scorer.total, isFootball);
           
-          // Breakdown (frees/penalties) 
+          // Breakdown (frees/penalties/two-pointers) 
           const breakdowns = [];
           if (scorer.freeBreakdown) {
             breakdowns.push(`${formatScoreDisplay(scorer.freeBreakdown, isFootball)} f`);
           }
           if (scorer.penaltyBreakdown) {
             breakdowns.push(`${formatScoreDisplay(scorer.penaltyBreakdown, isFootball)} p`);
+          }
+          if (isFootball && scorer.total.twoPointers > 0) {
+            breakdowns.push(`2p:${scorer.total.twoPointers}`);
           }
           
           // Main score - positioned at the right edge
@@ -1179,11 +1187,63 @@
           
           // Position breakdown below main score if it exists (like scorecard layout)
           if (breakdowns.length > 0) {
+            ctx.font = '22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+            ctx.textAlign = 'left';
+            
+            // Build breakdown text piece by piece to handle coloring properly
+            let currentX = canvas.width - 80;
+            
+            // Start with closing parenthesis (since we're building right to left)
             ctx.fillStyle = '#9ca3af'; // gray-400
-            ctx.font = '18px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-            ctx.textAlign = 'right';
-            const breakdownText = `(${breakdowns.join(', ')})`;
-            ctx.fillText(breakdownText, canvas.width - 80, breakdownY);
+            const closeParen = ')';
+            const closeParenWidth = ctx.measureText(closeParen).width;
+            currentX -= closeParenWidth;
+            ctx.fillText(closeParen, currentX, breakdownY);
+            
+            // Draw breakdown items from right to left
+            for (let i = breakdowns.length - 1; i >= 0; i--) {
+              const breakdown = breakdowns[i];
+              
+              // Add comma separator if not the last item
+              if (i < breakdowns.length - 1) {
+                ctx.fillStyle = '#9ca3af';
+                const separator = ', ';
+                const separatorWidth = ctx.measureText(separator).width;
+                currentX -= separatorWidth;
+                ctx.fillText(separator, currentX, breakdownY);
+              }
+              
+              if (breakdown.startsWith('2p:')) {
+                // Handle two-pointer breakdown with orange "2p:" and gray count
+                const count = breakdown.split(':')[1];
+                
+                // Draw count in gray
+                ctx.fillStyle = '#9ca3af';
+                const countWidth = ctx.measureText(count).width;
+                currentX -= countWidth;
+                ctx.fillText(count, currentX, breakdownY);
+                
+                // Draw "2p:" in orange
+                ctx.fillStyle = '#f97316'; // orange-500
+                const twoPointerText = '2p:';
+                const twoPointerWidth = ctx.measureText(twoPointerText).width;
+                currentX -= twoPointerWidth;
+                ctx.fillText(twoPointerText, currentX, breakdownY);
+              } else {
+                // Draw regular breakdown in gray
+                ctx.fillStyle = '#9ca3af';
+                const breakdownWidth = ctx.measureText(breakdown).width;
+                currentX -= breakdownWidth;
+                ctx.fillText(breakdown, currentX, breakdownY);
+              }
+            }
+            
+            // Draw opening parenthesis (since we're building right to left, this comes last)
+            ctx.fillStyle = '#9ca3af';
+            const openParen = '(';
+            const openParenWidth = ctx.measureText(openParen).width;
+            currentX -= openParenWidth;
+            ctx.fillText(openParen, currentX, breakdownY);
           }
           
           // Add dividing line between entries (except for last entry)
