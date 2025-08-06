@@ -896,14 +896,28 @@
       ctx.fillText(match.team1.name, 80, team1Y);
       
       ctx.textAlign = 'right';
-      ctx.fillText(`${team1Score.goals}-${team1Score.points}`, canvas.width - 80, team1Y);
+      const scoreText1 = `${team1Score.goals}-${team1Score.points}`;
+      ctx.fillText(scoreText1, canvas.width - 150, team1Y);
+      
+      // Team 1 points total (to the right of main score)
+      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.fillText(`(${team1Score.total})`, canvas.width - 80, team1Y);
       
       // Team 2
+      ctx.fillStyle = '#f3f4f6'; // gray-100
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(match.team2.name, 80, team2Y);
       
       ctx.textAlign = 'right';
-      ctx.fillText(`${team2Score.goals}-${team2Score.points}`, canvas.width - 80, team2Y);
+      const scoreText2 = `${team2Score.goals}-${team2Score.points}`;
+      ctx.fillText(scoreText2, canvas.width - 150, team2Y);
+      
+      // Team 2 points total (to the right of main score)
+      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.fillText(`(${team2Score.total})`, canvas.width - 80, team2Y);
       
       // Separator line
       ctx.strokeStyle = '#4b5563'; // gray-600
@@ -924,12 +938,14 @@
         ctx.fillText(`📍 ${match.venue}`, canvas.width / 2, 570);
       }
       
-      // App branding
-      ctx.fillStyle = '#60a5fa'; // blue-400
+      // App branding with custom icon
+      const brandingY = match.venue ? 650 : 620;
+      
+      // App branding - keep it simple and working
+      ctx.fillStyle = '#60a5fa'; // blue-400  
       ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
       ctx.textAlign = 'center';
-      const brandingY = match.venue ? 650 : 620;
-      ctx.fillText('📱 Alans Match Tracker', canvas.width / 2, brandingY);
+      ctx.fillText('Alans Match Tracker', canvas.width / 2, brandingY);
       
       // Convert to blob
       canvas.toBlob((blob) => {
@@ -949,89 +965,34 @@
     // Generate match image
     const imageBlob = await generateMatchShareImage(match, team1Score, team2Score);
     
-    // Create a simple caption for the image
-    const caption = `${match.competition || 'Match Update'}\n${match.team1.name} ${team1Score.goals}-${team1Score.points}\n${match.team2.name} ${team2Score.goals}-${team2Score.points}\n⏱️ ${formatTimeForSharing(match.elapsedTime)} - ${match.currentPeriod}${match.venue ? `\n📍 ${match.venue}` : ''}\n\n📱 Alans Match Tracker`;
-    
-    // Try sharing image with Web Share API first (mobile)
+    // Try sharing image only with Web Share API first (mobile)
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'match-update.png', { type: 'image/png' })] })) {
       try {
         const imageFile = new File([imageBlob], 'match-update.png', { type: 'image/png' });
         await navigator.share({
           title: 'Match Update',
-          text: caption,
           files: [imageFile]
         });
         return;
       } catch (err) {
-        console.log('Image sharing failed, trying text with image save:', err);
+        console.log('Image sharing failed, trying image download:', err);
       }
     }
     
-    // If image sharing not supported, offer to save image and share text
+    // If image sharing not supported, download image directly
     try {
-      // Create download link for image
       const imageUrl = URL.createObjectURL(imageBlob);
       const downloadLink = document.createElement('a');
       downloadLink.href = imageUrl;
       downloadLink.download = `match-update-${match.team1.name}-vs-${match.team2.name}.png`;
-      
-      // Try text sharing with Web Share API
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: 'Match Update',
-            text: caption
-          });
-          
-          // Ask user if they want to download the image too
-          const modal = document.createElement('div');
-          modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-          modal.innerHTML = `
-            <div class="bg-gray-800 text-gray-100 p-6 rounded-lg max-w-sm mx-4">
-              <h3 class="text-lg font-bold mb-3">Download Match Image?</h3>
-              <p class="text-gray-300 mb-4">Would you like to save the match image to your device as well?</p>
-              <div class="flex space-x-3">
-                <button id="download-image-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save Image</button>
-                <button id="skip-image-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-gray-100 px-4 py-2 rounded">Skip</button>
-              </div>
-            </div>
-          `;
-          
-          document.body.appendChild(modal);
-          
-          modal.querySelector('#download-image-btn').addEventListener('click', () => {
-            downloadLink.click();
-            document.body.removeChild(modal);
-            URL.revokeObjectURL(imageUrl);
-          });
-          
-          modal.querySelector('#skip-image-btn').addEventListener('click', () => {
-            document.body.removeChild(modal);
-            URL.revokeObjectURL(imageUrl);
-          });
-          
-          return;
-        } catch (err) {
-          console.log('Text sharing also failed, falling back to clipboard and image download');
-        }
-      }
-      
-      // Fallback: save image and copy text
       downloadLink.click();
-      await navigator.clipboard.writeText(caption);
-      showShareSuccessMessage('Match image downloaded and text copied to clipboard!');
+      
+      showShareSuccessMessage('Match image downloaded to your device!');
       URL.revokeObjectURL(imageUrl);
       
     } catch (err) {
-      console.log('Image download failed, falling back to text only');
-      
-      // Ultimate fallback - text only
-      try {
-        await navigator.clipboard.writeText(caption);
-        showShareSuccessMessage('Match update copied to clipboard!');
-      } catch (clipErr) {
-        createManualCopyFallback(caption);
-      }
+      console.log('Image download failed');
+      showShareSuccessMessage('Unable to share or download image. Please try again.');
     }
   }
   
