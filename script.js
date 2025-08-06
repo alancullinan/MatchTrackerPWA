@@ -518,7 +518,7 @@
     
     // Calculate statistics for a specific team
     calculateTeamStats(match, teamKey) {
-      const teamEvents = match.events.filter(e => e.team === teamKey);
+      const teamEvents = match.events.filter(e => e.teamId === match[teamKey].id);
       const team = match[teamKey];
       
       const shots = teamEvents.filter(e => e.type === EventType.SHOT);
@@ -737,14 +737,25 @@
   
   function showMatchStats() {
     const match = findMatchById(appState.currentMatchId);
-    if (!match) return;
+    if (!match) {
+      console.error('No match found for stats');
+      return;
+    }
     
-    currentMatchStats = StatsCalculator.calculateMatchStats(match);
-    renderMatchStats(currentMatchStats);
-    
-    const modal = document.getElementById('match-stats-modal');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+    try {
+      currentMatchStats = StatsCalculator.calculateMatchStats(match);
+      renderMatchStats(currentMatchStats);
+      
+      const modal = document.getElementById('match-stats-modal');
+      if (!modal) {
+        console.error('Stats modal element not found');
+        return;
+      }
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    } catch (error) {
+      console.error('Error showing match stats:', error);
+    }
   }
   
   function hideMatchStats() {
@@ -755,112 +766,177 @@
   }
   
   function renderMatchStats(stats) {
-    // Match info
-    const matchInfo = document.getElementById('stats-match-info');
-    matchInfo.innerHTML = `
-      <div class="text-lg font-semibold">${stats.match.competition || 'Match'}</div>
-      <div class="text-sm text-gray-300">
-        ${stats.match.venue ? `${stats.match.venue} • ` : ''}
-        ${stats.match.date ? new Date(stats.match.date).toLocaleDateString() : 'No date'}
-        ${stats.match.duration ? ` • Duration: ${stats.match.duration}` : ''}
-      </div>
-      ${stats.match.final ? '<div class="text-xs text-green-400 mt-1">✓ Final Result</div>' : '<div class="text-xs text-yellow-400 mt-1">⏱️ Live Match</div>'}
-    `;
+    // Render scorers cards
+    renderScorersCards(stats);
+  }
+  
+  function renderScorersCards(stats) {
+    const container = document.getElementById('stats-scorers-cards');
+    if (!container) {
+      console.error('Stats scorers cards container not found');
+      return;
+    }
     
-    // Score summary
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) {
+      console.error('No match found for scorers cards');
+      return;
+    }
+    
     const teamNames = Object.keys(stats.teams);
-    const team1 = stats.teams[teamNames[0]];
-    const team2 = stats.teams[teamNames[1]];
+    const isFootball = stats.match.matchType === 'football' || stats.match.matchType === 'ladies_football';
+    console.log('Rendering scorers cards for teams:', teamNames, 'isFootball:', isFootball);
     
-    const scoreSummary = document.getElementById('stats-score-summary');
-    scoreSummary.innerHTML = `
-      <div class="bg-gray-700 rounded p-4 text-center">
-        <div class="text-2xl font-bold mb-2">
-          ${team1.name} <span class="text-blue-400">${team1.score.display}</span> - 
-          <span class="text-blue-400">${team2.score.display}</span> ${team2.name}
-        </div>
-        <div class="text-sm text-gray-300">
-          ${stats.summary.winner === 'Draw' 
-            ? '🤝 Match ended in a draw' 
-            : `🏆 ${stats.summary.winner} wins by ${stats.summary.margin} points`}
-        </div>
-      </div>
-    `;
-    
-    // Team statistics
-    const teamsContainer = document.getElementById('stats-teams');
-    teamsContainer.innerHTML = teamNames.map(teamName => {
-      const team = stats.teams[teamName];
-      return `
-        <div class="bg-gray-700 rounded p-4">
-          <h4 class="text-lg font-semibold mb-3">${team.name}</h4>
+    container.innerHTML = `
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        ${teamNames.map(teamName => {
+          const team = stats.teams[teamName];
+          const scorers = calculatePlayerScorers(match, teamName, isFootball);
           
-          <!-- Shooting Stats -->
-          <div class="mb-3">
-            <h5 class="font-medium text-blue-400 mb-2">🎯 Shooting</h5>
-            <div class="grid grid-cols-2 gap-2 text-sm">
-              <div>Total Shots: <span class="font-medium">${team.shooting.total}</span></div>
-              <div>Accuracy: <span class="font-medium">${team.shooting.accuracy}</span></div>
-              <div>Goals: <span class="font-medium">${team.shooting.breakdown.goals}</span></div>
-              <div>Points: <span class="font-medium">${team.shooting.breakdown.points}</span></div>
-              ${team.shooting.breakdown.twoPointers > 0 ? `<div>2-Pointers: <span class="font-medium">${team.shooting.breakdown.twoPointers}</span></div>` : ''}
-              <div>Wides: <span class="font-medium">${team.shooting.breakdown.wides}</span></div>
-            </div>
-          </div>
-          
-          <!-- Other Stats -->
-          <div class="grid grid-cols-3 gap-4 text-sm mb-3">
-            <div class="text-center">
-              <div class="font-medium text-red-400">${team.fouls}</div>
-              <div class="text-gray-400">Fouls</div>
-            </div>
-            <div class="text-center">
-              <div class="font-medium text-yellow-400">${team.cards.total}</div>
-              <div class="text-gray-400">Cards</div>
-            </div>
-            <div class="text-center">
-              <div class="font-medium text-blue-400">${team.substitutions}</div>
-              <div class="text-gray-400">Subs</div>
-            </div>
-          </div>
-          
-          <!-- Top Scorers -->
-          ${team.topScorers.length > 0 ? `
-            <div>
-              <h5 class="font-medium text-green-400 mb-2">⭐ Top Scorers</h5>
-              <div class="space-y-1 text-sm">
-                ${team.topScorers.slice(0, 3).map(scorer => `
-                  <div class="flex justify-between">
-                    <span>${scorer.name} (#${scorer.jerseyNumber})</span>
-                    <span class="font-medium">${scorer.totalScore} pts</span>
-                  </div>
-                `).join('')}
+          return `
+            <div class="bg-gray-700 rounded-lg p-3">
+              <div class="flex justify-between items-center px-3">
+                <h3 class="text-lg font-bold">${team.name}</h3>
+                <button class="text-blue-400 hover:text-blue-300 p-3 flex items-center justify-center" onclick="shareTeamCard('${teamName}')" title="Share">
+                  <img src="icons/share.svg" alt="Share" class="w-8 h-8" />
+                </button>
               </div>
+              
+              <div class="text-center">
+                <div class="text-3xl font-bold text-blue-400 leading-none">${team.score.display}</div>
+                <div class="text-sm text-gray-400 -mt-1 mb-1">(${team.score.total})</div>
+              </div>
+              
+              ${scorers.length > 0 ? `
+                <div class="px-3">
+                  <h4 class="text-sm font-semibold text-green-400 mb-2">Scorers</h4>
+                  ${scorers.map((scorer, index) => {
+                    const breakdowns = [];
+                    if (scorer.freeBreakdown) {
+                      breakdowns.push(`${formatScoreDisplay(scorer.freeBreakdown, isFootball)} f`);
+                    }
+                    if (scorer.penaltyBreakdown) {
+                      breakdowns.push(`${formatScoreDisplay(scorer.penaltyBreakdown, isFootball)} p`);
+                    }
+                    const breakdownText = breakdowns.length > 0 ? `(${breakdowns.join(', ')})` : '';
+                    const isLast = index === scorers.length - 1;
+                    
+                    return `
+                      <div class="flex justify-between items-center text-sm py-2" style="border-bottom: ${isLast ? 'none' : '1px solid #9ca3af'};">
+                        <span class="font-medium">${scorer.name}</span>
+                        <div class="text-right">
+                          <span class="font-bold">${formatScoreDisplay(scorer.total, isFootball)}</span>
+                          ${breakdownText ? `<div class="text-xs text-gray-400">${breakdownText}</div>` : ''}
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              ` : `
+                <div class="text-center text-gray-400 text-sm py-4">
+                  No scorers yet
+                </div>
+              `}
             </div>
-          ` : ''}
-        </div>
-      `;
-    }).join('');
-    
-    // Match summary
-    const summary = document.getElementById('stats-summary');
-    summary.innerHTML = `
-      <h4 class="font-semibold mb-2">📊 Match Overview</h4>
-      <div class="grid grid-cols-3 gap-4 text-sm">
-        <div class="text-center">
-          <div class="font-medium text-blue-400">${stats.summary.totalShots}</div>
-          <div class="text-gray-400">Total Shots</div>
-        </div>
-        <div class="text-center">
-          <div class="font-medium text-red-400">${stats.summary.totalFouls}</div>
-          <div class="text-gray-400">Total Fouls</div>
-        </div>
-        <div class="text-center">
-          <div class="font-medium text-yellow-400">${stats.summary.totalCards}</div>
-          <div class="text-gray-400">Total Cards</div>
-        </div>
+          `;
+        }).join('')}
       </div>
     `;
+  }
+  
+  // Calculate player scorers with shot type breakdown
+  function calculatePlayerScorers(match, teamName, isFootball) {
+    const team = match.team1.name === teamName ? match.team1 : match.team2;
+    const teamId = team.id;
+    
+    // Get all scoring events for this team
+    const scoringEvents = match.events.filter(event => 
+      event.type === EventType.SHOT && 
+      event.teamId === teamId && 
+      (event.shotOutcome === ShotOutcome.GOAL || 
+       event.shotOutcome === ShotOutcome.POINT || 
+       event.shotOutcome === ShotOutcome.TWO_POINTER)
+    );
+    
+    // Group by player
+    const playerStats = {};
+    
+    scoringEvents.forEach(event => {
+      if (!event.player1Id) return; // Skip events without player
+      
+      const player = team.players.find(p => p.id === event.player1Id);
+      if (!player) return;
+      
+      if (!playerStats[player.id]) {
+        playerStats[player.id] = {
+          name: player.name,
+          jerseyNumber: player.jerseyNumber,
+          total: { goals: 0, points: 0, twoPointers: 0 },
+          free: { goals: 0, points: 0, twoPointers: 0 },
+          penalty: { goals: 0, points: 0, twoPointers: 0 }
+        };
+      }
+      
+      const stats = playerStats[player.id];
+      const isFree = event.shotType === ShotType.FREE;
+      const isPenalty = event.shotType === ShotType.PENALTY;
+      
+      // Add to totals
+      if (event.shotOutcome === ShotOutcome.GOAL) {
+        stats.total.goals++;
+        if (isFree) stats.free.goals++;
+        if (isPenalty) stats.penalty.goals++;
+      } else if (event.shotOutcome === ShotOutcome.POINT) {
+        stats.total.points++;
+        if (isFree) stats.free.points++;
+        if (isPenalty) stats.penalty.points++;
+      } else if (event.shotOutcome === ShotOutcome.TWO_POINTER && isFootball) {
+        stats.total.twoPointers++;
+        if (isFree) stats.free.twoPointers++;
+        if (isPenalty) stats.penalty.twoPointers++;
+      }
+    });
+    
+    // Convert to array and calculate scores
+    const scorers = Object.values(playerStats).map(player => {
+      const totalScore = player.total.goals * 3 + player.total.points + (isFootball ? player.total.twoPointers * 2 : 0);
+      const freeScore = player.free.goals * 3 + player.free.points + (isFootball ? player.free.twoPointers * 2 : 0);
+      const penaltyScore = player.penalty.goals * 3 + player.penalty.points + (isFootball ? player.penalty.twoPointers * 2 : 0);
+      
+      return {
+        name: player.name,
+        jerseyNumber: player.jerseyNumber,
+        total: player.total,
+        totalScore: totalScore,
+        freeBreakdown: freeScore > 0 ? player.free : null,
+        penaltyBreakdown: penaltyScore > 0 ? player.penalty : null
+      };
+    });
+    
+    // Sort by total score (descending), then by name
+    scorers.sort((a, b) => {
+      if (a.totalScore !== b.totalScore) {
+        return b.totalScore - a.totalScore;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    
+    return scorers;
+  }
+  
+  // Format score display based on match type
+  function formatScoreDisplay(score, isFootball) {
+    if (isFootball) {
+      return `${score.goals}-${score.points.toString().padStart(2, '0')}-${score.twoPointers.toString().padStart(2, '0')}`;
+    } else {
+      return `${score.goals}-${score.points.toString().padStart(2, '0')}`;
+    }
+  }
+  
+  // Share individual team card (placeholder for future implementation)
+  function shareTeamCard(teamName) {
+    // TODO: Implement individual team card sharing
+    console.log('Share team card for:', teamName);
   }
   
   // Generate match share image using Canvas
@@ -4452,7 +4528,6 @@
     // Statistics modal
     document.getElementById('view-stats-btn').addEventListener('click', showMatchStats);
     document.getElementById('close-stats-modal-btn').addEventListener('click', hideMatchStats);
-    document.getElementById('share-stats-btn').addEventListener('click', shareMatchStats);
     
     // Share match button
     document.getElementById('share-match-btn').addEventListener('click', shareBasicMatchInfo);
