@@ -122,7 +122,7 @@
       <!-- Match details view -->
       <section id="match-details-view" class="view" style="display: none;">
         <!-- Top bar with back button, timer (with period) and edit match button -->
-        <div class="flex justify-between items-center my-2">
+        <div class="flex justify-between items-center mt-1 mb-1">
           <!-- Back button with icon -->
           <button id="back-to-list-btn" class="cursor-pointer" title="Back to Matches">
             <img src="icons/back.svg" alt="Back" class="w-8 h-8" />
@@ -147,7 +147,7 @@
         <!-- Spread the timer controls across the full width.  The start/end button sits on the left,
              the period/time display stays centered, and the pause/resume controls align on the right. -->
         <!-- Maintain a minimum height even when control buttons are hidden so the scoreboard does not shift upward. -->
-        <div class="relative flex items-center my-2 w-full min-h-[3.5rem]">
+        <div class="relative flex items-center mt-4 mb-2 w-full min-h-[3.5rem]">
           <!-- Start/end half button with confirmation modal -->
           <button id="end-period-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" style="display:none;">
             <span id="end-period-label">Start Half</span>
@@ -173,23 +173,23 @@
         <!-- Timer controls moved directly below the match title so the clock is prominently displayed at the top
              of the screen. -->
         <!-- Team cards styled similar to native app screenshot -->
-        <div id="team-cards" class="space-y-2 my-1">
+        <div id="team-cards" class="space-y-2 mt-0 mb-2">
           <!-- Team 1 Card -->
           <div id="team1-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
-            <div class="card-header flex justify-between items-center mb-2">
+            <div class="card-header flex justify-between items-center mb-0">
               <button class="team-event-btn" data-team="team1" title="Add Event">
                 <img src="icons/plus.svg" alt="Add Event" class="w-8 h-8" />
               </button>
-              <h3 class="team-name text-lg font-semibold"></h3>
+              <h3 class="team-name text-xl font-semibold"></h3>
               <button class="team-edit-btn" data-team="team1" title="Edit Players">
-                <img src="icons/players.svg" alt="Edit Players" class="w-6 h-6" />
+                <img src="icons/players.svg" alt="Edit Players" class="w-8 h-8" />
               </button>
             </div>
             <!-- Combine the score display and scoring buttons into a single row.  The green goal flag sits to the
                  left of the central score, while the orange two‑pointer (when applicable) and white point flags
                  sit to the right.  This layout mirrors the native app screenshot where the score is centered
                  between its scoring controls. -->
-            <div class="score-row relative flex items-center mt-3">
+            <div class="score-row relative flex items-center mt-1 mb-2">
               <!-- Goal flag anchored on the left side -->
               <button class="team-goal-btn w-12 h-12 flex items-center justify-center" data-team="team1" title="Goal">
                 <img src="icons/greenflag.svg" alt="Goal" class="w-10 h-10" />
@@ -462,19 +462,19 @@
 
           <!-- Team 2 Card -->
           <div id="team2-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
-            <div class="card-header flex justify-between items-center mb-2">
+            <div class="card-header flex justify-between items-center mb-0">
               <button class="team-event-btn" data-team="team2" title="Add Event">
                 <img src="icons/plus.svg" alt="Add Event" class="w-8 h-8" />
               </button>
-              <h3 class="team-name text-lg font-semibold"></h3>
+              <h3 class="team-name text-xl font-semibold"></h3>
               <button class="team-edit-btn" data-team="team2" title="Edit Players">
-                <img src="icons/players.svg" alt="Edit Players" class="w-6 h-6" />
+                <img src="icons/players.svg" alt="Edit Players" class="w-8 h-8" />
               </button>
             </div>
             <!-- Combine the score display and scoring buttons into a single row.  The goal flag sits
                  to the left of the central score, while the two‑pointer (when applicable) and
                  white point flags sit to the right.  This mirrors the layout for team 1. -->
-            <div class="score-row relative flex items-center mt-3">
+            <div class="score-row relative flex items-center mt-1 mb-2">
               <!-- Goal flag anchored on the left side -->
               <button class="team-goal-btn w-12 h-12 flex items-center justify-center" data-team="team2" title="Goal">
                 <img src="icons/greenflag.svg" alt="Goal" class="w-10 h-10" />
@@ -505,7 +505,7 @@
         <!-- The old quick scoring button group and central edit players button were removed.  Each
           team card now includes its own goal/point and edit icons. -->
         <!-- Last event display and toggle for full list -->
-        <div id="last-event-display" class="bg-gray-800 border border-gray-700 rounded p-4 my-4 hidden cursor-pointer text-gray-100">
+        <div id="last-event-display" class="bg-gray-800 border border-gray-700 rounded p-4 mt-4 mb-4 hidden cursor-pointer text-gray-100">
           <!-- This content will be populated dynamically -->
         </div>
 
