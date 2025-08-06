@@ -527,12 +527,12 @@
       const subs = teamEvents.filter(e => e.type === EventType.SUBSTITUTION);
       
       // Shooting stats
-      const goals = shots.filter(s => s.outcome === ShotOutcome.GOAL).length;
-      const points = shots.filter(s => s.outcome === ShotOutcome.POINT).length;
-      const twoPointers = shots.filter(s => s.outcome === ShotOutcome.TWO_POINTER).length;
-      const wides = shots.filter(s => s.outcome === ShotOutcome.WIDE).length;
-      const saved = shots.filter(s => s.outcome === ShotOutcome.SAVED).length;
-      const blocked = shots.filter(s => s.outcome === ShotOutcome.DROPPED_SHORT || s.outcome === ShotOutcome.OFF_POST).length;
+      const goals = shots.filter(s => s.shotOutcome === ShotOutcome.GOAL).length;
+      const points = shots.filter(s => s.shotOutcome === ShotOutcome.POINT).length;
+      const twoPointers = shots.filter(s => s.shotOutcome === ShotOutcome.TWO_POINTER).length;
+      const wides = shots.filter(s => s.shotOutcome === ShotOutcome.WIDE).length;
+      const saved = shots.filter(s => s.shotOutcome === ShotOutcome.SAVED).length;
+      const blocked = shots.filter(s => s.shotOutcome === ShotOutcome.DROPPED_SHORT || s.shotOutcome === ShotOutcome.OFF_POST).length;
       
       const totalShots = shots.length;
       const successfulShots = goals + points + twoPointers;
@@ -862,13 +862,26 @@
     const playerStats = {};
     
     scoringEvents.forEach(event => {
-      if (!event.player1Id) return; // Skip events without player
+      let player;
+      let playerId;
       
-      const player = team.players.find(p => p.id === event.player1Id);
-      if (!player) return;
+      if (!event.player1Id) {
+        // Handle events without player assignment
+        playerId = 'unknown';
+        player = { id: 'unknown', name: 'unknown', jerseyNumber: '?' };
+      } else {
+        player = team.players.find(p => p.id === event.player1Id);
+        playerId = event.player1Id;
+        
+        if (!player) {
+          // Handle case where player ID exists but player not found
+          playerId = 'unknown';
+          player = { id: 'unknown', name: 'unknown', jerseyNumber: '?' };
+        }
+      }
       
-      if (!playerStats[player.id]) {
-        playerStats[player.id] = {
+      if (!playerStats[playerId]) {
+        playerStats[playerId] = {
           name: player.name,
           jerseyNumber: player.jerseyNumber,
           total: { goals: 0, points: 0, twoPointers: 0 },
@@ -877,7 +890,7 @@
         };
       }
       
-      const stats = playerStats[player.id];
+      const stats = playerStats[playerId];
       const isFree = event.shotType === ShotType.FREE;
       const isPenalty = event.shotType === ShotType.PENALTY;
       
