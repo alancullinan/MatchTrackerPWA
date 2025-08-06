@@ -970,7 +970,6 @@
       try {
         const imageFile = new File([imageBlob], 'match-update.png', { type: 'image/png' });
         await navigator.share({
-          title: 'Match Update',
           files: [imageFile]
         });
         return;
