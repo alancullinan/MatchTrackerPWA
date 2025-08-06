@@ -863,6 +863,81 @@
     `;
   }
   
+  // Generate match share image using Canvas
+  function generateMatchShareImage(match, team1Score, team2Score) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Set canvas size for social sharing (Instagram-style square)
+      canvas.width = 800;
+      canvas.height = 800;
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#1f2937'); // gray-800
+      gradient.addColorStop(1, '#111827'); // gray-900
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Competition header
+      ctx.fillStyle = '#f3f4f6'; // gray-100
+      ctx.font = 'bold 42px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(match.competition || 'Match Update', canvas.width / 2, 100);
+      
+      // Team names and scores
+      const team1Y = 300;
+      const team2Y = 400;
+      
+      // Team 1
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(match.team1.name, 80, team1Y);
+      
+      ctx.textAlign = 'right';
+      ctx.fillText(`${team1Score.goals}-${team1Score.points}`, canvas.width - 80, team1Y);
+      
+      // Team 2
+      ctx.textAlign = 'left';
+      ctx.fillText(match.team2.name, 80, team2Y);
+      
+      ctx.textAlign = 'right';
+      ctx.fillText(`${team2Score.goals}-${team2Score.points}`, canvas.width - 80, team2Y);
+      
+      // Separator line
+      ctx.strokeStyle = '#4b5563'; // gray-600
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(80, 450);
+      ctx.lineTo(canvas.width - 80, 450);
+      ctx.stroke();
+      
+      // Timer and period info
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`⏱️ ${formatTimeForSharing(match.elapsedTime)} - ${match.currentPeriod}`, canvas.width / 2, 520);
+      
+      // Venue (if available)
+      if (match.venue) {
+        ctx.fillText(`📍 ${match.venue}`, canvas.width / 2, 570);
+      }
+      
+      // App branding
+      ctx.fillStyle = '#60a5fa'; // blue-400
+      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      const brandingY = match.venue ? 650 : 620;
+      ctx.fillText('📱 Alans Match Tracker', canvas.width / 2, brandingY);
+      
+      // Convert to blob
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/png', 0.9);
+    });
+  }
+
   async function shareBasicMatchInfo() {
     const match = findMatchById(appState.currentMatchId);
     if (!match) return;
@@ -871,52 +946,92 @@
     const team1Score = computeTeamScore(match, 'team1');
     const team2Score = computeTeamScore(match, 'team2');
     
-    // Format the share text
-    let shareText = `*${match.competition || 'Match Update'}*\n\n`;
+    // Generate match image
+    const imageBlob = await generateMatchShareImage(match, team1Score, team2Score);
     
-    // Format team names with truncation and padding for alignment
-    const maxNameLength = 12;
-    const team1Name = match.team1.name.length > maxNameLength ? 
-      match.team1.name.substring(0, maxNameLength - 1) + '…' : 
-      match.team1.name;
-    const team2Name = match.team2.name.length > maxNameLength ? 
-      match.team2.name.substring(0, maxNameLength - 1) + '…' : 
-      match.team2.name;
+    // Create a simple caption for the image
+    const caption = `${match.competition || 'Match Update'}\n${match.team1.name} ${team1Score.goals}-${team1Score.points}\n${match.team2.name} ${team2Score.goals}-${team2Score.points}\n⏱️ ${formatTimeForSharing(match.elapsedTime)} - ${match.currentPeriod}${match.venue ? `\n📍 ${match.venue}` : ''}\n\n📱 Alans Match Tracker`;
     
-    // Create aligned score block using monospace formatting
-    shareText += '```\n';
-    shareText += `${team1Name.padEnd(maxNameLength)} ${team1Score.goals}-${team1Score.points}\n`;
-    shareText += `${team2Name.padEnd(maxNameLength)} ${team2Score.goals}-${team2Score.points}\n`;
-    shareText += '```\n\n';
-    shareText += `⏱️ ${formatTimeForSharing(match.elapsedTime)} - ${match.currentPeriod}\n`;
-    
-    // Add venue if available
-    if (match.venue) {
-      shareText += `📍 ${match.venue}\n`;
-    }
-    
-    shareText += `\n📱 Alans Match Tracker`;
-    
-    // Try using Web Share API first (mobile)
-    if (navigator.share) {
+    // Try sharing image with Web Share API first (mobile)
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'match-update.png', { type: 'image/png' })] })) {
       try {
+        const imageFile = new File([imageBlob], 'match-update.png', { type: 'image/png' });
         await navigator.share({
           title: 'Match Update',
-          text: shareText
+          text: caption,
+          files: [imageFile]
         });
         return;
       } catch (err) {
-        console.log('Native sharing failed, falling back to clipboard');
+        console.log('Image sharing failed, trying text with image save:', err);
       }
     }
     
-    // Fallback to clipboard
+    // If image sharing not supported, offer to save image and share text
     try {
-      await navigator.clipboard.writeText(shareText);
-      showShareSuccessMessage('Match update copied to clipboard! You can now paste it in WhatsApp or any messaging app.');
+      // Create download link for image
+      const imageUrl = URL.createObjectURL(imageBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = imageUrl;
+      downloadLink.download = `match-update-${match.team1.name}-vs-${match.team2.name}.png`;
+      
+      // Try text sharing with Web Share API
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Match Update',
+            text: caption
+          });
+          
+          // Ask user if they want to download the image too
+          const modal = document.createElement('div');
+          modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+          modal.innerHTML = `
+            <div class="bg-gray-800 text-gray-100 p-6 rounded-lg max-w-sm mx-4">
+              <h3 class="text-lg font-bold mb-3">Download Match Image?</h3>
+              <p class="text-gray-300 mb-4">Would you like to save the match image to your device as well?</p>
+              <div class="flex space-x-3">
+                <button id="download-image-btn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Save Image</button>
+                <button id="skip-image-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-gray-100 px-4 py-2 rounded">Skip</button>
+              </div>
+            </div>
+          `;
+          
+          document.body.appendChild(modal);
+          
+          modal.querySelector('#download-image-btn').addEventListener('click', () => {
+            downloadLink.click();
+            document.body.removeChild(modal);
+            URL.revokeObjectURL(imageUrl);
+          });
+          
+          modal.querySelector('#skip-image-btn').addEventListener('click', () => {
+            document.body.removeChild(modal);
+            URL.revokeObjectURL(imageUrl);
+          });
+          
+          return;
+        } catch (err) {
+          console.log('Text sharing also failed, falling back to clipboard and image download');
+        }
+      }
+      
+      // Fallback: save image and copy text
+      downloadLink.click();
+      await navigator.clipboard.writeText(caption);
+      showShareSuccessMessage('Match image downloaded and text copied to clipboard!');
+      URL.revokeObjectURL(imageUrl);
+      
     } catch (err) {
-      // Ultimate fallback - create a text area for manual copy
-      createManualCopyFallback(shareText);
+      console.log('Image download failed, falling back to text only');
+      
+      // Ultimate fallback - text only
+      try {
+        await navigator.clipboard.writeText(caption);
+        showShareSuccessMessage('Match update copied to clipboard!');
+      } catch (clipErr) {
+        createManualCopyFallback(caption);
+      }
     }
   }
   
