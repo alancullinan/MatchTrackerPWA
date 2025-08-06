@@ -14,6 +14,7 @@ This is a vanilla JavaScript single-page application with no build system or ext
 - **script.js** - All JavaScript logic (match management, timer, events, localStorage persistence)  
 - **styles.css** - CSS styles optimized for mobile with dark theme
 - **icons/** - SVG icons for various match events and UI elements
+- **create-icons.html** - Utility for generating and testing icon designs
 
 The app uses a view-based architecture with sections that are shown/hidden via JavaScript:
 - Match list view (main screen)
@@ -39,8 +40,9 @@ The app uses a view-based architecture with sections that are shown/hidden via J
 
 Since this is a vanilla JavaScript app with no build system:
 
-- **Testing**: Open index.html directly in a browser or use a local server
+- **Testing**: Open index.html directly in a browser or use a local server (e.g., `python -m http.server` or `live-server`)
 - **No build commands**: Files can be edited directly
+- **Service Worker Updates**: When modifying cached files, update the cache version in sw.js
 - **No package.json**: Uses local Tailwind CSS (tailwind-minimal.css) for offline functionality
 - **Mobile-first**: Designed primarily for mobile devices
 - **PWA Features**: Includes service worker (sw.js) for offline caching and manifest.json for app installation
@@ -67,7 +69,7 @@ Matches are stored in localStorage with this structure:
 - **Timer System**: setInterval-based timer with pause/resume functionality and period transitions
 - **Event System**: Comprehensive event logging with timestamps and detailed metadata
 - **Data Export/Import**: JSON-based data management for backup and transfer
-- **Service Worker**: Caches all static assets for offline functionality (cache version: v1.1.7)
+- **Service Worker**: Caches all static assets for offline functionality (cache version: v1.2.4)
 
 ## Core JavaScript Modules
 
