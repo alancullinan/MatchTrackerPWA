@@ -1102,7 +1102,7 @@
       canvas.width = 800;
       const maxScorers = Math.min(scorers.length, 10);
       const headerHeight = 280; // Space for team name, score, and "Scorers" header
-      const rowHeight = 85;
+      const rowHeight = 95; // Increased to accommodate breakdown text below main score
       const scorersHeight = maxScorers * rowHeight;
       const footerHeight = 120; // Space for branding and bottom padding
       const extraHeight = scorers.length > maxScorers ? 40 : 0; // Space for "and X more" text
@@ -1142,21 +1142,22 @@
         
         // Scorer list with dividing lines
         let currentY = 340;
-        const rowHeight = 85; // More space for better visual separation below divider lines
+        const rowHeight = 95; // Increased space to accommodate breakdown text below main score
         const maxScorers = Math.min(scorers.length, 10); // Limit to top 10 scorers
         
         for (let i = 0; i < maxScorers; i++) {
           const scorer = scorers[i];
           const isFootball = match.matchType === 'football' || match.matchType === 'ladies_football';
           
-          // Calculate centered text position within the row
-          const textY = currentY + (rowHeight / 2); // Center text within the row space
+          // Calculate text positions within the row - main score higher up to make room for breakdown below
+          const mainScoreY = currentY + (rowHeight / 2) + 5; // Position main score with more space from divider above
+          const breakdownY = currentY + (rowHeight / 2) + 25; // Position breakdown below main score
           
           // Player name - bigger for mobile readability
           ctx.fillStyle = '#f3f4f6'; // gray-100
           ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
           ctx.textAlign = 'left';
-          ctx.fillText(scorer.name, 80, textY);
+          ctx.fillText(scorer.name, 80, mainScoreY);
           
           // Build score display and breakdown
           const scoreDisplay = formatScoreDisplay(scorer.total, isFootball);
@@ -1170,21 +1171,19 @@
             breakdowns.push(`${formatScoreDisplay(scorer.penaltyBreakdown, isFootball)} p`);
           }
           
-          // Main score - always positioned consistently at a fixed location
+          // Main score - positioned at the right edge
           ctx.fillStyle = '#f3f4f6'; // gray-100
           ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
           ctx.textAlign = 'right';
-          // Reserve space for breakdown - position main score at a consistent location
-          const mainScoreX = canvas.width - 200; // Fixed position leaving room for breakdown
-          ctx.fillText(scoreDisplay, mainScoreX, textY);
+          ctx.fillText(scoreDisplay, canvas.width - 80, mainScoreY);
           
-          // Position breakdown at right edge if it exists
+          // Position breakdown below main score if it exists (like scorecard layout)
           if (breakdowns.length > 0) {
             ctx.fillStyle = '#9ca3af'; // gray-400
             ctx.font = '18px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
             ctx.textAlign = 'right';
             const breakdownText = `(${breakdowns.join(', ')})`;
-            ctx.fillText(breakdownText, canvas.width - 80, textY);
+            ctx.fillText(breakdownText, canvas.width - 80, breakdownY);
           }
           
           // Add dividing line between entries (except for last entry)
@@ -1217,11 +1216,11 @@
         ctx.fillText('No scorers yet', canvas.width / 2, 320);
       }
       
-      // App branding
+      // App branding - position relative to bottom of canvas
       ctx.fillStyle = '#60a5fa'; // blue-400  
       ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Alans Match Tracker', canvas.width / 2, 750);
+      ctx.fillText('Alans Match Tracker', canvas.width / 2, canvas.height - 40);
       
       // Convert to blob
       canvas.toBlob((blob) => {
