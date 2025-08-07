@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+
+<svg
+   width="923.62714"
+   height="699.81677"
+   viewBox="-102.4 -102.4 1418.6913 1074.9186"
+   fill="#ff0000"
+   class="icon"
+   version="1.1"
+   stroke="#ff0000"
+   stroke-width="15.36"
+   id="svg3"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs3" />
+  <rect
+     style="fill:#ffffff;stroke-width:0;stroke-dasharray:none"
+     id="rect4-8"
+     width="1418.6913"
+     height="1074.9186"
+     x="-102.39999"
+     y="-102.4"
+     rx="133.32036" />
+  <rect
+     style="fill:#4d4d4d;stroke-width:0;stroke-dasharray:none"
+     id="rect4"
+     width="1327.6691"
+     height="1005.9525"
+     x="-56.888878"
+     y="-67.916969"
+     rx="124.76662" />
+  <g
+     id="SVGRepo_iconCarrier"
+     transform="matrix(0.58639154,0,0,0.58639154,306.78476,28.563248)">
+    <path
+       d="M 512,897.6 C 404,897.6 302.4,855.2 226.4,779.2 150.4,703.2 108,601.6 108,493.6 108,385.6 150.4,284 226.4,208 302.4,132 404,89.6 512,89.6 c 108,0 209.6,42.4 285.6,118.4 157.6,157.6 157.6,413.6 0,571.2 -76,76 -177.6,118.4 -285.6,118.4 z m 0,-760 c -95.2,0 -184.8,36.8 -252,104 -67.2,67.2 -104,156.8 -104,252 0,95.2 36.8,184.8 104,252 67.2,67.2 156.8,104 252,104 95.2,0 184.8,-36.8 252,-104 139.2,-139.2 139.2,-364.8 0,-504 -67.2,-67.2 -156.8,-104 -252,-104 z"
+       fill=""
+       id="path1" />
+    <path
+       d="M 707.872,329.392 348.096,689.16 316.416,657.48 676.192,297.712 Z"
+       fill=""
+       id="path2" />
+    <path
+       d="m 328,340.8 32,-31.2 348,348 -32,32 z"
+       fill=""
+       id="path3" />
+  </g>
+  <text
+     xml:space="preserve"
+     style="font-size:15.2807px;text-align:start;writing-mode:lr-tb;direction:ltr;text-anchor:start;fill:#1a1a1a;stroke-width:0;stroke-dasharray:none"
+     x="341.06201"
+     y="836.99872"
+     id="text5"><tspan
+       id="tspan5"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:244.491px;font-family:Sans;-inkscape-font-specification:'Sans, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;stroke-width:0"
+       x="341.06201"
+       y="836.99872">Miss</tspan></text>
+</svg>
