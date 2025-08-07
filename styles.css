@@ -238,6 +238,26 @@ main {
   gap: 0.5rem;
 }
 
+/* Event type option buttons using full button images */
+.event-type-option {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.event-type-option:hover {
+  opacity: 0.8;
+}
+
+.event-type-option img {
+  display: block;
+  width: 80%;
+  height: auto;
+  margin: 0 auto;
+}
+
 /* Match cards in list */
 .match-list {
   display: flex;
