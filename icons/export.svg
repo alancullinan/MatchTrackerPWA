@@ -1,9 +1,36 @@
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
-<svg fill="#ffffff" width="800px" height="800px" viewBox="-422.4 -422.4 2764.80 2764.80" xmlns="http://www.w3.org/2000/svg">
-<g id="SVGRepo_bgCarrier" stroke-width="0">
-<rect x="-422.4" y="-422.4" width="2764.80" height="2764.80" rx="1382.4" fill="#2563eb" strokewidth="0"/>
-</g>
-<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
-<g id="SVGRepo_iconCarrier"> <path d="m0 1016.081 409.186 409.073 79.85-79.736-272.867-272.979h1136.415V959.611H216.169l272.866-272.866-79.85-79.85L0 1016.082ZM1465.592 305.32l315.445 315.445h-315.445V305.32Zm402.184 242.372-329.224-329.11C1507.042 187.07 1463.334 169 1418.835 169h-743.83v677.647h112.94V281.941h564.706v451.765h451.765v903.53H787.946V1185.47H675.003v564.705h1242.353V667.522c0-44.498-18.07-88.207-49.581-119.83Z" fill-rule="evenodd"/> </g>
-</svg>
+
+<svg
+   fill="#ffffff"
+   width="800"
+   height="800"
+   viewBox="-384 -384 2688 2688"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="SVGRepo_bgCarrier"
+     stroke-width="0">
+    <rect
+       x="-384"
+       y="-384"
+       width="2688"
+       height="2688"
+       rx="1344"
+       fill="#2563eb"
+       strokewidth="0"
+       id="rect1" />
+  </g>
+  <g
+     id="SVGRepo_iconCarrier"
+     transform="translate(-73.92,-33.6)">
+    <path
+       d="m -6.72,1016.081 409.186,409.073 79.85,-79.736 -272.867,-272.979 H 1345.864 V 959.611 H 209.449 L 482.315,686.745 402.465,606.895 -6.72,1016.082 Z M 1458.872,305.32 1774.317,620.765 h -315.445 z m 402.184,242.372 -329.224,-329.11 C 1500.322,187.07 1456.614,169 1412.115,169 h -743.83 v 677.647 h 112.94 V 281.941 h 564.706 v 451.765 h 451.765 v 903.53 H 781.226 V 1185.47 H 668.283 v 564.705 H 1910.636 V 667.522 c 0,-44.498 -18.07,-88.207 -49.581,-119.83 z"
+       fill-rule="evenodd"
+       id="path1" />
+  </g>
+</svg>
