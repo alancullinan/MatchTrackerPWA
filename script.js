@@ -457,7 +457,7 @@
       // Create panel card using exact same method as match cards
       const card = document.createElement('div');
       card.className =
-        'panel-card relative bg-gray-800 border border-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-700 flex flex-col space-y-1 text-left';
+        'match-card relative bg-gray-800 border border-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-700 flex flex-col space-y-1 text-left';
       card.addEventListener('click', () => showPanelEditor(panel.id));
 
       // Panel name line (same as competition line in match cards)
@@ -505,7 +505,7 @@
       nameInput.value = panel.name;
       appState.editingPanelId = panelId;
     } else {
-      title.textContent = 'Create New Panel';
+      title.textContent = 'New Panel';
       nameInput.value = '';
       appState.editingPanelId = null;
     }
@@ -540,14 +540,14 @@
     }
     
     container.innerHTML = players.map((player, index) => `
-      <div class="flex items-center space-x-2 bg-gray-600 p-2 rounded">
+      <div class="flex justify-between items-center bg-gray-600 p-2 rounded">
         <input type="text" value="${player.name || ''}" 
                onchange="updatePanelPlayerName(${index}, this.value)"
-               class="flex-1 p-1 bg-gray-700 text-gray-100 border border-gray-500 rounded text-sm"
+               class="flex-1 mr-3 p-1 bg-gray-700 text-gray-100 border border-gray-500 rounded text-sm"
                placeholder="Player name" />
         <button onclick="removePanelPlayer(${index})" 
-                class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">
-          Remove
+                class="cursor-pointer hover:opacity-70 flex-shrink-0" title="Remove Player">
+          <img src="icons/delete.svg" alt="Remove Player" class="w-6 h-6" />
         </button>
       </div>
     `).join('');
