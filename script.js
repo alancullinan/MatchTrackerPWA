@@ -118,7 +118,9 @@
     currentMatchId: null,
     timerInterval: null,
     editingEventId: null, // currently edited event id
-    editingMatchId: null // holds ID of match being edited via the form
+    editingMatchId: null, // holds ID of match being edited via the form
+    playerPanels: [], // array of player panel objects
+    lastSelectedPanels: {} // stores last selected panel for each team (matchId-teamKey)
   };
 
   /* Enhanced Storage System with IndexedDB fallback */
@@ -289,7 +291,10 @@
           version: '1.0.0',
           exportDate: new Date().toISOString(),
           matches: appState.matches,
-          matchCount: appState.matches.length
+          matchCount: appState.matches.length,
+          playerPanels: appState.playerPanels,
+          panelCount: appState.playerPanels.length,
+          lastSelectedPanels: appState.lastSelectedPanels
         };
         
         const jsonString = JSON.stringify(exportData, null, 2);
@@ -335,12 +340,35 @@
         const newMatches = importData.matches.filter(m => !existingIds.has(m.id));
         
         appState.matches.push(...newMatches);
+        
+        // Import player panels if they exist
+        let newPanelsCount = 0;
+        if (importData.playerPanels && Array.isArray(importData.playerPanels)) {
+          // Merge with existing panels (avoid duplicates by ID)
+          const existingPanelIds = new Set(appState.playerPanels.map(p => p.id));
+          const newPanels = importData.playerPanels.filter(p => !existingPanelIds.has(p.id));
+          
+          appState.playerPanels.push(...newPanels);
+          newPanelsCount = newPanels.length;
+        }
+        
+        // Import last selected panels if they exist
+        if (importData.lastSelectedPanels && typeof importData.lastSelectedPanels === 'object') {
+          // Merge with existing last selected panels (imported ones take precedence)
+          appState.lastSelectedPanels = { ...appState.lastSelectedPanels, ...importData.lastSelectedPanels };
+        }
+        
         await saveAppState();
         renderMatchList();
         
+        let message = `Imported ${newMatches.length} new matches (${importData.matches.length - newMatches.length} duplicates skipped)`;
+        if (newPanelsCount > 0) {
+          message += ` and ${newPanelsCount} new player panels`;
+        }
+        
         return { 
           success: true, 
-          message: `Imported ${newMatches.length} new matches (${importData.matches.length - newMatches.length} duplicates skipped)` 
+          message: message
         };
       } catch (error) {
         console.error('Import failed:', error);
@@ -387,6 +415,234 @@
       return html;
     }
   };
+
+  /* Player Panels Management Functions */
+  
+  // Show player panels main view
+  function showPlayerPanelsView() {
+    showView('player-panels-view');
+    renderPlayerPanelsList();
+  }
+  
+  // Render the list of all player panels
+  function renderPlayerPanelsList() {
+    const container = document.getElementById('player-panels-list');
+    if (!container) return;
+    
+    if (appState.playerPanels.length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-gray-400 py-8">
+          <p class="text-lg mb-2">No player panels yet</p>
+          <p class="text-sm">Create a panel to store player names for quick selection during matches.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = appState.playerPanels.map(panel => `
+      <div class="bg-gray-700 rounded-lg p-4 flex justify-between items-center">
+        <div>
+          <h3 class="text-lg font-semibold">${panel.name}</h3>
+          <p class="text-sm text-gray-400">${panel.players.length} players</p>
+          ${panel.createdDate ? `<p class="text-xs text-gray-500">Created: ${new Date(panel.createdDate).toLocaleDateString()}</p>` : ''}
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="showPanelEditor('${panel.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+            Edit
+          </button>
+          <button onclick="deletePanelWithConfirm('${panel.id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+            Delete
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  // Show panel editor (for new or existing panel)
+  function showPanelEditor(panelId = null) {
+    showView('panel-editor-view');
+    
+    const isEditing = panelId !== null;
+    const title = document.getElementById('panel-editor-title');
+    const nameInput = document.getElementById('panel-name');
+    
+    if (isEditing) {
+      const panel = appState.playerPanels.find(p => p.id === panelId);
+      if (!panel) return;
+      
+      title.textContent = 'Edit Panel';
+      nameInput.value = panel.name;
+      appState.editingPanelId = panelId;
+    } else {
+      title.textContent = 'Create New Panel';
+      nameInput.value = '';
+      appState.editingPanelId = null;
+    }
+    
+    renderPanelPlayersList();
+    nameInput.focus();
+  }
+  
+  // Render the list of players in the panel editor
+  function renderPanelPlayersList() {
+    const container = document.getElementById('panel-players-list');
+    if (!container) return;
+    
+    const panelId = appState.editingPanelId;
+    let players = [];
+    
+    if (panelId) {
+      const panel = appState.playerPanels.find(p => p.id === panelId);
+      players = panel ? panel.players : [];
+    } else {
+      // For new panels, use temporary players
+      players = window.tempPanelPlayers || [];
+    }
+    
+    if (players.length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-gray-400 py-4">
+          <p>No players added yet. Click "Add Player" to start.</p>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = players.map((player, index) => `
+      <div class="flex items-center space-x-2 bg-gray-600 p-2 rounded">
+        <input type="text" value="${player.name || ''}" 
+               onchange="updatePanelPlayerName(${index}, this.value)"
+               class="flex-1 p-1 bg-gray-700 text-gray-100 border border-gray-500 rounded text-sm"
+               placeholder="Player name" />
+        <button onclick="removePanelPlayer(${index})" 
+                class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-xs">
+          Remove
+        </button>
+      </div>
+    `).join('');
+  }
+  
+  // Add a new player to the current panel being edited
+  function addPlayerToPanel() {
+    const panelId = appState.editingPanelId;
+    let panel;
+    
+    if (panelId) {
+      panel = appState.playerPanels.find(p => p.id === panelId);
+      if (!panel) return;
+    } else {
+      // If not editing an existing panel, create a temporary structure
+      if (!window.tempPanelPlayers) window.tempPanelPlayers = [];
+      window.tempPanelPlayers.push({ id: generateId(), name: '' });
+      renderPanelPlayersList();
+      return;
+    }
+    
+    panel.players.push({ id: generateId(), name: '' });
+    renderPanelPlayersList();
+  }
+  
+  // Remove a player from the current panel being edited
+  function removePanelPlayer(index) {
+    const panelId = appState.editingPanelId;
+    
+    if (panelId) {
+      const panel = appState.playerPanels.find(p => p.id === panelId);
+      if (!panel) return;
+      
+      panel.players.splice(index, 1);
+    } else {
+      if (window.tempPanelPlayers) {
+        window.tempPanelPlayers.splice(index, 1);
+      }
+    }
+    
+    renderPanelPlayersList();
+  }
+  
+  // Update a player's name in the current panel being edited
+  function updatePanelPlayerName(index, newName) {
+    const panelId = appState.editingPanelId;
+    
+    if (panelId) {
+      const panel = appState.playerPanels.find(p => p.id === panelId);
+      if (!panel) return;
+      
+      panel.players[index].name = newName;
+    } else {
+      if (window.tempPanelPlayers) {
+        window.tempPanelPlayers[index].name = newName;
+      }
+    }
+  }
+  
+  // Save the current panel being edited
+  function savePanelEditor() {
+    const nameInput = document.getElementById('panel-name');
+    const panelName = nameInput.value.trim();
+    
+    if (!panelName) {
+      alert('Please enter a panel name.');
+      nameInput.focus();
+      return;
+    }
+    
+    const panelId = appState.editingPanelId;
+    
+    if (panelId) {
+      // Editing existing panel
+      const panel = appState.playerPanels.find(p => p.id === panelId);
+      if (!panel) return;
+      
+      panel.name = panelName;
+      // Players are already updated in real-time
+    } else {
+      // Creating new panel
+      const players = window.tempPanelPlayers || [];
+      const newPanel = {
+        id: generateId(),
+        name: panelName,
+        players: players.filter(p => p.name.trim() !== ''), // Remove empty names
+        createdDate: new Date().toISOString()
+      };
+      
+      appState.playerPanels.push(newPanel);
+      window.tempPanelPlayers = null;
+    }
+    
+    appState.editingPanelId = null;
+    saveAppState();
+    showPlayerPanelsView();
+  }
+  
+  // Cancel panel editing
+  function cancelPanelEditor() {
+    appState.editingPanelId = null;
+    window.tempPanelPlayers = null;
+    showPlayerPanelsView();
+  }
+  
+  // Delete a panel with confirmation
+  function deletePanelWithConfirm(panelId) {
+    const panel = appState.playerPanels.find(p => p.id === panelId);
+    if (!panel) return;
+    
+    if (confirm(`Delete "${panel.name}" panel? This cannot be undone.`)) {
+      const index = appState.playerPanels.findIndex(p => p.id === panelId);
+      if (index >= 0) {
+        appState.playerPanels.splice(index, 1);
+        saveAppState();
+        renderPlayerPanelsList();
+      }
+    }
+  }
+  
+  // Make panel functions globally accessible
+  window.showPanelEditor = showPanelEditor;
+  window.deletePanelWithConfirm = deletePanelWithConfirm;
+  window.addPlayerToPanel = addPlayerToPanel;
+  window.removePanelPlayer = removePanelPlayer;
+  window.updatePanelPlayerName = updatePanelPlayerName;
 
   /* Data Management UI Functions */
   
@@ -2003,14 +2259,42 @@
       console.warn('Failed to load matches from storage', err);
       appState.matches = [];
     }
+    
+    // Load player panels
+    try {
+      const storedPanels = await StorageManager.loadData('playerPanels');
+      if (storedPanels) {
+        appState.playerPanels = storedPanels;
+      } else {
+        appState.playerPanels = [];
+      }
+    } catch (err) {
+      console.warn('Failed to load player panels from storage', err);
+      appState.playerPanels = [];
+    }
+    
+    // Load last selected panels
+    try {
+      const storedLastSelected = await StorageManager.loadData('lastSelectedPanels');
+      if (storedLastSelected) {
+        appState.lastSelectedPanels = storedLastSelected;
+      } else {
+        appState.lastSelectedPanels = {};
+      }
+    } catch (err) {
+      console.warn('Failed to load last selected panels from storage', err);
+      appState.lastSelectedPanels = {};
+    }
   }
 
   // Save matches using enhanced storage system
   async function saveAppState() {
     try {
       await StorageManager.saveData('matches', appState.matches);
+      await StorageManager.saveData('playerPanels', appState.playerPanels);
+      await StorageManager.saveData('lastSelectedPanels', appState.lastSelectedPanels);
     } catch (err) {
-      console.error('Failed to save matches', err);
+      console.error('Failed to save app state', err);
     }
   }
 
@@ -2194,6 +2478,9 @@
       }
     }
   }
+
+  // Make showView globally accessible for inline onclick handlers
+  window.showView = showView;
 
   // Reset and show match form for creating a new match
   function showAddMatchForm() {
@@ -3964,36 +4251,115 @@
     if (!match) return;
     const container = document.getElementById('players-edit-container');
     container.innerHTML = '';
+    
     // Helper to build a section for a single team's roster.
     function buildTeamSection(team, key) {
       const sec = document.createElement('div');
       // Section container styling for dark mode
       sec.className = 'team-players space-y-2';
+      
+      // Team header with panel selection
+      const headerContainer = document.createElement('div');
+      headerContainer.className = 'flex items-center justify-between mb-3';
+      
       const header = document.createElement('h3');
       header.textContent = team.name;
-      header.className = 'text-lg font-semibold text-gray-100 mb-1';
-      sec.appendChild(header);
+      header.className = 'text-lg font-semibold text-gray-100';
+      headerContainer.appendChild(header);
+      
+      // Panel selection dropdown
+      const panelSelect = document.createElement('select');
+      panelSelect.className = 'p-1 text-sm bg-gray-600 text-gray-100 border border-gray-500 rounded';
+      panelSelect.dataset.teamKey = key;
+      
+      // Add default option
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '';
+      defaultOption.textContent = 'Select Panel (Optional)';
+      panelSelect.appendChild(defaultOption);
+      
+      // Add panel options
+      appState.playerPanels.forEach(panel => {
+        const option = document.createElement('option');
+        option.value = panel.id;
+        option.textContent = panel.name;
+        panelSelect.appendChild(option);
+      });
+      
+      panelSelect.addEventListener('change', (e) => {
+        const selectedPanelId = e.target.value;
+        updatePlayerSelectionButtons(key, selectedPanelId);
+        
+        // Save the selected panel for this match and team
+        const panelKey = `${appState.currentMatchId}-${key}`;
+        if (selectedPanelId) {
+          appState.lastSelectedPanels[panelKey] = selectedPanelId;
+        } else {
+          delete appState.lastSelectedPanels[panelKey];
+        }
+        saveAppState();
+      });
+      
+      headerContainer.appendChild(panelSelect);
+      sec.appendChild(headerContainer);
+      
       // Sort players numerically by jersey number for consistency.
       const playersSorted = [...team.players].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
       playersSorted.forEach((player) => {
         const row = document.createElement('div');
-        // Row styling: display label and input horizontally
+        // Row styling: display label, input, and select button horizontally
         row.className = 'player-row flex items-center space-x-2';
+        
         const label = document.createElement('label');
         label.textContent = player.jerseyNumber;
         label.className = 'w-10 text-gray-300';
+        
         const input = document.createElement('input');
         input.type = 'text';
         input.value = player.name;
         // Persist player and team identifiers in data attributes
         input.dataset.playerId = player.id;
         input.dataset.teamKey = key;
+        input.dataset.jerseyNumber = player.jerseyNumber;
         // Dark mode styling for player name input
         input.className = 'flex-1 p-2 border rounded bg-gray-700 text-gray-100 border-gray-600';
+        
+        // Add Select Player button
+        const selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.textContent = '▼';
+        selectBtn.className = 'w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed';
+        selectBtn.title = 'Select Player from Panel';
+        selectBtn.disabled = true; // Initially disabled until panel is selected
+        selectBtn.dataset.teamKey = key;
+        selectBtn.dataset.playerId = player.id;
+        selectBtn.dataset.jerseyNumber = player.jerseyNumber;
+        
+        selectBtn.addEventListener('click', (e) => {
+          const teamKey = e.target.dataset.teamKey;
+          const playerId = e.target.dataset.playerId;
+          const jerseyNumber = e.target.dataset.jerseyNumber;
+          showPlayerSelectionDropdown(teamKey, playerId, jerseyNumber, e.target);
+        });
+        
         row.appendChild(label);
         row.appendChild(input);
+        row.appendChild(selectBtn);
         sec.appendChild(row);
       });
+      
+      // Restore the last selected panel for this match and team (after buttons are created)
+      const panelKey = `${appState.currentMatchId}-${key}`;
+      const lastSelectedPanel = appState.lastSelectedPanels[panelKey];
+      if (lastSelectedPanel) {
+        panelSelect.value = lastSelectedPanel;
+        // Update buttons to reflect the restored selection
+        // Use a small delay to ensure DOM is fully updated
+        setTimeout(() => {
+          updatePlayerSelectionButtons(key, lastSelectedPanel);
+        }, 0);
+      }
+      
       return sec;
     }
     if (teamKey === 'team1' || teamKey === 'team2') {
@@ -4008,6 +4374,78 @@
     // Display the edit players view
     showView('edit-players-view');
   }
+
+  // Update player selection buttons when panel is selected
+  function updatePlayerSelectionButtons(teamKey, panelId) {
+    const buttons = document.querySelectorAll(`button[data-team-key="${teamKey}"][data-jersey-number]`);
+    buttons.forEach(button => {
+      if (panelId) {
+        button.disabled = false;
+        button.dataset.panelId = panelId;
+      } else {
+        button.disabled = true;
+        delete button.dataset.panelId;
+      }
+    });
+  }
+
+  // Show player selection modal
+  function showPlayerSelectionDropdown(teamKey, playerId, jerseyNumber, buttonElement) {
+    const panelId = buttonElement.dataset.panelId;
+    if (!panelId) return;
+    
+    const panel = appState.playerPanels.find(p => p.id === panelId);
+    if (!panel || panel.players.length === 0) return;
+    
+    // Get modal elements
+    const modal = document.getElementById('player-selection-modal');
+    const subtitle = document.getElementById('player-selection-subtitle');
+    const playerList = document.getElementById('player-selection-list');
+    
+    // Set subtitle with jersey number and panel info
+    subtitle.textContent = `Jersey #${jerseyNumber} from ${panel.name}`;
+    
+    // Clear existing player list
+    playerList.innerHTML = '';
+    
+    // Add players to list
+    panel.players
+      .filter(player => player.name.trim() !== '') // Only show players with names
+      .forEach(player => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'w-full text-left px-4 py-3 text-gray-100 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors';
+        button.textContent = player.name;
+        
+        button.addEventListener('click', () => {
+          selectPlayerForJersey(teamKey, playerId, jerseyNumber, player.name);
+          modal.classList.add('hidden');
+        });
+        
+        playerList.appendChild(button);
+      });
+    
+    // Show modal
+    modal.classList.remove('hidden');
+  }
+
+  // Select a player for a jersey number
+  function selectPlayerForJersey(teamKey, playerId, jerseyNumber, playerName) {
+    const input = document.querySelector(`input[data-player-id="${playerId}"][data-jersey-number="${jerseyNumber}"]`);
+    if (input) {
+      input.value = playerName;
+      input.focus();
+      
+      // Trigger change event to save the selection
+      const event = new Event('change', { bubbles: true });
+      input.dispatchEvent(event);
+    }
+  }
+
+  // Make player panel functions globally accessible
+  window.updatePlayerSelectionButtons = updatePlayerSelectionButtons;
+  window.showPlayerSelectionDropdown = showPlayerSelectionDropdown;
+  window.selectPlayerForJersey = selectPlayerForJersey;
 
   // Save player name changes
   function savePlayerChanges() {
@@ -5346,6 +5784,13 @@
     // Data management modal
     document.getElementById('data-management-btn').addEventListener('click', showDataManagementModal);
     document.getElementById('close-data-management-btn').addEventListener('click', hideDataManagementModal);
+    
+    // Player panels management
+    document.getElementById('player-panels-btn').addEventListener('click', showPlayerPanelsView);
+    document.getElementById('add-panel-btn').addEventListener('click', () => showPanelEditor());
+    document.getElementById('save-panel-btn').addEventListener('click', savePanelEditor);
+    document.getElementById('cancel-panel-edit-btn').addEventListener('click', cancelPanelEditor);
+    document.getElementById('add-player-to-panel-btn').addEventListener('click', addPlayerToPanel);
     document.getElementById('export-data-btn').addEventListener('click', exportData);
     document.getElementById('select-import-file-btn').addEventListener('click', () => {
       document.getElementById('import-file-input').click();
@@ -5356,6 +5801,27 @@
     // Statistics modal
     document.getElementById('view-stats-btn').addEventListener('click', showMatchStats);
     document.getElementById('close-stats-modal-btn').addEventListener('click', hideMatchStats);
+    
+    // Player selection modal
+    document.getElementById('player-selection-cancel').addEventListener('click', () => {
+      document.getElementById('player-selection-modal').classList.add('hidden');
+    });
+    
+    // Player selection modal backdrop and escape key
+    document.getElementById('player-selection-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'player-selection-modal') {
+        document.getElementById('player-selection-modal').classList.add('hidden');
+      }
+    });
+    
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('player-selection-modal');
+        if (!modal.classList.contains('hidden')) {
+          modal.classList.add('hidden');
+        }
+      }
+    });
     
     // Share match button
     document.getElementById('share-match-btn').addEventListener('click', shareBasicMatchInfo);

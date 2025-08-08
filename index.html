@@ -50,6 +50,10 @@
             <button id="data-management-btn" class="cursor-pointer mr-3" title="Export/Import Data">
               <img src="icons/export.svg" alt="Export/Import Data" class="w-8 h-8" />
             </button>
+            <!-- Player Panels button -->
+            <button id="player-panels-btn" class="cursor-pointer mr-3" title="Manage Player Panels">
+              <img src="icons/players.svg" alt="Player Panels" class="w-8 h-8" />
+            </button>
             <!-- Add Match button aligned to the right of the header -->
             <button id="add-match-btn" class="cursor-pointer" title="Add Match">
               <img src="icons/plus.svg" alt="Add Match" class="w-8 h-8" />
@@ -687,6 +691,79 @@
           </div>
         </div>
       </div>
+
+      <!-- Player Selection Modal -->
+      <div id="player-selection-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 border border-gray-700 w-11/12 max-w-md max-h-[70vh] flex flex-col">
+          <!-- Header -->
+          <div class="flex-shrink-0 border-b border-gray-700 p-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-bold">Select Player</h3>
+              <button id="player-selection-cancel" class="primary-btn bg-gray-600 hover:bg-gray-700 text-white px-4 py-2">Cancel</button>
+            </div>
+            <p id="player-selection-subtitle" class="text-sm text-gray-300 mt-1"></p>
+          </div>
+          
+          <!-- Player List -->
+          <div class="flex-1 overflow-y-auto">
+            <div id="player-selection-list" class="p-4 space-y-2">
+              <!-- Players will be populated dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Player Panels view -->
+      <section id="player-panels-view" class="view hidden">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-bold">Player Panels</h2>
+          <div class="flex items-center">
+            <button id="add-panel-btn" class="cursor-pointer mr-3" title="Create New Panel">
+              <img src="icons/addpanel.svg" alt="Add Panel" class="w-8 h-8" />
+            </button>
+            <button onclick="showView('match-list-view')" class="text-blue-500 hover:text-blue-400 font-semibold">
+              Back to Matches
+            </button>
+          </div>
+        </div>
+        
+        <div id="player-panels-list" class="space-y-3">
+          <!-- Panel list will be populated by JavaScript -->
+        </div>
+      </section>
+
+      <!-- Panel Editor view -->
+      <section id="panel-editor-view" class="view hidden">
+        <div class="flex items-center justify-between mb-4">
+          <h2 id="panel-editor-title" class="text-2xl font-bold">Edit Panel</h2>
+          <div class="flex items-center">
+            <button id="save-panel-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded mr-3">
+              Save Panel
+            </button>
+            <button id="cancel-panel-edit-btn" class="text-blue-500 hover:text-blue-400 font-semibold">
+              Cancel
+            </button>
+          </div>
+        </div>
+        
+        <div class="mb-4">
+          <label for="panel-name" class="block text-sm font-medium mb-2">Panel Name</label>
+          <input type="text" id="panel-name" placeholder="Enter panel name (e.g., Cork Senior Team)" 
+                 class="w-full p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded" />
+        </div>
+        
+        <div class="mb-4">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-lg font-semibold">Players</h3>
+            <button id="add-player-to-panel-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
+              Add Player
+            </button>
+          </div>
+          <div id="panel-players-list" class="space-y-2">
+            <!-- Player list will be populated by JavaScript -->
+          </div>
+        </div>
+      </section>
 
         <!-- Edit players view -->
       <section id="edit-players-view" class="view" style="display: none;">
