@@ -768,6 +768,9 @@
   function renderMatchStats(stats) {
     // Render scorers cards
     renderScorersCards(stats);
+    
+    // Render shooting accuracy cards
+    renderShootingAccuracyCards(stats);
   }
   
   function renderScorersCards(stats) {
@@ -940,6 +943,141 @@
     return scorers;
   }
   
+  // Calculate team shooting comparison data
+  function calculateTeamShootingComparison(match) {
+    const team1Name = match.team1.name;
+    const team2Name = match.team2.name;
+    
+    // Get all shot events for each team
+    const team1Shots = match.events.filter(e => 
+      e.type === EventType.SHOT && e.teamId === match.team1.id
+    );
+    const team2Shots = match.events.filter(e => 
+      e.type === EventType.SHOT && e.teamId === match.team2.id
+    );
+    
+    // Calculate successful shots for each team
+    const team1Successful = team1Shots.filter(s => 
+      s.shotOutcome === ShotOutcome.GOAL || 
+      s.shotOutcome === ShotOutcome.POINT || 
+      s.shotOutcome === ShotOutcome.TWO_POINTER
+    ).length;
+    
+    const team2Successful = team2Shots.filter(s => 
+      s.shotOutcome === ShotOutcome.GOAL || 
+      s.shotOutcome === ShotOutcome.POINT || 
+      s.shotOutcome === ShotOutcome.TWO_POINTER
+    ).length;
+    
+    // Calculate accuracy percentages
+    const team1Accuracy = team1Shots.length > 0 ? 
+      Math.round((team1Successful / team1Shots.length) * 100) : 0;
+    const team2Accuracy = team2Shots.length > 0 ? 
+      Math.round((team2Successful / team2Shots.length) * 100) : 0;
+    
+    return {
+      team1: {
+        name: team1Name,
+        accuracy: team1Accuracy,
+        successful: team1Successful,
+        total: team1Shots.length
+      },
+      team2: {
+        name: team2Name,
+        accuracy: team2Accuracy,
+        successful: team2Successful,
+        total: team2Shots.length
+      }
+    };
+  }
+  
+  // Calculate individual player shooting stats for a team
+  function calculatePlayerShootingStats(match, teamName) {
+    const team = match.team1.name === teamName ? match.team1 : match.team2;
+    const teamId = team.id;
+    
+    // Get all shot events for this team
+    const allShots = match.events.filter(event => 
+      event.type === EventType.SHOT && event.teamId === teamId
+    );
+    
+    // Group by player
+    const playerStats = {};
+    
+    allShots.forEach(event => {
+      let player;
+      let playerId;
+      
+      if (!event.player1Id) {
+        playerId = 'unknown';
+        player = { id: 'unknown', name: 'Unknown Player', jerseyNumber: '?' };
+      } else {
+        player = team.players.find(p => p.id === event.player1Id);
+        playerId = event.player1Id;
+        
+        if (!player) {
+          playerId = 'unknown';
+          player = { id: 'unknown', name: 'Unknown Player', jerseyNumber: '?' };
+        }
+      }
+      
+      if (!playerStats[playerId]) {
+        playerStats[playerId] = {
+          name: player.name,
+          jerseyNumber: player.jerseyNumber,
+          totalShots: 0,
+          successfulShots: 0,
+          breakdown: {
+            goals: 0,
+            points: 0,
+            twoPointers: 0,
+            wide: 0,
+            saved: 0,
+            droppedShort: 0,
+            offPost: 0
+          }
+        };
+      }
+      
+      const stats = playerStats[playerId];
+      stats.totalShots++;
+      
+      // Categorize the shot outcome
+      if (event.shotOutcome === ShotOutcome.GOAL) {
+        stats.successfulShots++;
+        stats.breakdown.goals++;
+      } else if (event.shotOutcome === ShotOutcome.POINT) {
+        stats.successfulShots++;
+        stats.breakdown.points++;
+      } else if (event.shotOutcome === ShotOutcome.TWO_POINTER) {
+        stats.successfulShots++;
+        stats.breakdown.twoPointers++;
+      } else if (event.shotOutcome === ShotOutcome.WIDE) {
+        stats.breakdown.wide++;
+      } else if (event.shotOutcome === ShotOutcome.SAVED) {
+        stats.breakdown.saved++;
+      } else if (event.shotOutcome === ShotOutcome.DROPPED_SHORT) {
+        stats.breakdown.droppedShort++;
+      } else if (event.shotOutcome === ShotOutcome.OFF_POST) {
+        stats.breakdown.offPost++;
+      }
+    });
+    
+    // Convert to array and calculate accuracy
+    const playerArray = Object.values(playerStats).map(player => ({
+      ...player,
+      accuracy: player.totalShots > 0 ? Math.round((player.successfulShots / player.totalShots) * 100) : 0
+    }));
+    
+    // Sort by total shots attempted (most active shooters first)
+    return playerArray.sort((a, b) => {
+      if (b.totalShots !== a.totalShots) {
+        return b.totalShots - a.totalShots;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }
+  
   // Format score display based on match type
   function formatScoreDisplay(score, isFootball) {
     if (isFootball) {
@@ -949,6 +1087,139 @@
     } else {
       return `${score.goals}-${score.points.toString().padStart(2, '0')}`;
     }
+  }
+  
+  // Main function to render all shooting accuracy cards
+  function renderShootingAccuracyCards(stats) {
+    const container = document.getElementById('stats-accuracy-cards');
+    if (!container) {
+      console.error('Stats accuracy cards container not found');
+      return;
+    }
+    
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) {
+      console.error('No match found for accuracy cards');
+      return;
+    }
+    
+    // Calculate data for all cards
+    const comparisonStats = calculateTeamShootingComparison(match);
+    const team1PlayerStats = calculatePlayerShootingStats(match, match.team1.name);
+    const team2PlayerStats = calculatePlayerShootingStats(match, match.team2.name);
+    
+    // Render all three cards
+    const comparisonCard = renderTeamComparisonCard(comparisonStats);
+    const team1PlayerCard = renderPlayerShootingCard(match.team1.name, comparisonStats.team1, team1PlayerStats);
+    const team2PlayerCard = renderPlayerShootingCard(match.team2.name, comparisonStats.team2, team2PlayerStats);
+    
+    container.innerHTML = comparisonCard + team1PlayerCard + team2PlayerCard;
+  }
+  
+  // Render team comparison accuracy card
+  function renderTeamComparisonCard(comparisonStats) {
+    const { team1, team2 } = comparisonStats;
+    
+    // Color coding based on accuracy
+    const getAccuracyColor = (accuracy) => {
+      if (accuracy >= 70) return 'text-green-400';
+      if (accuracy >= 50) return 'text-yellow-400';
+      return 'text-red-400';
+    };
+    
+    return `
+      <div class="bg-gray-700 rounded-lg p-3 mb-4">
+        <div class="flex justify-between items-center px-3 mb-3">
+          <h3 class="text-lg font-bold">Team Shooting Accuracy</h3>
+          <button class="text-blue-400 hover:text-blue-300 p-3 flex items-center justify-center" onclick="shareComparisonCard()" title="Share">
+            <img src="icons/share.svg" alt="Share" class="w-8 h-8" />
+          </button>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Team 1 -->
+          <div class="text-center">
+            <div class="text-lg font-bold text-gray-200 mb-1">${team1.name}</div>
+            <div class="text-4xl font-bold ${getAccuracyColor(team1.accuracy)} leading-none">${team1.accuracy}%</div>
+            <div class="text-sm text-gray-400 mt-1">${team1.successful}/${team1.total} shots</div>
+          </div>
+          
+          <!-- Divider -->
+          <div class="text-center">
+            <div class="text-lg font-bold text-gray-200 mb-1">${team2.name}</div>
+            <div class="text-4xl font-bold ${getAccuracyColor(team2.accuracy)} leading-none">${team2.accuracy}%</div>
+            <div class="text-sm text-gray-400 mt-1">${team2.successful}/${team2.total} shots</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Render individual team player shooting card
+  function renderPlayerShootingCard(teamName, teamStats, playerStats) {
+    const formatShotBreakdown = (breakdown) => {
+      const parts = [];
+      if (breakdown.goals > 0) parts.push(`${breakdown.goals}G`);
+      if (breakdown.points > 0) parts.push(`${breakdown.points}P`);
+      if (breakdown.twoPointers > 0) parts.push(`${breakdown.twoPointers}×2P`);
+      
+      const successText = parts.length > 0 ? parts.join(' ') : '';
+      
+      const missParts = [];
+      if (breakdown.wide > 0) missParts.push(`${breakdown.wide}W`);
+      if (breakdown.saved > 0) missParts.push(`${breakdown.saved}S`);
+      if (breakdown.droppedShort > 0) missParts.push(`${breakdown.droppedShort}DS`);
+      if (breakdown.offPost > 0) missParts.push(`${breakdown.offPost}OP`);
+      
+      const missText = missParts.length > 0 ? `(${missParts.join(' ')})` : '';
+      
+      return `${successText} ${missText}`.trim();
+    };
+    
+    return `
+      <div class="bg-gray-700 rounded-lg p-3 mb-4">
+        <div class="flex justify-between items-center px-3">
+          <h3 class="text-lg font-bold">${teamName} Shooting</h3>
+          <button class="text-blue-400 hover:text-blue-300 p-3 flex items-center justify-center" onclick="sharePlayerShootingCard('${teamName}')" title="Share">
+            <img src="icons/share.svg" alt="Share" class="w-8 h-8" />
+          </button>
+        </div>
+        
+        <div class="text-center mb-3">
+          <div class="text-2xl font-bold text-blue-400 leading-none">${teamStats.accuracy}%</div>
+          <div class="text-sm text-gray-400 -mt-1">${teamStats.successful}/${teamStats.total} shots</div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="text-center text-xs text-gray-500 mb-3 px-3">
+          <div>Legend: G=Goals, P=Points, 2P=Two-Pointers, W=Wide, S=Saved, DS=Dropped Short, OP=Off Post</div>
+        </div>
+        
+        ${playerStats.length > 0 ? `
+          <div class="px-3">
+            <h4 class="text-sm font-semibold text-green-400 mb-2">Player Shooting</h4>
+            ${playerStats.map((player, index) => {
+              const isLast = index === playerStats.length - 1;
+              const shotBreakdownText = formatShotBreakdown(player.breakdown);
+              
+              return `
+                <div class="flex justify-between items-center text-sm py-2" style="border-bottom: ${isLast ? 'none' : '1px solid #9ca3af'};">
+                  <span class="font-medium">${player.name}</span>
+                  <div class="text-right">
+                    <span class="font-bold">${player.accuracy}% (${player.successfulShots}/${player.totalShots})</span>
+                    ${shotBreakdownText ? `<div class="text-xs text-gray-400">${shotBreakdownText}</div>` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : `
+          <div class="text-center text-gray-400 text-sm py-4">
+            No shots taken yet
+          </div>
+        `}
+      </div>
+    `;
   }
   
   // Share individual team card
@@ -1005,6 +1276,98 @@
   
   // Make shareTeamCard globally accessible for onclick handlers
   window.shareTeamCard = shareTeamCard;
+  
+  // Share team comparison accuracy card
+  async function shareComparisonCard() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) {
+      console.error('No match found');
+      return;
+    }
+    
+    const comparisonStats = calculateTeamShootingComparison(match);
+    
+    try {
+      // Generate comparison card image
+      const imageBlob = await generateComparisonCardImage(match, comparisonStats);
+      
+      // Try using Web Share API first (mobile)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'accuracy-comparison.png', { type: 'image/png' })] })) {
+        const file = new File([imageBlob], 'accuracy-comparison.png', { type: 'image/png' });
+        await navigator.share({
+          title: 'Team Shooting Accuracy',
+          text: `${match.team1.name} vs ${match.team2.name} shooting accuracy`,
+          files: [file]
+        });
+        return;
+      }
+      
+      // Fallback: Create download link
+      const url = URL.createObjectURL(imageBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'team-accuracy-comparison.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      showShareSuccessMessage('Accuracy comparison downloaded to your device!');
+      
+    } catch (error) {
+      console.error('Error sharing comparison card:', error);
+      showShareSuccessMessage('Unable to share comparison card. Please try again.');
+    }
+  }
+  
+  // Share individual team player shooting card
+  async function sharePlayerShootingCard(teamName) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) {
+      console.error('No match found');
+      return;
+    }
+    
+    const comparisonStats = calculateTeamShootingComparison(match);
+    const teamStats = teamName === match.team1.name ? comparisonStats.team1 : comparisonStats.team2;
+    const playerStats = calculatePlayerShootingStats(match, teamName);
+    
+    try {
+      // Generate player shooting card image
+      const imageBlob = await generatePlayerShootingCardImage(match, teamName, teamStats, playerStats);
+      
+      // Try using Web Share API first (mobile)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'player-shooting.png', { type: 'image/png' })] })) {
+        const file = new File([imageBlob], `${teamName.replace(/\s+/g, '-')}-shooting.png`, { type: 'image/png' });
+        await navigator.share({
+          title: `${teamName} Shooting Stats`,
+          text: `${teamName} player shooting statistics`,
+          files: [file]
+        });
+        return;
+      }
+      
+      // Fallback: Create download link
+      const url = URL.createObjectURL(imageBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${teamName.replace(/\s+/g, '-')}-shooting-stats.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      showShareSuccessMessage(`${teamName} shooting stats downloaded to your device!`);
+      
+    } catch (error) {
+      console.error('Error sharing player shooting card:', error);
+      showShareSuccessMessage('Unable to share shooting stats. Please try again.');
+    }
+  }
+  
+  // Make sharing functions globally accessible for onclick handlers
+  window.shareComparisonCard = shareComparisonCard;
+  window.sharePlayerShootingCard = sharePlayerShootingCard;
   
   // Generate match share image using Canvas
   function generateMatchShareImage(match, team1Score, team2Score) {
@@ -1278,6 +1641,212 @@
       
       // App branding - position relative to bottom of canvas
       ctx.fillStyle = '#60a5fa'; // blue-400  
+      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Alans Match Tracker', canvas.width / 2, canvas.height - 40);
+      
+      // Convert to blob
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/png', 0.9);
+    });
+  }
+
+  // Generate team comparison card share image using Canvas
+  function generateComparisonCardImage(match, comparisonStats) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Set canvas size for social sharing
+      canvas.width = 800;
+      canvas.height = 600;
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#374151'); // gray-700
+      gradient.addColorStop(1, '#1f2937'); // gray-800
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Header
+      ctx.fillStyle = '#f3f4f6'; // gray-100
+      ctx.font = 'bold 40px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Team Shooting Accuracy', canvas.width / 2, 80);
+      
+      // Match info
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillText(`${match.team1.name} vs ${match.team2.name}`, canvas.width / 2, 130);
+      
+      // Team comparison section
+      const team1X = canvas.width * 0.25;
+      const team2X = canvas.width * 0.75;
+      const statsY = 220;
+      
+      // Team 1
+      ctx.fillStyle = '#f3f4f6'; // gray-100
+      ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(comparisonStats.team1.name, team1X, statsY);
+      
+      // Team 1 accuracy with color coding
+      const team1Color = comparisonStats.team1.accuracy >= 70 ? '#22c55e' : 
+                         comparisonStats.team1.accuracy >= 50 ? '#eab308' : '#ef4444';
+      ctx.fillStyle = team1Color;
+      ctx.font = 'bold 64px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillText(`${comparisonStats.team1.accuracy}%`, team1X, statsY + 80);
+      
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.font = '24px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillText(`${comparisonStats.team1.successful}/${comparisonStats.team1.total} shots`, team1X, statsY + 120);
+      
+      // Team 2
+      ctx.fillStyle = '#f3f4f6'; // gray-100
+      ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillText(comparisonStats.team2.name, team2X, statsY);
+      
+      // Team 2 accuracy with color coding
+      const team2Color = comparisonStats.team2.accuracy >= 70 ? '#22c55e' : 
+                         comparisonStats.team2.accuracy >= 50 ? '#eab308' : '#ef4444';
+      ctx.fillStyle = team2Color;
+      ctx.font = 'bold 64px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillText(`${comparisonStats.team2.accuracy}%`, team2X, statsY + 80);
+      
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.font = '24px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillText(`${comparisonStats.team2.successful}/${comparisonStats.team2.total} shots`, team2X, statsY + 120);
+      
+      // Center divider line
+      ctx.strokeStyle = '#6b7280'; // gray-500
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, statsY - 30);
+      ctx.lineTo(canvas.width / 2, statsY + 140);
+      ctx.stroke();
+      
+      // App branding
+      ctx.fillStyle = '#60a5fa'; // blue-400
+      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Alans Match Tracker', canvas.width / 2, canvas.height - 40);
+      
+      // Convert to blob
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/png', 0.9);
+    });
+  }
+
+  // Generate team player shooting card share image using Canvas
+  function generatePlayerShootingCardImage(match, teamName, teamStats, playerStats) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Calculate dynamic height based on number of shooting players
+      canvas.width = 800;
+      const maxPlayers = Math.min(playerStats.length, 10);
+      const headerHeight = 280;
+      const rowHeight = 90;
+      const playersHeight = maxPlayers * rowHeight;
+      const footerHeight = 120;
+      const extraHeight = playerStats.length > maxPlayers ? 40 : 0;
+      
+      canvas.height = Math.max(600, headerHeight + playersHeight + footerHeight + extraHeight);
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#374151'); // gray-700
+      gradient.addColorStop(1, '#1f2937'); // gray-800
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Team name header
+      ctx.fillStyle = '#f3f4f6'; // gray-100
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${teamName} Shooting`, canvas.width / 2, 80);
+      
+      // Team accuracy
+      ctx.fillStyle = '#60a5fa'; // blue-400
+      ctx.font = 'bold 56px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillText(`${teamStats.accuracy}%`, canvas.width / 2, 160);
+      
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.fillText(`${teamStats.successful}/${teamStats.total} shots`, canvas.width / 2, 200);
+      
+      // Players section
+      if (playerStats.length > 0) {
+        ctx.fillStyle = '#22c55e'; // green-500
+        ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Player Shooting', 60, 260);
+        
+        const displayPlayers = playerStats.slice(0, maxPlayers);
+        displayPlayers.forEach((player, index) => {
+          const y = 320 + (index * rowHeight);
+          
+          // Player name
+          ctx.fillStyle = '#f3f4f6'; // gray-100
+          ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.textAlign = 'left';
+          const playerName = player.name || `Player ${player.jerseyNumber}`;
+          ctx.fillText(playerName, 60, y);
+          
+          // Shooting stats
+          ctx.fillStyle = '#f3f4f6'; // gray-100
+          ctx.textAlign = 'right';
+          ctx.fillText(`${player.accuracy}% (${player.successfulShots}/${player.totalShots})`, canvas.width - 60, y);
+          
+          // Shot breakdown - separate success and misses like UI format
+          const successParts = [];
+          if (player.breakdown.goals > 0) successParts.push(`${player.breakdown.goals}G`);
+          if (player.breakdown.points > 0) successParts.push(`${player.breakdown.points}P`);
+          if (player.breakdown.twoPointers > 0) successParts.push(`${player.breakdown.twoPointers}×2P`);
+          
+          const missParts = [];
+          if (player.breakdown.wide > 0) missParts.push(`${player.breakdown.wide}W`);
+          if (player.breakdown.saved > 0) missParts.push(`${player.breakdown.saved}S`);
+          if (player.breakdown.droppedShort > 0) missParts.push(`${player.breakdown.droppedShort}DS`);
+          if (player.breakdown.offPost > 0) missParts.push(`${player.breakdown.offPost}OP`);
+          
+          const successText = successParts.length > 0 ? successParts.join(' ') : '';
+          const missText = missParts.length > 0 ? `(${missParts.join(' ')})` : '';
+          const breakdownText = `${successText} ${missText}`.trim();
+          
+          if (breakdownText) {
+            ctx.fillStyle = '#9ca3af'; // gray-400
+            ctx.font = '20px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+            ctx.fillText(breakdownText, canvas.width - 60, y + 25);
+          }
+        });
+        
+        if (playerStats.length > maxPlayers) {
+          const remainingY = 320 + (maxPlayers * rowHeight);
+          ctx.fillStyle = '#9ca3af'; // gray-400
+          ctx.font = '24px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`... and ${playerStats.length - maxPlayers} more players`, canvas.width / 2, remainingY);
+        }
+      } else {
+        ctx.fillStyle = '#9ca3af'; // gray-400
+        ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No shots taken yet', canvas.width / 2, 320);
+      }
+      
+      // Legend - split into two lines for better readability
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.font = '20px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Success: G=Goals, P=Points, 2P=Two-Pointers', canvas.width / 2, canvas.height - 100);
+      ctx.fillText('Misses: W=Wide, S=Saved, DS=Dropped Short, OP=Off Post', canvas.width / 2, canvas.height - 75);
+      
+      // App branding
+      ctx.fillStyle = '#60a5fa'; // blue-400
       ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('Alans Match Tracker', canvas.width / 2, canvas.height - 40);
