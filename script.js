@@ -418,6 +418,17 @@
 
   /* Player Panels Management Functions */
   
+  // Show home view
+  function showHomeView() {
+    showView('home-view');
+  }
+
+  // Show matches view
+  function showMatchesView() {
+    showView('match-list-view');
+    displayMatches();
+  }
+
   // Show player panels main view
   function showPlayerPanelsView() {
     showView('player-panels-view');
@@ -439,23 +450,43 @@
       return;
     }
     
-    container.innerHTML = appState.playerPanels.map(panel => `
-      <div class="bg-gray-700 rounded-lg p-4 flex justify-between items-center">
-        <div>
-          <h3 class="text-lg font-semibold">${panel.name}</h3>
-          <p class="text-sm text-gray-400">${panel.players.length} players</p>
-          ${panel.createdDate ? `<p class="text-xs text-gray-500">Created: ${new Date(panel.createdDate).toLocaleDateString()}</p>` : ''}
-        </div>
-        <div class="flex items-center space-x-2">
-          <button onclick="showPanelEditor('${panel.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">
-            Edit
-          </button>
-          <button onclick="deletePanelWithConfirm('${panel.id}')" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
-            Delete
-          </button>
-        </div>
-      </div>
-    `).join('');
+    // Clear container and create panel cards using the same method as match cards
+    container.innerHTML = '';
+    
+    appState.playerPanels.forEach(panel => {
+      // Create panel card using exact same method as match cards
+      const card = document.createElement('div');
+      card.className =
+        'panel-card relative bg-gray-800 border border-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-700 flex flex-col space-y-1 text-left';
+      card.addEventListener('click', () => showPanelEditor(panel.id));
+
+      // Panel name line (same as competition line in match cards)
+      const nameEl = document.createElement('div');
+      nameEl.className = 'text-gray-100 font-semibold text-lg';
+      nameEl.textContent = panel.name;
+      card.appendChild(nameEl);
+
+      // Players count line (same as teams line in match cards)
+      const playersEl = document.createElement('div');
+      playersEl.className = 'text-gray-400 text-sm';
+      playersEl.textContent = `${panel.players.length} players`;
+      card.appendChild(playersEl);
+
+      // Add delete button using exact same method as match cards
+      const del = document.createElement('button');
+      del.title = 'Delete panel';
+      del.className = 'absolute bottom-2 right-2 text-gray-300 hover:text-gray-100';
+      del.innerHTML = '<img src="icons/delete.svg" alt="Delete Panel" class="w-8 h-8" />';
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('Delete this panel?')) {
+          deletePanelWithConfirm(panel.id);
+        }
+      });
+      card.appendChild(del);
+
+      container.appendChild(card);
+    });
   }
   
   // Show panel editor (for new or existing panel)
@@ -5781,12 +5812,19 @@
   /* Event Listeners Setup */
 
   function initEventListeners() {
+    // Home screen navigation
+    document.getElementById('home-matches-btn').addEventListener('click', showMatchesView);
+    document.getElementById('home-player-panels-btn').addEventListener('click', showPlayerPanelsView);
+    document.getElementById('home-data-management-btn').addEventListener('click', showDataManagementModal);
+    
+    // Back buttons
+    document.getElementById('matches-back-btn').addEventListener('click', showHomeView);
+    document.getElementById('player-panels-back-btn').addEventListener('click', showHomeView);
+    
     // Data management modal
-    document.getElementById('data-management-btn').addEventListener('click', showDataManagementModal);
     document.getElementById('close-data-management-btn').addEventListener('click', hideDataManagementModal);
     
-    // Player panels management
-    document.getElementById('player-panels-btn').addEventListener('click', showPlayerPanelsView);
+    // Player panels management (note: data-management-btn and player-panels-btn removed from matches screen)
     document.getElementById('add-panel-btn').addEventListener('click', () => showPanelEditor());
     document.getElementById('save-panel-btn').addEventListener('click', savePanelEditor);
     document.getElementById('cancel-panel-edit-btn').addEventListener('click', cancelPanelEditor);
@@ -6194,9 +6232,11 @@
   // Initialise application
   async function init() {
     await loadAppState();
-    renderMatchList();
+    renderMatchList(); // Prepare match list data even though we don't show it initially
     initEventListeners();
-    // Hide the header by default since the list view does not display a title.  It will
+    // Show home screen by default instead of match list
+    showHomeView();
+    // Hide the header by default since the home view does not display a title.  It will
     // be shown again when opening match details via showView().
     const header = document.querySelector('header');
     if (header) header.style.display = 'none';
