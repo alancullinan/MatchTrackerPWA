@@ -715,26 +715,6 @@
         </div>
       </div>
 
-      <!-- Player Selection Modal -->
-      <div id="player-selection-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-gray-800 text-gray-100 border border-gray-700 w-11/12 max-w-md max-h-[70vh] flex flex-col">
-          <!-- Header -->
-          <div class="flex-shrink-0 border-b border-gray-700 p-4">
-            <div class="flex justify-between items-center">
-              <h3 class="text-lg font-bold">Select Player</h3>
-              <button id="player-selection-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2">Cancel</button>
-            </div>
-            <p id="player-selection-subtitle" class="text-sm text-gray-300 mt-1"></p>
-          </div>
-          
-          <!-- Player List -->
-          <div class="flex-1 overflow-y-auto" style="max-height: calc(70vh - 120px);">
-            <div id="player-selection-list" class="p-4">
-              <!-- Players will be populated dynamically -->
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Player Panels view -->
       <section id="player-panels-view" class="view hidden">
@@ -798,6 +778,26 @@
         </div>
         <!-- Container for the editable list of players.  Sections for each team will be inserted here dynamically. -->
         <div id="players-edit-container" class="players-edit-container space-y-4"></div>
+      </section>
+
+      <!-- Player Selection view -->
+      <section id="player-selection-view" class="view hidden">
+        <!-- Top bar for player selection: Cancel on the left, title centered -->
+        <div class="flex justify-between items-center my-2">
+          <button type="button" id="player-selection-back-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
+          <h2 class="text-xl font-semibold">Select Player</h2>
+          <div class="w-16"></div> <!-- Spacer to center title -->
+        </div>
+        
+        <!-- Subtitle for jersey and panel info -->
+        <div class="mb-4">
+          <p id="player-selection-subtitle-page" class="text-sm text-gray-300"></p>
+        </div>
+        
+        <!-- Scrollable player list -->
+        <div id="player-selection-list-page" class="space-y-2">
+          <!-- Players will be populated by JavaScript -->
+        </div>
       </section>
     </main>
     <script src="script.js"></script>

@@ -4461,7 +4461,7 @@
     });
   }
 
-  // Show player selection modal
+  // Show player selection as a page view
   function showPlayerSelectionDropdown(teamKey, playerId, jerseyNumber, buttonElement) {
     const panelId = buttonElement.dataset.panelId;
     if (!panelId) return;
@@ -4469,10 +4469,16 @@
     const panel = appState.playerPanels.find(p => p.id === panelId);
     if (!panel || panel.players.length === 0) return;
     
-    // Get modal elements
-    const modal = document.getElementById('player-selection-modal');
-    const subtitle = document.getElementById('player-selection-subtitle');
-    const playerList = document.getElementById('player-selection-list');
+    // Store selection context for later use
+    appState.playerSelectionContext = {
+      teamKey: teamKey,
+      playerId: playerId,
+      jerseyNumber: jerseyNumber
+    };
+    
+    // Get page elements
+    const subtitle = document.getElementById('player-selection-subtitle-page');
+    const playerList = document.getElementById('player-selection-list-page');
     
     // Set subtitle with jersey number and panel info
     subtitle.textContent = `Jersey #${jerseyNumber} from ${panel.name}`;
@@ -4486,19 +4492,20 @@
       .forEach(player => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'w-full text-left px-6 py-4 text-lg text-gray-100 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors mb-2';
+        button.className = 'w-full text-left px-6 py-4 text-lg text-gray-100 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors';
         button.textContent = player.name;
         
         button.addEventListener('click', () => {
           selectPlayerForJersey(teamKey, playerId, jerseyNumber, player.name);
-          modal.classList.add('hidden');
+          // Return to edit players view
+          showView('edit-players-view');
         });
         
         playerList.appendChild(button);
       });
     
-    // Show modal
-    modal.classList.remove('hidden');
+    // Show player selection view
+    showView('player-selection-view');
   }
 
   // Select a player for a jersey number
@@ -5881,26 +5888,6 @@
     document.getElementById('view-stats-btn').addEventListener('click', showMatchStats);
     document.getElementById('close-stats-modal-btn').addEventListener('click', hideMatchStats);
     
-    // Player selection modal
-    document.getElementById('player-selection-cancel').addEventListener('click', () => {
-      document.getElementById('player-selection-modal').classList.add('hidden');
-    });
-    
-    // Player selection modal backdrop and escape key
-    document.getElementById('player-selection-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'player-selection-modal') {
-        document.getElementById('player-selection-modal').classList.add('hidden');
-      }
-    });
-    
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        const modal = document.getElementById('player-selection-modal');
-        if (!modal.classList.contains('hidden')) {
-          modal.classList.add('hidden');
-        }
-      }
-    });
     
     // Share match button
     document.getElementById('share-match-btn').addEventListener('click', shareBasicMatchInfo);
@@ -5955,6 +5942,12 @@
     if (savePlayersBtn) savePlayersBtn.addEventListener('click', savePlayerChanges);
     const cancelPlayersBtn = document.getElementById('cancel-players-btn');
     if (cancelPlayersBtn) cancelPlayersBtn.addEventListener('click', cancelPlayerChanges);
+    
+    // Player selection back button
+    const playerSelectionBackBtn = document.getElementById('player-selection-back-btn');
+    if (playerSelectionBackBtn) playerSelectionBackBtn.addEventListener('click', () => {
+      showView('edit-players-view');
+    });
 
     // Edit event modal buttons
     const saveEditEventBtn = document.getElementById('save-edit-event-btn');
