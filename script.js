@@ -4492,7 +4492,7 @@
       .forEach(player => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'w-full text-left px-6 py-4 text-lg text-gray-100 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors';
+        button.className = 'w-full text-left px-8 py-6 text-xl text-gray-100 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors mb-4';
         button.textContent = player.name;
         
         button.addEventListener('click', () => {
