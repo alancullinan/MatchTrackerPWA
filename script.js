@@ -504,14 +504,23 @@
       title.textContent = 'Edit Panel';
       nameInput.value = panel.name;
       appState.editingPanelId = panelId;
+      
+      // Create backup of original panel state for cancel functionality
+      appState.originalPanelState = {
+        name: panel.name,
+        players: JSON.parse(JSON.stringify(panel.players)) // Deep copy of players array
+      };
     } else {
       title.textContent = 'New Panel';
       nameInput.value = '';
       appState.editingPanelId = null;
+      appState.originalPanelState = null;
+      // Initialize empty players list for new panel
+      window.tempPanelPlayers = [];
     }
     
     renderPanelPlayersList();
-    nameInput.focus();
+    // nameInput.focus(); // Removed to prevent keyboard popup on mobile
   }
   
   // Render the list of players in the panel editor
@@ -566,11 +575,25 @@
       if (!window.tempPanelPlayers) window.tempPanelPlayers = [];
       window.tempPanelPlayers.push({ id: generateId(), name: '' });
       renderPanelPlayersList();
+      // Focus on the newly added player input (last one in temp list)
+      setTimeout(() => {
+        const inputs = document.querySelectorAll('#panel-players-list input[type="text"]');
+        if (inputs.length > 0) {
+          inputs[inputs.length - 1].focus();
+        }
+      }, 50);
       return;
     }
     
     panel.players.push({ id: generateId(), name: '' });
     renderPanelPlayersList();
+    // Focus on the newly added player input (last one in the list)
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('#panel-players-list input[type="text"]');
+      if (inputs.length > 0) {
+        inputs[inputs.length - 1].focus();
+      }
+    }, 50);
   }
   
   // Remove a player from the current panel being edited
@@ -614,7 +637,7 @@
     
     if (!panelName) {
       alert('Please enter a panel name.');
-      nameInput.focus();
+      // nameInput.focus(); // Removed to prevent keyboard popup on mobile
       return;
     }
     
@@ -626,14 +649,21 @@
       if (!panel) return;
       
       panel.name = panelName;
-      // Players are already updated in real-time
+      // Sort players alphabetically by name (case-insensitive)
+      panel.players = panel.players
+        .filter(p => p.name.trim() !== '') // Remove empty names
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
     } else {
       // Creating new panel
       const players = window.tempPanelPlayers || [];
+      const sortedPlayers = players
+        .filter(p => p.name.trim() !== '') // Remove empty names
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())); // Sort alphabetically
+      
       const newPanel = {
         id: generateId(),
         name: panelName,
-        players: players.filter(p => p.name.trim() !== ''), // Remove empty names
+        players: sortedPlayers,
         createdDate: new Date().toISOString()
       };
       
@@ -648,7 +678,20 @@
   
   // Cancel panel editing
   function cancelPanelEditor() {
+    const panelId = appState.editingPanelId;
+    
+    if (panelId && appState.originalPanelState) {
+      // Restore original panel state for existing panels
+      const panel = appState.playerPanels.find(p => p.id === panelId);
+      if (panel) {
+        panel.name = appState.originalPanelState.name;
+        panel.players = JSON.parse(JSON.stringify(appState.originalPanelState.players)); // Deep copy back
+      }
+    }
+    
+    // Clean up temporary state
     appState.editingPanelId = null;
+    appState.originalPanelState = null;
     window.tempPanelPlayers = null;
     showPlayerPanelsView();
   }
@@ -4289,18 +4332,15 @@
       // Section container styling for dark mode
       sec.className = 'team-players space-y-2';
       
-      // Team header with panel selection
-      const headerContainer = document.createElement('div');
-      headerContainer.className = 'flex items-center justify-between mb-3';
-      
+      // Team header (name only)
       const header = document.createElement('h3');
       header.textContent = team.name;
-      header.className = 'text-lg font-semibold text-gray-100';
-      headerContainer.appendChild(header);
+      header.className = 'text-lg font-semibold text-gray-100 mb-2';
+      sec.appendChild(header);
       
-      // Panel selection dropdown
+      // Panel selection dropdown (moved below team name)
       const panelSelect = document.createElement('select');
-      panelSelect.className = 'p-1 text-sm bg-gray-600 text-gray-100 border border-gray-500 rounded';
+      panelSelect.className = 'p-3 text-lg bg-gray-600 text-gray-100 border border-gray-500 rounded mb-3 w-full';
       panelSelect.dataset.teamKey = key;
       
       // Add default option
@@ -4331,8 +4371,7 @@
         saveAppState();
       });
       
-      headerContainer.appendChild(panelSelect);
-      sec.appendChild(headerContainer);
+      sec.appendChild(panelSelect);
       
       // Sort players numerically by jersey number for consistency.
       const playersSorted = [...team.players].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
@@ -4358,8 +4397,8 @@
         // Add Select Player button
         const selectBtn = document.createElement('button');
         selectBtn.type = 'button';
-        selectBtn.textContent = '▼';
-        selectBtn.className = 'w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs disabled:opacity-50 disabled:cursor-not-allowed';
+        selectBtn.innerHTML = '<img src="icons/selectplayer.svg" alt="Select Player" class="w-6 h-6" />';
+        selectBtn.className = 'cursor-pointer hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed';
         selectBtn.title = 'Select Player from Panel';
         selectBtn.disabled = true; // Initially disabled until panel is selected
         selectBtn.dataset.teamKey = key;
@@ -4367,10 +4406,12 @@
         selectBtn.dataset.jerseyNumber = player.jerseyNumber;
         
         selectBtn.addEventListener('click', (e) => {
-          const teamKey = e.target.dataset.teamKey;
-          const playerId = e.target.dataset.playerId;
-          const jerseyNumber = e.target.dataset.jerseyNumber;
-          showPlayerSelectionDropdown(teamKey, playerId, jerseyNumber, e.target);
+          // Use currentTarget to get the button element instead of potentially the img inside it
+          const button = e.currentTarget;
+          const teamKey = button.dataset.teamKey;
+          const playerId = button.dataset.playerId;
+          const jerseyNumber = button.dataset.jerseyNumber;
+          showPlayerSelectionDropdown(teamKey, playerId, jerseyNumber, button);
         });
         
         row.appendChild(label);
@@ -4445,7 +4486,7 @@
       .forEach(player => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'w-full text-left px-4 py-3 text-gray-100 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors';
+        button.className = 'w-full text-left px-6 py-4 text-lg text-gray-100 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors mb-2';
         button.textContent = player.name;
         
         button.addEventListener('click', () => {
