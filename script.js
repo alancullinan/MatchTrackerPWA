@@ -2551,6 +2551,14 @@
         header.style.display = 'none';
       }
     }
+    
+    // Add/remove grass background class for header when in match view
+    const body = document.body;
+    if (viewId === 'match-details-view') {
+      body.classList.add('match-view-active');
+    } else {
+      body.classList.remove('match-view-active');
+    }
   }
 
   // Make showView globally accessible for inline onclick handlers
