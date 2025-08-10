@@ -493,12 +493,12 @@ main {
 #match-details-view #last-event-display {
   background-color: rgba(31, 41, 55, 0.85) !important;
   position: fixed !important;
-  bottom: 1rem !important;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
   left: 1rem !important;
   right: 1rem !important;
   margin: 0 !important;
   z-index: 10 !important;
-  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: 1rem !important;
   border-radius: 0.5rem !important; /* All corners rounded now that there's a gap */
 }
 
@@ -538,6 +538,8 @@ main {
 .match-view-active header {
   background: none !important;
   position: relative;
+  /* Add safe area padding for Dynamic Island */
+  padding-top: env(safe-area-inset-top, 0px) !important;
 }
 
 .match-view-active header::before {
@@ -555,11 +557,11 @@ main {
 /* Keep content properly spaced within the match details view with exact height calculation */
 .match-view-active #match-details-view {
   padding: 1rem;
-  /* Calculate exact height: 100vh minus header height (approximately 4rem) */
-  height: calc(100vh - 4rem);
+  /* Calculate exact height: 100vh minus header height minus safe areas */
+  height: calc(100vh - 4rem - env(safe-area-inset-top, 0px));
   overflow-y: hidden;
-  /* Reserve space for the fixed bottom event card */
-  padding-bottom: 8rem; /* Space for bottom card */
+  /* Reserve space for the fixed bottom event card and safe area */
+  padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px)); /* Space for bottom card and safe area */
   box-sizing: border-box;
 }
 
