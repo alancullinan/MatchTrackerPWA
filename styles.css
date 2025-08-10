@@ -500,6 +500,12 @@ main {
   margin-left: 0 !important;
   margin-right: 0 !important;
   margin-bottom: 0 !important;
+  /* Completely override HTML classes that cause card-within-card effect */
+  border: none !important;
+  box-shadow: none !important;
+  /* Lower z-index to be below modals */
+  z-index: 1 !important;
+  position: relative !important;
 }
 
 /* Apply grass background to entire body when in match view and prevent scrolling */
@@ -594,6 +600,9 @@ html {
   /* Set up as flex container for proper event card positioning */
   display: flex;
   flex-direction: column;
+  /* Remove any z-index that creates stacking context */
+  z-index: auto !important;
+  position: relative;
 }
 
 /* Remove any gaps between header and main content */
@@ -611,24 +620,22 @@ html, body {
   padding: 0 !important;
 }
 
-/* Ensure all modals appear above everything with consistent z-index and proper positioning */
-.fixed.inset-0[id$="-modal"] {
-  z-index: 100 !important; /* Much higher than event card */
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  /* Remove black background and show dimmed grass instead */
-  background-color: rgba(0, 0, 0, 0.55) !important;
-  backdrop-filter: brightness(0.4) !important;
+/* Reset stacking context issues */
+.match-view-active #match-details-view {
+  z-index: auto !important;
+  isolation: auto !important;
 }
 
-/* Ensure all other modals also get high z-index */
-div[id$="-modal"] {
-  z-index: 100 !important;
+.match-view-active main {
+  z-index: auto !important;
+  isolation: auto !important;
+}
+
+/* Modal backdrop styling - now handled by standard Tailwind classes since modals are properly positioned */
+.fixed.inset-0[id$="-modal"] {
+  background-color: rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: brightness(0.4) !important;
+  z-index: 100 !important; /* Ensure modals appear above all content including last event card */
 }
 
 @media (min-width: 600px) {

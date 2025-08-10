@@ -242,250 +242,6 @@
               </div>
             </div>
           </div>
-        <!-- Score event modal -->
-        <!--
-          This modal is displayed when a user taps the goal or point button on a team card.
-          Instead of immediately logging a default shot, the app prompts the user to
-          select the shot type (e.g. free, penalty) and the player responsible for
-          the score.  The modal is styled to resemble the native app screenshot: a header
-          with an icon and the score type, a meta line showing team/time/period
-          information, side‑by‑side lists for shot types and players, an optional notes
-          field, and a single Done button.  The modal remains hidden by default and
-          is shown via JavaScript.
-        -->
-        <div id="score-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-2">
-              <button id="score-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
-              <h3 id="score-modal-title" class="text-lg font-bold flex items-center space-x-2">
-                <!-- Icon and label inserted dynamically -->
-              </h3>
-              <button id="score-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
-            </div>
-            <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
-              <!-- Shot type selection on the left.  This column remains static while
-                   the player column scrolls -->
-              <div id="score-type-list" class="flex-1 space-y-1">
-                <!-- Items inserted by JS -->
-              </div>
-              <!-- Player selection on the right with fixed header -->
-              <div class="flex-1 flex flex-col">
-                <div id="score-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
-                <div id="score-player-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
-                  <!-- Items inserted by JS -->
-                </div>
-              </div>
-            </div>
-            <div class="form-row flex flex-col mb-3">
-              <label for="score-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
-              <textarea id="score-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 h-12 text-sm"></textarea>
-            </div>
-            <!-- There is no separate Save button at the bottom of the scoring modal.  The top Done button
-                 handles saving the event and closing the modal. -->
-          </div>
-        </div>
-
-        <!-- Foul event modal -->
-        <div id="foul-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-2">
-              <button id="foul-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
-              <h3 id="foul-modal-title" class="text-lg font-bold flex items-center space-x-2">
-                <img src="icons/foul.svg" alt="Foul" class="w-6 h-6" />
-                <span>Foul</span>
-              </h3>
-              <button id="foul-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
-            </div>
-            
-            <!-- Team name and time info -->
-            <div id="foul-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
-              <!-- Team name, time and period info will be populated here -->
-            </div>
-            
-            <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
-              <!-- Foul type and card selection on the left -->
-              <div class="flex-1 space-y-2">
-                <!-- Foul Type Section -->
-                <div class="space-y-1">
-                  <div class="text-sm font-medium text-gray-300 mb-2">Foul Type</div>
-                  <button id="foul-type-free" class="foul-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-foul-type="free">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-4 h-4 bg-blue-500 flex items-center justify-center text-xs font-bold">F</div>
-                      <span>Free</span>
-                    </div>
-                  </button>
-                  <button id="foul-type-penalty" class="foul-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-foul-type="penalty">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-4 h-4 bg-orange-500 flex items-center justify-center text-xs font-bold">P</div>
-                      <span>Penalty</span>
-                    </div>
-                  </button>
-                </div>
-                
-                <!-- Card Section -->
-                <div class="space-y-1">
-                  <div class="text-sm font-medium text-gray-300 mb-2">Card</div>
-                  <button id="card-type-none" class="card-type-option w-full p-2 bg-blue-600 text-white border border-blue-600 rounded text-left" data-card-type="none">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-4 h-4 bg-gray-500"></div>
-                      <span>None</span>
-                    </div>
-                  </button>
-                  <button id="card-type-yellow" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="yellow">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-4 h-4 bg-yellow-400"></div>
-                      <span>Yellow Card</span>
-                    </div>
-                  </button>
-                  <button id="card-type-red" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="red">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-4 h-4 bg-red-500"></div>
-                      <span>Red Card</span>
-                    </div>
-                  </button>
-                  <button id="card-type-black" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="black">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-4 h-4 bg-gray-900 border border-gray-600"></div>
-                      <span>Black Card</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Player selection on the right with fixed header -->
-              <div class="flex-1 flex flex-col">
-                <div id="foul-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
-                <div id="foul-player-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
-                  <!-- Items inserted by JS -->
-                </div>
-              </div>
-            </div>
-            
-            <div class="form-row flex flex-col mb-3">
-              <label for="foul-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
-              <textarea id="foul-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-12 text-sm"></textarea>
-            </div>
-          </div>
-        </div>
-
-        <!-- Kickout event modal -->
-        <div id="kickout-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-2">
-              <button id="kickout-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
-              <h3 id="kickout-modal-title" class="text-lg font-bold flex items-center space-x-2">
-                <img src="icons/kickout.svg" alt="Kickout" class="w-6 h-6" />
-                <span>Kickout</span>
-              </h3>
-              <button id="kickout-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
-            </div>
-            
-            <!-- Team name and time info -->
-            <div id="kickout-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
-              <!-- Team name, time and period info will be populated here -->
-            </div>
-            
-            <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
-              <!-- Kickout outcome selection on the left -->
-              <div class="flex-1 space-y-2">
-                <div class="space-y-1">
-                  <div class="text-sm font-medium text-gray-300 mb-2">Outcome</div>
-                  <button id="kickout-outcome-won" class="kickout-outcome-option w-full p-2 bg-blue-600 text-white border border-blue-600 rounded text-left" data-kickout-outcome="won">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-4 h-4 bg-green-500 flex items-center justify-center text-xs font-bold">✓</div>
-                      <span>Won Own Kickout</span>
-                    </div>
-                  </button>
-                  <button id="kickout-outcome-lost" class="kickout-outcome-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-kickout-outcome="lost">
-                    <div class="flex items-center space-x-2">
-                      <div class="w-4 h-4 bg-red-500 flex items-center justify-center text-xs font-bold">✗</div>
-                      <span>Lost Own Kickout</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Player selection on the right with fixed header -->
-              <div class="flex-1 flex flex-col">
-                <div id="kickout-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
-                <div id="kickout-player-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
-                  <!-- Items inserted by JS -->
-                </div>
-              </div>
-            </div>
-            
-            <div class="form-row flex flex-col mb-3">
-              <label for="kickout-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
-              <textarea id="kickout-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-12 text-sm"></textarea>
-            </div>
-          </div>
-        </div>
-
-        <!-- Substitution event modal -->
-        <div id="substitution-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-2">
-              <button id="substitution-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
-              <h3 id="substitution-modal-title" class="text-lg font-bold flex items-center space-x-2">
-                <img src="icons/sub.svg" alt="Substitution" class="w-6 h-6" />
-                <span>Substitution</span>
-              </h3>
-              <button id="substitution-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
-            </div>
-            
-            <!-- Team name and time info -->
-            <div id="substitution-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
-              <!-- Team name, time and period info will be populated here -->
-            </div>
-            
-            <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
-              <!-- Player Off selection on the left -->
-              <div class="flex-1 flex flex-col">
-                <div id="substitution-player-off-header" class="text-sm font-medium text-gray-300 mb-2">Player Off</div>
-                <div id="substitution-player-off-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
-                  <!-- Items inserted by JS -->
-                </div>
-              </div>
-              
-              <!-- Player On selection on the right -->
-              <div class="flex-1 flex flex-col">
-                <div id="substitution-player-on-header" class="text-sm font-medium text-gray-300 mb-2">Player On</div>
-                <div id="substitution-player-on-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
-                  <!-- Items inserted by JS -->
-                </div>
-              </div>
-            </div>
-            
-            <div class="form-row flex flex-col mb-3">
-              <label for="substitution-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
-              <textarea id="substitution-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-12 text-sm"></textarea>
-            </div>
-          </div>
-        </div>
-
-        <!-- Note event modal -->
-        <div id="note-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-2">
-              <button id="note-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
-              <h3 id="note-modal-title" class="text-lg font-bold flex items-center space-x-2">
-                <img src="icons/note.svg" alt="Note" class="w-6 h-6" />
-                <span>Note</span>
-              </h3>
-              <button id="note-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
-            </div>
-            
-            <!-- Team name and time info -->
-            <div id="note-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
-              <!-- Team name, time and period info will be populated here -->
-            </div>
-            
-            <div class="form-row flex flex-col mb-3">
-              <label for="note-text" class="mb-1 text-sm text-gray-300">Enter note details</label>
-              <textarea id="note-text" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-32 text-sm" placeholder="Enter note details"></textarea>
-            </div>
-          </div>
-        </div>
 
           <!-- Team 2 Card -->
           <div id="team2-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
@@ -536,118 +292,366 @@
           <!-- This content will be populated dynamically -->
         </div>
 
-        <!-- Modals for adding an event and viewing the full events list -->
-        <!-- Add Event Modal -->
-        <div id="add-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-2">
-              <button id="add-event-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
-              <h3 class="text-lg font-bold">Add Event</h3>
-              <button id="add-event-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Add">Add</button>
+
+
+      </section>
+
+      <!-- Add Event Modal -->
+      <div id="add-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-2">
+            <button id="add-event-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
+            <h3 class="text-lg font-bold">Add Event</h3>
+            <button id="add-event-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Add">Add</button>
+          </div>
+          <div class="form-row flex flex-col mb-2">
+            <label for="event-type" class="mb-1">Event Type</label>
+            <select id="event-type" name="event-type" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 w-full">
+              <option value="shot">Shot</option>
+              <option value="foulConceded">Foul Conceded</option>
+              <option value="kickout">Kick‑out</option>
+              <option value="substitution">Substitution</option>
+              <option value="note">Note</option>
+            </select>
+          </div>
+          <div id="event-fields" class="space-y-2"></div>
+        </div>
+      </div>
+
+      <!-- Events List Modal -->
+      <div id="events-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-gray-800 text-gray-100 border border-gray-700 w-11/12 max-w-md max-h-[80vh] flex flex-col">
+          <!-- Sticky Header -->
+          <div class="flex-shrink-0 sticky top-0 bg-gray-800 border-b border-gray-700">
+            <div class="flex justify-between items-center p-4">
+              <h3 class="font-semibold">Events</h3>
+              <!-- Use a "Done" button for closing the events list to match
+                   the other modals and maintain consistent navigation.  It
+                   omits the X icon and relies on the blue text styling. -->
+              <button id="close-events-modal-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">
+                Done
+              </button>
             </div>
-            <div class="form-row flex flex-col mb-2">
-              <label for="event-type" class="mb-1">Event Type</label>
-              <select id="event-type" name="event-type" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 w-full">
-                <option value="shot">Shot</option>
-                <option value="foulConceded">Foul Conceded</option>
-                <option value="kickout">Kick‑out</option>
-                <option value="substitution">Substitution</option>
-                <option value="note">Note</option>
-              </select>
-            </div>
-            <div id="event-fields" class="space-y-2"></div>
+          </div>
+          
+          <!-- Scrollable Content -->
+          <div class="flex-1 overflow-y-auto p-4">
+            <!-- The events list will be populated dynamically.  Remove the divide classes
+                 so our card styling (margins and borders) stand alone without
+                 extra lines. -->
+            <ul id="events-list" class="events-list"></ul>
           </div>
         </div>
-        <!-- Events List Modal -->
-        <div id="events-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-          <div class="bg-gray-800 text-gray-100 border border-gray-700 w-11/12 max-w-md max-h-[80vh] flex flex-col">
-            <!-- Sticky Header -->
-            <div class="flex-shrink-0 sticky top-0 bg-gray-800 border-b border-gray-700">
-              <div class="flex justify-between items-center p-4">
-                <h3 class="font-semibold">Events</h3>
-                <!-- Use a "Done" button for closing the events list to match
-                     the other modals and maintain consistent navigation.  It
-                     omits the X icon and relies on the blue text styling. -->
-                <button id="close-events-modal-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">
-                  Done
+      </div>
+
+      <!-- Edit event modal overlay -->
+      <div id="edit-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-md">
+          <h3 class="text-lg font-bold mb-2">Edit Event</h3>
+          <div id="edit-event-fields" class="space-y-2"></div>
+          <div class="flex justify-end mt-4 space-x-2">
+            <button id="save-edit-event-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center space-x-1" title="Save">
+              <span class="text-lg">✅</span>
+              <span>Save</span>
+            </button>
+            <button id="cancel-edit-event-btn" class="bg-gray-600 hover:bg-gray-700 text-gray-100 px-4 py-2 rounded flex items-center space-x-1" title="Cancel">
+              <span class="text-lg">✖️</span>
+              <span>Cancel</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Period action confirmation modal -->
+      <div id="period-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-6 border border-gray-700 w-11/12 max-w-sm">
+          <h3 id="period-confirm-title" class="text-lg font-bold mb-4 text-center">Confirm Action</h3>
+          <p id="period-confirm-message" class="text-center mb-6 text-gray-300">Are you sure you want to start the half?</p>
+          <div class="flex justify-center space-x-4">
+            <button id="period-confirm-yes" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-semibold">
+              Yes
+            </button>
+            <button id="period-confirm-no" class="bg-gray-600 hover:bg-gray-700 text-gray-100 px-6 py-2 rounded font-semibold">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Event type selection modal -->
+      <div id="event-type-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-6 rounded-xl shadow-xl w-11/12 max-w-lg">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Add Event</h3>
+            <button id="event-type-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
+          </div>
+          <div id="event-type-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+            <!-- Team name, time and period info will be populated here -->
+          </div>
+          <div class="grid grid-cols-2 gap-4 mb-6">
+            <button class="event-type-option" data-event-type="miss">
+              <img src="icons/missbutton.svg" alt="Miss" class="w-full h-auto" />
+            </button>
+            <button class="event-type-option" data-event-type="foul">
+              <img src="icons/foulbutton.svg" alt="Foul" class="w-full h-auto" />
+            </button>
+            <button class="event-type-option" data-event-type="kickout">
+              <img src="icons/kickoutbutton.svg" alt="Kickout" class="w-full h-auto" />
+            </button>
+            <button class="event-type-option" data-event-type="sub">
+              <img src="icons/subbutton.svg" alt="Sub" class="w-full h-auto" />
+            </button>
+            <button class="event-type-option" data-event-type="note">
+              <img src="icons/notebutton.svg" alt="Note" class="w-full h-auto" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Score event modal -->
+      <!--
+        This modal is displayed when a user taps the goal or point button on a team card.
+        Instead of immediately logging a default shot, the app prompts the user to
+        select the shot type (e.g. free, penalty) and the player responsible for
+        the score.  The modal is styled to resemble the native app screenshot: a header
+        with an icon and the score type, a meta line showing team/time/period
+        information, side‑by‑side lists for shot types and players, an optional notes
+        field, and a single Done button.  The modal remains hidden by default and
+        is shown via JavaScript.
+      -->
+      <div id="score-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-2">
+            <button id="score-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
+            <h3 id="score-modal-title" class="text-lg font-bold flex items-center space-x-2">
+              <!-- Icon and label inserted dynamically -->
+            </h3>
+            <button id="score-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
+          </div>
+          <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
+            <!-- Shot type selection on the left.  This column remains static while
+                 the player column scrolls -->
+            <div id="score-type-list" class="flex-1 space-y-1">
+              <!-- Items inserted by JS -->
+            </div>
+            <!-- Player selection on the right with fixed header -->
+            <div class="flex-1 flex flex-col">
+              <div id="score-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
+              <div id="score-player-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
+                <!-- Items inserted by JS -->
+              </div>
+            </div>
+          </div>
+          <div class="form-row flex flex-col mb-3">
+            <label for="score-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
+            <textarea id="score-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 h-12 text-sm"></textarea>
+          </div>
+          <!-- There is no separate Save button at the bottom of the scoring modal.  The top Done button
+               handles saving the event and closing the modal. -->
+        </div>
+      </div>
+
+      <!-- Foul event modal -->
+      <div id="foul-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-2">
+            <button id="foul-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
+            <h3 id="foul-modal-title" class="text-lg font-bold flex items-center space-x-2">
+              <img src="icons/foul.svg" alt="Foul" class="w-6 h-6" />
+              <span>Foul</span>
+            </h3>
+            <button id="foul-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
+          </div>
+          
+          <!-- Team name and time info -->
+          <div id="foul-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+            <!-- Team name, time and period info will be populated here -->
+          </div>
+          
+          <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
+            <!-- Foul type and card selection on the left -->
+            <div class="flex-1 space-y-2">
+              <!-- Foul Type Section -->
+              <div class="space-y-1">
+                <div class="text-sm font-medium text-gray-300 mb-2">Foul Type</div>
+                <button id="foul-type-free" class="foul-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-foul-type="free">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-blue-500 flex items-center justify-center text-xs font-bold">F</div>
+                    <span>Free</span>
+                  </div>
+                </button>
+                <button id="foul-type-penalty" class="foul-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-foul-type="penalty">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-orange-500 flex items-center justify-center text-xs font-bold">P</div>
+                    <span>Penalty</span>
+                  </div>
+                </button>
+              </div>
+              
+              <!-- Card Section -->
+              <div class="space-y-1">
+                <div class="text-sm font-medium text-gray-300 mb-2">Card</div>
+                <button id="card-type-none" class="card-type-option w-full p-2 bg-blue-600 text-white border border-blue-600 rounded text-left" data-card-type="none">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-gray-500"></div>
+                    <span>None</span>
+                  </div>
+                </button>
+                <button id="card-type-yellow" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="yellow">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-yellow-400"></div>
+                    <span>Yellow Card</span>
+                  </div>
+                </button>
+                <button id="card-type-red" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="red">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-red-500"></div>
+                    <span>Red Card</span>
+                  </div>
+                </button>
+                <button id="card-type-black" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="black">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-gray-900 border border-gray-600"></div>
+                    <span>Black Card</span>
+                  </div>
                 </button>
               </div>
             </div>
             
-            <!-- Scrollable Content -->
-            <div class="flex-1 overflow-y-auto p-4">
-              <!-- The events list will be populated dynamically.  Remove the divide classes
-                   so our card styling (margins and borders) stand alone without
-                   extra lines. -->
-              <ul id="events-list" class="events-list"></ul>
+            <!-- Player selection on the right with fixed header -->
+            <div class="flex-1 flex flex-col">
+              <div id="foul-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
+              <div id="foul-player-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
+                <!-- Items inserted by JS -->
+              </div>
             </div>
           </div>
+          
+          <div class="form-row flex flex-col mb-3">
+            <label for="foul-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
+            <textarea id="foul-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-12 text-sm"></textarea>
+          </div>
         </div>
+      </div>
 
-        <!-- Edit event modal overlay -->
-        <div id="edit-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-          <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-md">
-            <h3 class="text-lg font-bold mb-2">Edit Event</h3>
-            <div id="edit-event-fields" class="space-y-2"></div>
-            <div class="flex justify-end mt-4 space-x-2">
-              <button id="save-edit-event-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center space-x-1" title="Save">
-                <span class="text-lg">✅</span>
-                <span>Save</span>
-              </button>
-              <button id="cancel-edit-event-btn" class="bg-gray-600 hover:bg-gray-700 text-gray-100 px-4 py-2 rounded flex items-center space-x-1" title="Cancel">
-                <span class="text-lg">✖️</span>
-                <span>Cancel</span>
-              </button>
+      <!-- Kickout event modal -->
+      <div id="kickout-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-2">
+            <button id="kickout-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
+            <h3 id="kickout-modal-title" class="text-lg font-bold flex items-center space-x-2">
+              <img src="icons/kickout.svg" alt="Kickout" class="w-6 h-6" />
+              <span>Kickout</span>
+            </h3>
+            <button id="kickout-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
+          </div>
+          
+          <!-- Team name and time info -->
+          <div id="kickout-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+            <!-- Team name, time and period info will be populated here -->
+          </div>
+          
+          <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
+            <!-- Kickout outcome selection on the left -->
+            <div class="flex-1 space-y-2">
+              <div class="space-y-1">
+                <div class="text-sm font-medium text-gray-300 mb-2">Outcome</div>
+                <button id="kickout-outcome-won" class="kickout-outcome-option w-full p-2 bg-blue-600 text-white border border-blue-600 rounded text-left" data-kickout-outcome="won">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-green-500 flex items-center justify-center text-xs font-bold">✓</div>
+                    <span>Won Own Kickout</span>
+                  </div>
+                </button>
+                <button id="kickout-outcome-lost" class="kickout-outcome-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-kickout-outcome="lost">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-4 h-4 bg-red-500 flex items-center justify-center text-xs font-bold">✗</div>
+                    <span>Lost Own Kickout</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Player selection on the right with fixed header -->
+            <div class="flex-1 flex flex-col">
+              <div id="kickout-player-header" class="text-sm font-medium text-gray-300 mb-2">Player</div>
+              <div id="kickout-player-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
+                <!-- Items inserted by JS -->
+              </div>
             </div>
           </div>
+          
+          <div class="form-row flex flex-col mb-3">
+            <label for="kickout-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
+            <textarea id="kickout-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-12 text-sm"></textarea>
+          </div>
         </div>
+      </div>
 
-        <!-- Period action confirmation modal -->
-        <div id="period-confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-6 border border-gray-700 w-11/12 max-w-sm">
-            <h3 id="period-confirm-title" class="text-lg font-bold mb-4 text-center">Confirm Action</h3>
-            <p id="period-confirm-message" class="text-center mb-6 text-gray-300">Are you sure you want to start the half?</p>
-            <div class="flex justify-center space-x-4">
-              <button id="period-confirm-yes" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-semibold">
-                Yes
-              </button>
-              <button id="period-confirm-no" class="bg-gray-600 hover:bg-gray-700 text-gray-100 px-6 py-2 rounded font-semibold">
-                Cancel
-              </button>
+      <!-- Substitution event modal -->
+      <div id="substitution-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-2">
+            <button id="substitution-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
+            <h3 id="substitution-modal-title" class="text-lg font-bold flex items-center space-x-2">
+              <img src="icons/sub.svg" alt="Substitution" class="w-6 h-6" />
+              <span>Substitution</span>
+            </h3>
+            <button id="substitution-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
+          </div>
+          
+          <!-- Team name and time info -->
+          <div id="substitution-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+            <!-- Team name, time and period info will be populated here -->
+          </div>
+          
+          <div class="flex space-x-2 mb-3" style="max-height: 60vh;">
+            <!-- Player Off selection on the left -->
+            <div class="flex-1 flex flex-col">
+              <div id="substitution-player-off-header" class="text-sm font-medium text-gray-300 mb-2">Player Off</div>
+              <div id="substitution-player-off-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
+                <!-- Items inserted by JS -->
+              </div>
+            </div>
+            
+            <!-- Player On selection on the right -->
+            <div class="flex-1 flex flex-col">
+              <div id="substitution-player-on-header" class="text-sm font-medium text-gray-300 mb-2">Player On</div>
+              <div id="substitution-player-on-list" class="space-y-1 overflow-y-auto border border-gray-600 rounded flex-1" style="max-height: 60vh;">
+                <!-- Items inserted by JS -->
+              </div>
             </div>
           </div>
+          
+          <div class="form-row flex flex-col mb-3">
+            <label for="substitution-notes" class="mb-1 text-sm text-gray-300">Optional notes</label>
+            <textarea id="substitution-notes" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-12 text-sm"></textarea>
+          </div>
         </div>
+      </div>
 
-        <!-- Event type selection modal -->
-        <div id="event-type-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-          <div class="bg-gray-800 text-gray-100 p-6 rounded-xl shadow-xl w-11/12 max-w-lg">
-            <div class="flex justify-between items-center mb-4">
-              <h3 class="text-xl font-bold">Add Event</h3>
-              <button id="event-type-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
-            </div>
-            <div id="event-type-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
-              <!-- Team name, time and period info will be populated here -->
-            </div>
-            <div class="grid grid-cols-2 gap-4 mb-6">
-              <button class="event-type-option" data-event-type="miss">
-                <img src="icons/missbutton.svg" alt="Miss" class="w-full h-auto" />
-              </button>
-              <button class="event-type-option" data-event-type="foul">
-                <img src="icons/foulbutton.svg" alt="Foul" class="w-full h-auto" />
-              </button>
-              <button class="event-type-option" data-event-type="kickout">
-                <img src="icons/kickoutbutton.svg" alt="Kickout" class="w-full h-auto" />
-              </button>
-              <button class="event-type-option" data-event-type="sub">
-                <img src="icons/subbutton.svg" alt="Sub" class="w-full h-auto" />
-              </button>
-              <button class="event-type-option" data-event-type="note">
-                <img src="icons/notebutton.svg" alt="Note" class="w-full h-auto" />
-              </button>
-            </div>
+      <!-- Note event modal -->
+      <div id="note-event-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-xl h-[85vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-2">
+            <button id="note-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
+            <h3 id="note-modal-title" class="text-lg font-bold flex items-center space-x-2">
+              <img src="icons/note.svg" alt="Note" class="w-6 h-6" />
+              <span>Note</span>
+            </h3>
+            <button id="note-modal-done" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
+          </div>
+          
+          <!-- Team name and time info -->
+          <div id="note-event-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+            <!-- Team name, time and period info will be populated here -->
+          </div>
+          
+          <div class="form-row flex flex-col mb-3">
+            <label for="note-text" class="mb-1 text-sm text-gray-300">Enter note details</label>
+            <textarea id="note-text" class="p-2 border bg-gray-700 text-gray-100 border-gray-600 rounded h-32 text-sm" placeholder="Enter note details"></textarea>
           </div>
         </div>
-      </section>
+      </div>
 
       <!-- Data Management Modal -->
       <div id="data-management-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
