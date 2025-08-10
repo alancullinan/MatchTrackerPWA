@@ -497,7 +497,7 @@ main {
   left: 1rem !important;
   right: 1rem !important;
   margin: 0 !important;
-  z-index: 10 !important;
+  z-index: 5 !important; /* Lowered to be below modals */
   padding-bottom: 1rem !important;
   border-radius: 0.5rem !important; /* All corners rounded now that there's a gap */
 }
@@ -511,19 +511,26 @@ main {
   background-attachment: fixed !important;
   margin: 0 !important;
   padding: 0 !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  /* Extend bottom beyond viewport to cover safe area */
-  bottom: calc(-1 * env(safe-area-inset-bottom, 0px)) !important;
 }
 
-/* Ensure html also prevents scrolling */
+/* Ensure html also prevents scrolling and covers safe areas */
+html {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+/* Apply grass background to html element to cover safe areas */
 .match-view-active html {
+  background-image: url('icons/grassbackground.jpg') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
@@ -598,7 +605,7 @@ html, body {
 
 /* Ensure all modals appear above everything with consistent z-index and proper positioning */
 .fixed.inset-0[id$="-modal"] {
-  z-index: 50 !important;
+  z-index: 100 !important; /* Much higher than event card */
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -609,6 +616,11 @@ html, body {
   /* Remove black background and show dimmed grass instead */
   background-color: rgba(0, 0, 0, 0.55) !important;
   backdrop-filter: brightness(0.4) !important;
+}
+
+/* Ensure all other modals also get high z-index */
+div[id$="-modal"] {
+  z-index: 100 !important;
 }
 
 @media (min-width: 600px) {
