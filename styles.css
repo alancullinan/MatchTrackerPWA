@@ -560,6 +560,12 @@ html {
   z-index: 1 !important;
 }
 
+/* Ensure header is behind modals */
+.match-view-active header {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
 .match-view-active header::before {
   display: none;
 }
@@ -574,6 +580,7 @@ html {
   position: relative !important;
   display: flex !important;
   flex-direction: column !important;
+  z-index: 1 !important; /* Lower than modals */
 }
 
 /* Keep content properly spaced within the match details view with exact height calculation */
