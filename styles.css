@@ -489,17 +489,17 @@ main {
   background-color: rgba(31, 41, 55, 0.85) !important;
 }
 
-/* Semi-transparent last event display positioned at bottom of screen */
+/* Semi-transparent last event display positioned naturally at bottom */
 #match-details-view #last-event-display {
   background-color: rgba(31, 41, 55, 0.85) !important;
-  position: fixed !important;
-  bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
-  left: 1rem !important;
-  right: 1rem !important;
-  margin: 0 !important;
-  z-index: 5 !important; /* Lowered to be below modals */
-  padding-bottom: 1rem !important;
-  border-radius: 0.5rem !important; /* All corners rounded now that there's a gap */
+  margin-top: auto !important; /* Push to bottom of flex container */
+  padding: 1rem !important;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+  border-radius: 0.5rem !important;
+  /* Match the width of team cards - no additional margin */
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 /* Apply grass background to entire body when in match view and prevent scrolling */
@@ -583,16 +583,17 @@ html {
   z-index: 1 !important; /* Lower than modals */
 }
 
-/* Keep content properly spaced within the match details view with exact height calculation */
+/* Keep content properly spaced within the match details view with flex layout */
 .match-view-active #match-details-view {
   padding: 1rem;
   /* Use flex-grow to fill remaining space after header */
   flex: 1 1 auto;
   overflow: hidden;
-  /* Reserve space for the fixed bottom event card and safe area */
-  padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px)); /* Space for bottom card and safe area */
   box-sizing: border-box;
   min-height: 0; /* Allow flex shrinking */
+  /* Set up as flex container for proper event card positioning */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Remove any gaps between header and main content */
