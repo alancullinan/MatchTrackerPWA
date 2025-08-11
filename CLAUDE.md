@@ -6,21 +6,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MatchTrackerPWA is a mobile-friendly Progressive Web App for tracking Gaelic sports matches (Football, Hurling, Ladies Football, Camogie). The app provides real-time match tracking with timers, scoring, player management, and event logging.
 
+## Development Commands
+
+Since this is a vanilla JavaScript PWA with no build system:
+
+- **Local Development**: Open `index.html` directly in browser or use a local server:
+  - `python -m http.server 8000` (Python)
+  - `npx live-server` (if live-server is installed)
+  - `php -S localhost:8000` (PHP)
+- **Testing PWA Features**: Must use HTTPS or localhost for service worker functionality
+- **Service Worker Updates**: When modifying cached files, increment the cache version in `sw.js` (currently v1.2.4)
+- **Icon Generation**: Use `create-icons.html` for creating and testing new SVG icons
+
 ## Architecture
 
-This is a vanilla JavaScript single-page application with no build system or external dependencies:
+This is a vanilla JavaScript single-page application with no external dependencies:
 
-- **index.html** - Single HTML file containing all views and modals
-- **script.js** - All JavaScript logic (match management, timer, events, localStorage persistence)  
-- **styles.css** - CSS styles optimized for mobile with dark theme
-- **icons/** - SVG icons for various match events and UI elements
-- **create-icons.html** - Utility for generating and testing icon designs
+### Core Files
+- **index.html** - Single HTML file containing all views and modals (5000+ lines)
+- **script.js** - All JavaScript logic in IIFE pattern (~5500+ lines, 121+ functions)
+- **styles.css** - Mobile-first CSS with Tailwind-like utilities and custom components
+- **tailwind-minimal.css** - Local Tailwind CSS subset for offline functionality
+- **sw.js** - Service worker for PWA caching (cache version: v1.2.4)
+- **manifest.json** - PWA manifest with app shortcuts and icons
 
-The app uses a view-based architecture with sections that are shown/hidden via JavaScript:
-- Match list view (main screen)
-- Match form view (create/edit matches)
-- Match details view (live match tracking)
-- Edit players view (team roster management)
+### View Architecture
+JavaScript-controlled section visibility system using classes:
+- **Match list view** - Main screen (`#match-list-view`)  
+- **Match form view** - Create/edit matches (`#match-form-view`)
+- **Match details view** - Live tracking interface (`#match-details-view`)
+- **Edit players view** - Team roster management (`#edit-players-view`)
+
+Views are toggled via `showView(viewName)` function that manages display states.
 
 ## Key Features
 
@@ -36,16 +53,35 @@ The app uses a view-based architecture with sections that are shown/hidden via J
 - **Football/Ladies Football**: Goals (3 points), Points (1 point), Two-pointers (2 points)
 - **Hurling/Camogie**: Goals (3 points), Points (1 point)
 
-## Development
+## Code Structure & Patterns
 
-Since this is a vanilla JavaScript app with no build system:
+### JavaScript Architecture (script.js)
+The entire application logic is contained in a single IIFE (Immediately Invoked Function Expression):
 
-- **Testing**: Open index.html directly in a browser or use a local server (e.g., `python -m http.server` or `live-server`)
-- **No build commands**: Files can be edited directly
-- **Service Worker Updates**: When modifying cached files, update the cache version in sw.js
-- **No package.json**: Uses local Tailwind CSS (tailwind-minimal.css) for offline functionality
-- **Mobile-first**: Designed primarily for mobile devices
-- **PWA Features**: Includes service worker (sw.js) for offline caching and manifest.json for app installation
+- **Enumerations**: Defined at the top (MatchPeriod, EventType, ShotOutcome, ShotType, CardType, etc.)
+- **State Management**: All data stored in browser localStorage with automatic persistence
+- **Event System**: Comprehensive event logging with timestamps and match periods
+- **Function Organization**: ~121 functions organized by feature area:
+  - Match CRUD operations
+  - Timer management and period transitions  
+  - Event recording (shots, fouls, cards, substitutions, notes)
+  - Score calculation and display
+  - Player management
+  - UI rendering and view switching
+
+### Key JavaScript Patterns
+- **Period-based Logic**: `isPlayingPeriod()` function controls when events can be recorded
+- **Team Differentiation**: Functions often take team parameters (1 or 2) for dual-team operations
+- **Modal System**: Extensive use of modals for data entry with consistent open/close patterns
+- **Event Delegation**: Click handlers attached to dynamically generated content
+- **Responsive Updates**: Real-time UI updates when match state changes
+
+### CSS Structure (styles.css)
+- **Mobile-first responsive design** with touch-optimized targets
+- **Custom utility classes** mimicking Tailwind patterns
+- **Component-based styling** for buttons, modals, forms
+- **Dark theme throughout** (gray-900 background, blue accents)
+- **Grid layouts** for match cards and statistics displays
 
 ## Data Structure
 
@@ -63,18 +99,36 @@ Matches are stored in localStorage with this structure:
 - Real-time score updates
 - Period-sensitive button states (disabled during non-playing periods)
 
-## Technical Implementation
+## Critical Implementation Details
 
-- **View Management**: JavaScript-controlled section visibility (view classes with display: none/block)
-- **Timer System**: setInterval-based timer with pause/resume functionality and period transitions
-- **Event System**: Comprehensive event logging with timestamps and detailed metadata
-- **Data Export/Import**: JSON-based data management for backup and transfer
-- **Service Worker**: Caches all static assets for offline functionality (cache version: v1.2.4)
+### Timer System
+- **setInterval-based** timer with pause/resume functionality
+- **Period transitions**: Automatic progression through match periods (1st Half → Half Time → 2nd Half → etc.)
+- **State persistence**: Timer state saved to localStorage on every update
+- **Period-sensitive UI**: Event buttons disabled during non-playing periods (Half Time, Full Time, etc.)
 
-## Core JavaScript Modules
+### Event Recording Architecture
+Events are stored as objects with this structure:
+```javascript
+{
+  id: timestamp,
+  type: EventType.SHOT, // or CARD, FOUL_CONCEDED, etc.
+  team: 1 or 2,
+  player: playerObject,
+  period: MatchPeriod.FIRST_HALF,
+  matchTime: "15:30",
+  // Event-specific data (e.g., shotOutcome, cardType, etc.)
+}
+```
 
-- **Match Management**: CRUD operations for matches with localStorage persistence
-- **Timer Logic**: Period-based match timing with automatic transitions
-- **Event Recording**: Structured event logging (shots, cards, fouls, substitutions, notes)
-- **Player Management**: Auto-generated 30-player rosters per team
-- **Score Calculation**: Real-time score computation based on match type and events
+### Player Management System
+- **Auto-generation**: 30 players per team (jerseyNumber 1-30)
+- **Naming convention**: "Player 1", "Player 2", etc. (editable)
+- **Event tracking**: Each player accumulates statistics from events
+- **Substitution support**: Players can be substituted during matches
+
+### PWA Features
+- **Service Worker**: Caches all static assets for offline functionality
+- **App Shortcuts**: "New Match" shortcut in manifest.json
+- **Standalone mode**: Runs as a native-like app when installed
+- **Touch optimizations**: All interactions designed for mobile use

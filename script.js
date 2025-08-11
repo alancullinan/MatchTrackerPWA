@@ -2835,11 +2835,6 @@
     });
     // Prepare left and right sections similar to the events list styling
     display.innerHTML = '';
-    const wrapper = document.createElement('div');
-    // Use relative positioning so we can place the event list (bars) button
-    // absolutely in the bottom right corner.  The flex layout arranges the
-    // details and time/period columns as before.
-    wrapper.className = 'relative flex justify-between items-start bg-gray-800 border border-gray-700 rounded-lg px-3 py-2';
     // Left column
     const details = document.createElement('div');
     details.className = 'flex-1';
@@ -2961,8 +2956,19 @@
       nLine.textContent = last.noteText;
       details.appendChild(nLine);
     }
-    // Append details to wrapper
-    wrapper.appendChild(details);
+    // Ensure minimum 4 lines to prevent button overlap
+    const currentLines = details.children.length;
+    const minLines = 4;
+    if (currentLines < minLines) {
+      for (let i = currentLines; i < minLines; i++) {
+        const spacer = document.createElement('div');
+        spacer.className = 'text-gray-300 text-sm';
+        spacer.innerHTML = '&nbsp;'; // Invisible content to maintain line height
+        details.appendChild(spacer);
+      }
+    }
+    // Append details to display
+    display.appendChild(details);
     // Right column: time, period and list button
     const rightCol = document.createElement('div');
     rightCol.className = 'flex flex-col items-end ml-3 flex-shrink-0';
@@ -2976,8 +2982,8 @@
     periodDiv.className = 'text-gray-400 text-xs';
     periodDiv.textContent = last.period;
     rightCol.appendChild(periodDiv);
-    // Finish assembling right column and append to the wrapper
-    wrapper.appendChild(rightCol);
+    // Finish assembling right column and append to the display
+    display.appendChild(rightCol);
     // Add an event‑list button positioned at the bottom right of the card.  This
     // button shows an icon of three bars.  The fill‑current attribute makes
     // the SVG adopt the current text colour (blue) from the class below.
@@ -2985,9 +2991,8 @@
     listBtn.id = 'show-events-btn';
     listBtn.className = 'absolute bottom-2 right-2 text-blue-400';
     listBtn.title = 'Show all events';
-    listBtn.innerHTML = '<img src="icons/burger.svg" alt="Show all events" class="w-6 h-6" />';
-    wrapper.appendChild(listBtn);
-    display.appendChild(wrapper);
+    listBtn.innerHTML = '<img src="icons/burger.svg" alt="Show all events" class="w-8 h-8" />';
+    display.appendChild(listBtn);
     display.classList.remove('hidden');
     // Attach click handler for the list button to open the events list modal
     listBtn.addEventListener('click', (e) => {
