@@ -389,24 +389,29 @@
             <h3 class="text-xl font-bold">Add Event</h3>
             <button id="event-type-modal-cancel" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Cancel">Cancel</button>
           </div>
-          <div id="event-type-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded">
+          <div id="event-type-meta" class="text-sm text-gray-400 mb-6 p-3 bg-gray-700 border border-gray-600 rounded" style="display: none;">
             <!-- Team name, time and period info will be populated here -->
           </div>
-          <div class="grid grid-cols-2 gap-4 mb-6">
-            <button class="event-type-option" data-event-type="miss">
-              <img src="icons/missbutton.svg" alt="Miss" class="w-full h-auto" />
+          <div class="flex flex-col gap-3 mb-6">
+            <button class="event-type-option w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xl font-semibold flex items-center justify-center" 
+                    style="padding: 16px 20px;" data-event-type="miss">
+              <span>Miss</span>
             </button>
-            <button class="event-type-option" data-event-type="foul">
-              <img src="icons/foulbutton.svg" alt="Foul" class="w-full h-auto" />
+            <button class="event-type-option w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xl font-semibold flex items-center justify-center" 
+                    style="padding: 16px 20px;" data-event-type="sub">
+              <span>Sub</span>
             </button>
-            <button class="event-type-option" data-event-type="kickout">
-              <img src="icons/kickoutbutton.svg" alt="Kickout" class="w-full h-auto" />
+            <button class="event-type-option w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xl font-semibold flex items-center justify-center" 
+                    style="padding: 16px 20px;" data-event-type="foul">
+              <span>Foul</span>
             </button>
-            <button class="event-type-option" data-event-type="sub">
-              <img src="icons/subbutton.svg" alt="Sub" class="w-full h-auto" />
+            <button class="event-type-option w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xl font-semibold flex items-center justify-center" 
+                    style="padding: 16px 20px;" data-event-type="kickout">
+              <span>Kickout</span>
             </button>
-            <button class="event-type-option" data-event-type="note">
-              <img src="icons/notebutton.svg" alt="Note" class="w-full h-auto" />
+            <button class="event-type-option w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xl font-semibold flex items-center justify-center" 
+                    style="padding: 16px 20px;" data-event-type="note">
+              <span>Note</span>
             </button>
           </div>
         </div>
