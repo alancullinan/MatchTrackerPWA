@@ -27,13 +27,13 @@
     <!-- Use the same background colour as the rest of the app for a seamless header.  Reduce padding to
          free vertical space and remove the drop shadow. -->
     <!-- Hide the header by default; it will be shown only on match details view via JavaScript. -->
-    <header class="bg-gray-900 text-gray-100 px-4 py-2 text-center" style="display:none;">
+    <header class="bg-gray-900 text-gray-100 px-4 pt-2 pb-0 text-center" style="display:none;">
       <!-- The app title will be updated dynamically to show the competition name when viewing a match -->
       <!-- The app title displays the competition name when viewing a match. We use a slightly larger font for better hierarchy -->
       <!-- Make the title slightly smaller to provide more space for other elements. -->
-      <h1 id="app-title" class="text-xl font-bold tracking-wide">Match Tracker</h1>
+      <h1 id="app-title" class="text-xl font-bold tracking-wide m-0">Match Tracker</h1>
     </header>
-    <main class="max-w-4xl mx-auto p-4">
+    <main class="max-w-4xl mx-auto pt-1 px-4 pb-4">
       <!-- Home screen view -->
       <section id="home-view" class="view">
         <div class="flex flex-col items-center justify-center min-h-[70vh]">
@@ -149,7 +149,7 @@
       <!-- Match details view -->
       <section id="match-details-view" class="view" style="display: none;">
         <!-- Top bar with back button, timer (with period) and edit match button -->
-        <div class="flex justify-between items-center mt-1 mb-1">
+        <div class="flex justify-between items-center mt-0 mb-1" style="margin-top: -12px;">
           <!-- Back button with icon -->
           <button id="back-to-list-btn" class="cursor-pointer" title="Back to Matches">
             <img src="icons/back.svg" alt="Back" class="w-8 h-8" />
@@ -169,6 +169,8 @@
             </button>
           </div>
         </div>
+        <!-- Spacer to increase gap between buttons and timer -->
+        <div style="height: 8px;"></div>
         <!-- Timer row: place start/end button to the left of the timer and pause/resume on the right.  The
              period label sits above the timer display to mirror the iOS layout. -->
         <!-- Spread the timer controls across the full width.  The start/end button sits on the left,
@@ -184,7 +186,7 @@
             <!-- Current period name -->
             <div id="period-display" class="text-sm font-semibold tracking-wide"></div>
             <!-- Timer display; prominent font size -->
-            <div id="timer-display" class="text-3xl font-mono font-bold">00:00</div>
+            <div id="timer-display" class="text-4xl font-mono font-bold">00:00</div>
           </div>
           <!-- Timer control buttons.  Only one of these (start, pause, resume) is visible at a time.  They
                are placed to the right of the timer to match the iOS layout. -->
@@ -197,13 +199,15 @@
             </button>
           </div>
         </div>
+        <!-- Spacer to increase gap below timer -->
+        <div style="height: 8px;"></div>
         <!-- Timer controls moved directly below the match title so the clock is prominently displayed at the top
              of the screen. -->
         <!-- Team cards styled similar to native app screenshot -->
         <div id="team-cards" class="space-y-2 mt-0 mb-2">
           <!-- Team 1 Card -->
           <div id="team1-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
-            <div class="card-header flex justify-between items-center mb-0">
+            <div class="card-header flex justify-between items-center mb-0" style="margin-top: -8px;">
               <button class="team-event-btn" data-team="team1" title="Add Event">
                 <img src="icons/plus.svg" alt="Add Event" class="w-8 h-8" />
               </button>
@@ -245,7 +249,7 @@
 
           <!-- Team 2 Card -->
           <div id="team2-card" class="team-card relative bg-gray-800 border border-gray-700 rounded-lg shadow p-4 text-gray-100">
-            <div class="card-header flex justify-between items-center mb-0">
+            <div class="card-header flex justify-between items-center mb-0" style="margin-top: -8px;">
               <button class="team-event-btn" data-team="team2" title="Add Event">
                 <img src="icons/plus.svg" alt="Add Event" class="w-8 h-8" />
               </button>
