@@ -4351,40 +4351,7 @@
       header.className = 'text-lg font-semibold text-gray-100 mb-2';
       sec.appendChild(header);
       
-      // Panel selection dropdown (moved below team name)
-      const panelSelect = document.createElement('select');
-      panelSelect.className = 'p-3 text-lg bg-gray-600 text-gray-100 border border-gray-500 rounded mb-3 w-full';
-      panelSelect.dataset.teamKey = key;
-      
-      // Add default option
-      const defaultOption = document.createElement('option');
-      defaultOption.value = '';
-      defaultOption.textContent = 'Select Panel (Optional)';
-      panelSelect.appendChild(defaultOption);
-      
-      // Add panel options
-      appState.playerPanels.forEach(panel => {
-        const option = document.createElement('option');
-        option.value = panel.id;
-        option.textContent = panel.name;
-        panelSelect.appendChild(option);
-      });
-      
-      panelSelect.addEventListener('change', (e) => {
-        const selectedPanelId = e.target.value;
-        updatePlayerSelectionButtons(key, selectedPanelId);
-        
-        // Save the selected panel for this match and team
-        const panelKey = `${appState.currentMatchId}-${key}`;
-        if (selectedPanelId) {
-          appState.lastSelectedPanels[panelKey] = selectedPanelId;
-        } else {
-          delete appState.lastSelectedPanels[panelKey];
-        }
-        saveAppState();
-      });
-      
-      sec.appendChild(panelSelect);
+      // Panel selection moved to Select Player screen
       
       // Sort players numerically by jersey number for consistency.
       const playersSorted = [...team.players].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
@@ -4413,7 +4380,7 @@
         selectBtn.innerHTML = '<img src="icons/selectplayer.svg" alt="Select Player" class="w-6 h-6" />';
         selectBtn.className = 'cursor-pointer hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed';
         selectBtn.title = 'Select Player from Panel';
-        selectBtn.disabled = true; // Initially disabled until panel is selected
+        // Button is always enabled - panel selection happens on the Select Player screen
         selectBtn.dataset.teamKey = key;
         selectBtn.dataset.playerId = player.id;
         selectBtn.dataset.jerseyNumber = player.jerseyNumber;
@@ -4433,17 +4400,7 @@
         sec.appendChild(row);
       });
       
-      // Restore the last selected panel for this match and team (after buttons are created)
-      const panelKey = `${appState.currentMatchId}-${key}`;
-      const lastSelectedPanel = appState.lastSelectedPanels[panelKey];
-      if (lastSelectedPanel) {
-        panelSelect.value = lastSelectedPanel;
-        // Update buttons to reflect the restored selection
-        // Use a small delay to ensure DOM is fully updated
-        setTimeout(() => {
-          updatePlayerSelectionButtons(key, lastSelectedPanel);
-        }, 0);
-      }
+      // Panel selection moved to Select Player screen - no restoration needed here
       
       return sec;
     }
@@ -4460,28 +4417,10 @@
     showView('edit-players-view');
   }
 
-  // Update player selection buttons when panel is selected
-  function updatePlayerSelectionButtons(teamKey, panelId) {
-    const buttons = document.querySelectorAll(`button[data-team-key="${teamKey}"][data-jersey-number]`);
-    buttons.forEach(button => {
-      if (panelId) {
-        button.disabled = false;
-        button.dataset.panelId = panelId;
-      } else {
-        button.disabled = true;
-        delete button.dataset.panelId;
-      }
-    });
-  }
+  // Function removed - panel selection moved to Select Player screen
 
   // Show player selection as a page view
   function showPlayerSelectionDropdown(teamKey, playerId, jerseyNumber, buttonElement) {
-    const panelId = buttonElement.dataset.panelId;
-    if (!panelId) return;
-    
-    const panel = appState.playerPanels.find(p => p.id === panelId);
-    if (!panel || panel.players.length === 0) return;
-    
     // Store selection context for later use
     appState.playerSelectionContext = {
       teamKey: teamKey,
@@ -4490,14 +4429,82 @@
     };
     
     // Get page elements
-    const subtitle = document.getElementById('player-selection-subtitle-page');
+    const jerseyInfo = document.getElementById('player-selection-jersey-info');
+    const panelDropdown = document.getElementById('player-selection-panel-dropdown');
     const playerList = document.getElementById('player-selection-list-page');
     
-    // Set subtitle with jersey number and panel info
-    subtitle.textContent = `Jersey #${jerseyNumber} from ${panel.name}`;
+    // Set jersey info
+    jerseyInfo.textContent = `Selecting player for Jersey #${jerseyNumber}`;
     
+    // Get saved panel selection first
+    const panelKey = `${appState.currentMatchId}-${appState.playerSelectionContext.teamKey}`;
+    const lastSelectedPanel = appState.lastSelectedPanels[panelKey];
+    const panelId = buttonElement.dataset.panelId || lastSelectedPanel;
+    
+    // Clear and populate panel dropdown - only include actual panels
+    panelDropdown.innerHTML = '';
+    
+    // Add placeholder option only if no panel is selected
+    if (!panelId) {
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.textContent = 'Select Panel';
+      placeholderOption.disabled = true;
+      placeholderOption.selected = true;
+      panelDropdown.appendChild(placeholderOption);
+    }
+    
+    appState.playerPanels.forEach(panel => {
+      const option = document.createElement('option');
+      option.value = panel.id;
+      option.textContent = panel.name;
+      panelDropdown.appendChild(option);
+    });
+    
+    // Add dropdown change event listener (remove any existing first)
+    const newDropdown = panelDropdown.cloneNode(true);
+    panelDropdown.parentNode.replaceChild(newDropdown, panelDropdown);
+    
+    // Set initial panel selection
+    if (panelId) {
+      newDropdown.value = panelId;
+    } else {
+      // Explicitly set to empty value to ensure placeholder is shown
+      newDropdown.value = '';
+    }
+    
+    newDropdown.addEventListener('change', (e) => {
+      const selectedPanelId = e.target.value;
+      updatePlayerSelectionList(selectedPanelId, playerList);
+      
+      // Save the selected panel for this match and team
+      const panelKey = `${appState.currentMatchId}-${appState.playerSelectionContext.teamKey}`;
+      if (selectedPanelId) {
+        appState.lastSelectedPanels[panelKey] = selectedPanelId;
+      } else {
+        delete appState.lastSelectedPanels[panelKey];
+      }
+      saveAppState();
+    });
+    
+    // Initialize player list
+    updatePlayerSelectionList(panelId || '', playerList);
+  
+  // Helper function to update player list based on selected panel
+  function updatePlayerSelectionList(panelId, playerList) {
     // Clear existing player list
     playerList.innerHTML = '';
+    
+    if (!panelId) {
+      playerList.innerHTML = '<p class="text-gray-400 text-center py-8">Select a panel above to see available players</p>';
+      return;
+    }
+    
+    const panel = appState.playerPanels.find(p => p.id === panelId);
+    if (!panel || panel.players.length === 0) {
+      playerList.innerHTML = '<p class="text-gray-400 text-center py-8">No players found in selected panel</p>';
+      return;
+    }
     
     // Add players to list
     panel.players
@@ -4509,13 +4516,17 @@
         button.textContent = player.name;
         
         button.addEventListener('click', () => {
-          selectPlayerForJersey(teamKey, playerId, jerseyNumber, player.name);
+          selectPlayerForJersey(appState.playerSelectionContext.teamKey, 
+                              appState.playerSelectionContext.playerId, 
+                              appState.playerSelectionContext.jerseyNumber, 
+                              player.name);
           // Return to edit players view
           showView('edit-players-view');
         });
         
         playerList.appendChild(button);
       });
+  }
     
     // Show player selection view
     showView('player-selection-view');
@@ -4535,7 +4546,6 @@
   }
 
   // Make player panel functions globally accessible
-  window.updatePlayerSelectionButtons = updatePlayerSelectionButtons;
   window.showPlayerSelectionDropdown = showPlayerSelectionDropdown;
   window.selectPlayerForJersey = selectPlayerForJersey;
 
