@@ -3197,8 +3197,8 @@
   function showScoreModal(teamKey, outcome, initial = {}) {
     const match = findMatchById(appState.currentMatchId);
     if (!match) return;
-    // Only allow scoring during playing periods
-    if (!isPlayingPeriod(match.currentPeriod)) {
+    // Only allow scoring during playing periods (except when editing)
+    if (!initial.isEdit && !isPlayingPeriod(match.currentPeriod)) {
       return;
     }
     // Prepare state for modal.  If editing an existing event, preserve its
