@@ -132,3 +132,31 @@ Events are stored as objects with this structure:
 - **App Shortcuts**: "New Match" shortcut in manifest.json
 - **Standalone mode**: Runs as a native-like app when installed
 - **Touch optimizations**: All interactions designed for mobile use
+
+## Important Implementation Guidelines
+
+### File Management
+- This is a **single-file application** - avoid creating new files unless absolutely necessary
+- All logic is contained in existing files: `index.html`, `script.js`, `styles.css`
+- NEVER split code into multiple files or create new modules
+- ALWAYS prefer editing existing files to maintain the vanilla JS architecture
+
+### Development Workflow
+- Test changes by opening `index.html` in browser (no build step required)
+- For PWA features, use localhost or HTTPS (service worker requirement)
+- When modifying cached files, increment cache version in `sw.js` (currently v1.2.4)
+- All changes take effect immediately - no compilation or build process
+
+### Code Integration Patterns
+- New functions should be added inside the existing IIFE in `script.js`
+- Follow existing naming conventions and code organization
+- Maintain the period-based logic system for all new event types
+- Use existing modal patterns for any new UI interactions
+- Follow the team parameter convention (1 or 2) for dual-team operations
+
+### Critical Implementation Notes
+- **No external dependencies**: Project uses only vanilla JavaScript, HTML, and CSS
+- **Single HTML file**: All views and modals are contained in `index.html` (5000+ lines)
+- **IIFE architecture**: All JavaScript is wrapped in a single Immediately Invoked Function Expression
+- **LocalStorage persistence**: All data is stored in browser localStorage with automatic saving
+- **Mobile-first design**: All UI components are optimized for touch interaction
