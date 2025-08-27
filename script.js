@@ -6297,7 +6297,7 @@
     // be shown again when opening match details via showView().
     const header = document.querySelector('header');
     if (header) header.style.display = 'none';
-    
+  }
 
   // Kick off once DOM ready
   document.addEventListener('DOMContentLoaded', init);
