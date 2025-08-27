@@ -6297,6 +6297,16 @@
     // be shown again when opening match details via showView().
     const header = document.querySelector('header');
     if (header) header.style.display = 'none';
+    
+    // Lock orientation to portrait for mobile devices
+    if (screen && screen.orientation && screen.orientation.lock) {
+      try {
+        await screen.orientation.lock('portrait-primary');
+      } catch (error) {
+        // Orientation lock failed - this is normal in desktop browsers
+        // or when not in fullscreen/standalone mode
+      }
+    }
   }
 
   // Kick off once DOM ready
