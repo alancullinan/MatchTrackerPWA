@@ -550,7 +550,7 @@ html.match-view-active {
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.6);
   pointer-events: none;
-  z-index: -1;
+  z-index: 0;
 }
 
 /* Remove individual grass backgrounds from header and content since body now covers all */
