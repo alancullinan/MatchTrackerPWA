@@ -426,7 +426,12 @@
   // Show matches view
   function showMatchesView() {
     showView('match-list-view');
-    displayMatches();
+    // Clear the filter input when showing matches view
+    const filterInput = document.getElementById('match-filter-input');
+    if (filterInput) {
+      filterInput.value = '';
+    }
+    renderMatchList();
   }
 
   // Show player panels main view
@@ -2664,7 +2669,7 @@
   /* UI Rendering Functions */
 
   // Render the list of matches
-  function renderMatchList() {
+  function renderMatchList(filterText = '') {
     const list = document.getElementById('match-list');
     list.innerHTML = '';
     if (appState.matches.length === 0) {
@@ -2680,7 +2685,33 @@
       const db = new Date(b.dateTime || 0);
       return db - da;
     });
-    sorted.forEach((match) => {
+
+    // Filter matches if filter text is provided
+    let filtered = sorted;
+    if (filterText && filterText.trim() !== '') {
+      const lowerFilter = filterText.trim().toLowerCase();
+      filtered = sorted.filter((match) => {
+        const competition = (match.competition || '').toLowerCase();
+        const team1 = (match.team1?.name || '').toLowerCase();
+        const team2 = (match.team2?.name || '').toLowerCase();
+        return (
+          competition.includes(lowerFilter) ||
+          team1.includes(lowerFilter) ||
+          team2.includes(lowerFilter)
+        );
+      });
+    }
+
+    // Show message if no matches found after filtering
+    if (filtered.length === 0) {
+      const msg = document.createElement('div');
+      msg.className = 'empty-message';
+      msg.textContent = 'No matches found. Try a different search.';
+      list.appendChild(msg);
+      return;
+    }
+
+    filtered.forEach((match) => {
       // Create a card wrapper for each match item.  Use a vertical layout with
       // subtle spacing between lines.  The card is clickable to open match
       // details and has relative positioning so we can anchor the delete
@@ -6332,6 +6363,15 @@
     
     // Add match button
     document.getElementById('add-match-btn').addEventListener('click', showAddMatchForm);
+
+    // Match list filter input - real-time filtering
+    const matchFilterInput = document.getElementById('match-filter-input');
+    if (matchFilterInput) {
+      matchFilterInput.addEventListener('input', (e) => {
+        renderMatchList(e.target.value);
+      });
+    }
+
     // Form submission
     document.getElementById('match-form').addEventListener('submit', handleMatchFormSubmit);
     // Cancel form (top bar).  Some versions of the UI include a bottom cancel button
