@@ -473,9 +473,7 @@ main {
 /* Responsive adjustments */
 /* Match details view positioning (grass background now handled by body) */
 #match-details-view {
-  height: 100vh;
   position: relative;
-  overflow: hidden;
 }
 
 /* Ensure content appears above the global overlay */
