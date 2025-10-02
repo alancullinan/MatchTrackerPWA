@@ -476,6 +476,8 @@ main {
   height: 100vh;
   position: relative;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y pan-x;
 }
 
 /* Ensure content appears above the global overlay */
@@ -489,23 +491,17 @@ main {
   background-color: rgba(31, 41, 55, 0.85) !important;
 }
 
-/* Semi-transparent last event display positioned naturally at bottom */
+/* Semi-transparent last event display positioned at bottom of screen */
 #match-details-view #last-event-display {
   background-color: rgba(31, 41, 55, 0.85) !important;
-  margin-top: auto !important; /* Push to bottom of flex container */
-  padding: 1rem !important;
+  position: fixed !important;
+  bottom: 1rem !important;
+  left: 1rem !important;
+  right: 1rem !important;
+  margin: 0 !important;
   padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
   border-radius: 0.5rem !important;
-  /* Match the width of team cards - no additional margin */
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  margin-bottom: 0 !important;
-  /* Completely override HTML classes that cause card-within-card effect */
-  border: none !important;
-  box-shadow: none !important;
-  /* Lower z-index to be below modals */
-  z-index: 1 !important;
-  position: relative !important;
+  z-index: 10 !important;
 }
 
 /* Apply grass background to entire body when in match view and prevent scrolling */
@@ -517,17 +513,20 @@ main {
   background-attachment: fixed !important;
   margin: 0 !important;
   padding: 0 !important;
-  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: pan-y pan-x !important;
 }
 
-/* Ensure html also prevents scrolling and covers safe areas */
+/* Ensure html prevents scrolling and covers safe areas */
 html {
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: pan-y pan-x !important;
 }
 
 /* Apply grass background to html element to cover safe areas */
@@ -550,7 +549,7 @@ html {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.25);
   pointer-events: none;
   z-index: -1;
 }
