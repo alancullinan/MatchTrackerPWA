@@ -2241,7 +2241,7 @@
         const totalWidth = flagSize + spacing + textWidth;
         const startX = (canvas.width - totalWidth) / 2;
 
-        // Draw flag shape (pole + triangle flag)
+        // Draw flag shape (pole + rectangular flag)
         const flagX = startX;
         const flagY = currentY - 28;
 
@@ -2249,12 +2249,9 @@
         ctx.fillStyle = '#9ca3af'; // gray pole
         ctx.fillRect(flagX, flagY, 3, 36);
 
-        // Flag triangle
-        ctx.beginPath();
-        ctx.moveTo(flagX + 3, flagY);
-        ctx.lineTo(flagX + 3 + flagSize, flagY + 12);
-        ctx.lineTo(flagX + 3, flagY + 24);
-        ctx.closePath();
+        // Flag rectangle (waving to the right)
+        const flagWidth = flagSize;
+        const flagHeight = 20;
 
         if (event.shotOutcome === ShotOutcome.GOAL) {
           ctx.fillStyle = '#22C55E'; // green
@@ -2263,7 +2260,7 @@
         } else if (event.shotOutcome === ShotOutcome.TWO_POINTER) {
           ctx.fillStyle = '#FB923C'; // orange
         }
-        ctx.fill();
+        ctx.fillRect(flagX + 3, flagY + 2, flagWidth, flagHeight);
 
         // Draw outcome text beside flag
         ctx.fillStyle = '#f3f4f6'; // white text
@@ -6250,7 +6247,10 @@
       // Share button: positioned to the left of delete button
       const shareBtn = document.createElement('button');
       shareBtn.title = 'Share event';
-      shareBtn.className = 'event-actions absolute bottom-2 right-10 text-gray-200 hover:text-gray-100';
+      shareBtn.className = 'text-gray-200 hover:text-gray-100';
+      shareBtn.style.position = 'absolute';
+      shareBtn.style.bottom = '8px';
+      shareBtn.style.right = '40px'; // Position to left of delete button
       shareBtn.innerHTML = '<img src="icons/share.svg" alt="Share Event" class="w-6 h-6" />';
       shareBtn.addEventListener('click', (e) => {
         e.stopPropagation();
