@@ -2708,189 +2708,167 @@
     }
   }
 
-  // Generate formatted events export text
+  // Generate formatted events export text matching the events list view
   function generateEventsExport(match) {
-    const team1Score = computeTeamScore(match, 'team1');
-    const team2Score = computeTeamScore(match, 'team2');
-
-    // Helper function to get event icon
-    const getEventIcon = (event) => {
-      if (event.type === EventType.SHOT) {
-        if (event.shotOutcome === ShotOutcome.GOAL) return '⚽';
-        if (event.shotOutcome === ShotOutcome.POINT) return '🎯';
-        if (event.shotOutcome === ShotOutcome.TWO_POINTER) return '🎯';
-        return '❌';
-      }
-      if (event.type === EventType.CARD) {
-        if (event.cardType === CardType.YELLOW) return '🟨';
-        if (event.cardType === CardType.RED) return '🟥';
-        if (event.cardType === CardType.BLACK) return '⬛';
-      }
-      if (event.type === EventType.FOUL_CONCEDED) return '🚫';
-      if (event.type === EventType.SUBSTITUTION) return '🔄';
-      if (event.type === EventType.KICKOUT) return '🥾';
-      if (event.type === EventType.NOTE) return '📝';
-      return '•';
+    // Helper to get player from either team
+    const getPlayer = (playerId) => {
+      if (!playerId) return null;
+      return match.team1.players.find(p => p.id === playerId) ||
+             match.team2.players.find(p => p.id === playerId) || null;
     };
 
-    // Helper function to format event details
-    const formatEventDetails = (event) => {
-      let details = [];
+    // Build running score for each event (same as renderEventsList)
+    const scoreByEventId = {};
+    let t1Goals = 0;
+    let t1Points = 0;
+    let t2Goals = 0;
+    let t2Points = 0;
 
-      if (event.type === EventType.SHOT) {
-        const outcomes = {
-          [ShotOutcome.GOAL]: 'Goal',
-          [ShotOutcome.POINT]: 'Point',
-          [ShotOutcome.TWO_POINTER]: 'Two Pointer',
-          [ShotOutcome.WIDE]: 'Wide',
-          [ShotOutcome.SAVED]: 'Saved',
-          [ShotOutcome.DROPPED_SHORT]: 'Dropped Short',
-          [ShotOutcome.OFF_POST]: 'Off Post'
-        };
-        details.push(`Outcome: ${outcomes[event.shotOutcome] || event.shotOutcome}`);
-
-        if (event.shotType) {
-          const types = {
-            [ShotType.FROM_PLAY]: 'From Play',
-            [ShotType.FREE]: 'Free',
-            [ShotType.PENALTY]: 'Penalty',
-            [ShotType.FORTY_FIVE]: '45',
-            [ShotType.SIXTY_FIVE]: '65',
-            [ShotType.SIDELINE]: 'Sideline',
-            [ShotType.MARK]: 'Mark'
-          };
-          details.push(`Type: ${types[event.shotType] || event.shotType}`);
+    match.events.forEach((ev) => {
+      if (ev.type === EventType.SHOT) {
+        if (ev.teamId === match.team1.id) {
+          if (ev.shotOutcome === ShotOutcome.GOAL) t1Goals += 1;
+          else if (ev.shotOutcome === ShotOutcome.POINT) t1Points += 1;
+          else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t1Points += 2;
+        } else if (ev.teamId === match.team2.id) {
+          if (ev.shotOutcome === ShotOutcome.GOAL) t2Goals += 1;
+          else if (ev.shotOutcome === ShotOutcome.POINT) t2Points += 1;
+          else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t2Points += 2;
         }
       }
+      scoreByEventId[ev.id] = { t1Goals, t1Points, t2Goals, t2Points };
+    });
 
-      if (event.type === EventType.CARD) {
-        const cards = {
-          [CardType.YELLOW]: 'Yellow Card',
-          [CardType.RED]: 'Red Card',
-          [CardType.BLACK]: 'Black Card'
-        };
-        details.push(cards[event.cardType] || event.cardType);
-      }
-
-      if (event.type === EventType.FOUL_CONCEDED) {
-        if (event.foulOutcome === 'free') details.push('Free Against');
-        if (event.foulOutcome === 'penalty') details.push('Penalty Against');
-        if (event.cardType && event.cardType !== 'none') {
-          const cards = {
-            [CardType.YELLOW]: 'Yellow Card',
-            [CardType.RED]: 'Red Card',
-            [CardType.BLACK]: 'Black Card'
-          };
-          details.push(cards[event.cardType]);
-        }
-      }
-
-      if (event.type === EventType.KICKOUT) {
-        details.push(event.kickoutOutcome === 'won' ? 'Won Own Kickout' : 'Lost Own Kickout');
-      }
-
-      if (event.type === EventType.SUBSTITUTION) {
-        details.push(`${event.playerOff?.name} (#${event.playerOff?.jerseyNumber}) OFF`);
-        details.push(`${event.playerOn?.name} (#${event.playerOn?.jerseyNumber}) ON`);
-      }
-
-      return details;
-    };
-
-    // Build the export text
-    let text = `🏈 ${match.competition || 'Match'} - Match Events\n\n`;
+    // Build export text with header
+    let text = `${match.competition || 'Match'} - Events\n\n`;
     text += `${match.team1.name} vs ${match.team2.name}\n`;
 
-    const matchDate = match.dateTime ? new Date(match.dateTime).toLocaleDateString(undefined, {
-      day: 'numeric', month: 'long', year: 'numeric'
-    }) : '';
-    if (matchDate) text += `📅 ${matchDate}`;
-    if (match.venue) text += ` | 🏟️ ${match.venue}`;
-    text += '\n\n';
-
-    text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
-    text += `📋 MATCH EVENTS (${match.events.length} events)\n\n`;
-    text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
-
-    // Group events by period
-    const eventsByPeriod = {};
-    match.events.forEach(event => {
-      const period = event.period || MatchPeriod.NOT_STARTED;
-      if (!eventsByPeriod[period]) eventsByPeriod[period] = [];
-      eventsByPeriod[period].push(event);
-    });
-
-    // Period icons
-    const periodIcons = {
-      [MatchPeriod.NOT_STARTED]: '⏸️',
-      [MatchPeriod.FIRST_HALF]: '⚽',
-      [MatchPeriod.HALF_TIME]: '⏸️',
-      [MatchPeriod.SECOND_HALF]: '⚽',
-      [MatchPeriod.FULL_TIME]: '🏁',
-      [MatchPeriod.EXTRA_FIRST]: '⚽',
-      [MatchPeriod.EXTRA_HALF]: '⏸️',
-      [MatchPeriod.EXTRA_SECOND]: '⚽',
-      [MatchPeriod.MATCH_OVER]: '🏁'
-    };
-
-    // Output events by period
-    const periods = Object.keys(eventsByPeriod);
-    periods.forEach((period, index) => {
-      const icon = periodIcons[period] || '•';
-      text += `${icon} ${period.toUpperCase()}\n\n`;
-
-      eventsByPeriod[period].forEach(event => {
-        const teamName = event.teamId === match.team1.id ? match.team1.name : match.team2.name;
-        const eventIcon = getEventIcon(event);
-        const eventTypeName = event.type === EventType.SHOT ? 'Shot' :
-                              event.type === EventType.CARD ? 'Card' :
-                              event.type === EventType.FOUL_CONCEDED ? 'Foul' :
-                              event.type === EventType.KICKOUT ? 'Kickout' :
-                              event.type === EventType.SUBSTITUTION ? 'Substitution' :
-                              event.type === EventType.NOTE ? 'Note' : event.type;
-
-        text += `${event.matchTime || '00:00'} | ${teamName} - ${eventIcon} ${eventTypeName}\n`;
-
-        // Player info (if applicable)
-        if (event.player && event.type !== EventType.SUBSTITUTION) {
-          text += `       Player: ${event.player.name} (#${event.player.jerseyNumber})\n`;
-        }
-
-        // Event details
-        const details = formatEventDetails(event);
-        details.forEach(detail => {
-          text += `       ${detail}\n`;
-        });
-
-        // Notes
-        if (event.noteText && event.noteText.trim()) {
-          text += `       📝 ${event.noteText.trim()}\n`;
-        }
-
-        text += '\n';
+    if (match.dateTime) {
+      const matchDate = new Date(match.dateTime).toLocaleDateString(undefined, {
+        day: 'numeric', month: 'long', year: 'numeric'
       });
+      text += `${matchDate}`;
+    }
+    if (match.venue) {
+      text += ` | ${match.venue}`;
+    }
+    text += '\n\n';
+    text += '================================\n\n';
 
-      if (index < periods.length - 1) {
-        text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+    // Process events in chronological order (as they appear in the array)
+    match.events.forEach((ev, index) => {
+      // Time and period (top right in UI, but we'll put it first)
+      const minutes = Math.floor(ev.timeElapsed / 60);
+      const timeStr = `${minutes} min`;
+      text += `[${timeStr} - ${ev.period}]\n`;
+
+      // Team name
+      const team = ev.teamId ? (ev.teamId === match.team1.id ? match.team1 : match.team2) : null;
+      if (team) {
+        text += `${team.name}\n`;
+      }
+
+      // Event type/outcome
+      let outcomeText = '';
+      if (ev.type === EventType.SHOT) {
+        outcomeText = ev.shotOutcome
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/\b\w/g, (l) => l.toUpperCase());
+      } else if (ev.type === EventType.CARD) {
+        outcomeText = `${ev.cardType ? ev.cardType.charAt(0).toUpperCase() + ev.cardType.slice(1) : ''} Card`;
+      } else if (ev.type === EventType.FOUL_CONCEDED) {
+        outcomeText = `Foul${ev.foulOutcome ? ' (' + ev.foulOutcome.charAt(0).toUpperCase() + ev.foulOutcome.slice(1) + ')' : ''}`;
+        if (ev.cardType) {
+          outcomeText += ` + ${ev.cardType.charAt(0).toUpperCase() + ev.cardType.slice(1)} Card`;
+        }
+      } else if (ev.type === EventType.KICKOUT) {
+        outcomeText = `Kick-out ${ev.wonKickout ? 'Won' : 'Lost'}`;
+      } else if (ev.type === EventType.SUBSTITUTION) {
+        outcomeText = 'Substitution';
+      } else if (ev.type === EventType.NOTE) {
+        outcomeText = 'Note';
+      }
+      text += `${outcomeText}\n`;
+
+      // Scoreboard (only for scoring shots)
+      const scoreboard = scoreByEventId[ev.id];
+      if (ev.type === EventType.SHOT &&
+          (ev.shotOutcome === ShotOutcome.GOAL ||
+           ev.shotOutcome === ShotOutcome.POINT ||
+           ev.shotOutcome === ShotOutcome.TWO_POINTER)) {
+        text += `${match.team1.name}: ${scoreboard.t1Goals}-${scoreboard.t1Points}\n`;
+        text += `${match.team2.name}: ${scoreboard.t2Goals}-${scoreboard.t2Points}\n`;
+      }
+
+      // Player info for shots
+      if (ev.type === EventType.SHOT) {
+        const player = getPlayer(ev.player1Id);
+        if (player) {
+          const defaultName = `No.${player.jerseyNumber}`;
+          let line = `#${player.jerseyNumber}`;
+          if (player.name && player.name !== defaultName) {
+            line += ` ${player.name}`;
+          }
+          text += `${line}\n`;
+        }
+        // Shot type
+        if (ev.shotType) {
+          const shotTypeMap = {
+            fromPlay: 'From Play',
+            free: 'Free',
+            penalty: 'Penalty',
+            fortyFive: '45',
+            sixtyFive: '65',
+            sideline: 'Sideline',
+            mark: 'Mark'
+          };
+          const shotTypeText = shotTypeMap[ev.shotType] || ev.shotType
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/\b\w/g, (l) => l.toUpperCase());
+          text += `${shotTypeText}\n`;
+        }
+      }
+
+      // Player info for substitutions
+      if (ev.type === EventType.SUBSTITUTION) {
+        const playerOut = getPlayer(ev.player1Id);
+        const playerIn = getPlayer(ev.player2Id);
+        const outStr = playerOut
+          ? `#${playerOut.jerseyNumber}${playerOut.name && playerOut.name !== `No.${playerOut.jerseyNumber}` ? ' ' + playerOut.name : ''}`
+          : '';
+        const inStr = playerIn
+          ? `#${playerIn.jerseyNumber}${playerIn.name && playerIn.name !== `No.${playerIn.jerseyNumber}` ? ' ' + playerIn.name : ''}`
+          : '';
+        text += `${outStr} -> ${inStr}\n`;
+      }
+
+      // Player info for cards and fouls
+      if (ev.type === EventType.CARD || ev.type === EventType.FOUL_CONCEDED) {
+        const player = getPlayer(ev.player1Id);
+        if (player) {
+          const defaultName = `No.${player.jerseyNumber}`;
+          let line = `#${player.jerseyNumber}`;
+          if (player.name && player.name !== defaultName) {
+            line += ` ${player.name}`;
+          }
+          text += `${line}\n`;
+        }
+      }
+
+      // Notes
+      if (ev.noteText && ev.noteText.trim()) {
+        text += `${ev.noteText}\n`;
+      }
+
+      // Event separator
+      if (index < match.events.length - 1) {
+        text += '\n--------------------------------\n\n';
       }
     });
 
-    // Summary section
-    text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
-    text += '📊 SUMMARY\n\n';
-    text += `• Total Events: ${match.events.length}\n`;
-    const team1ScoreText = `${team1Score.goals}-${team1Score.points.toString().padStart(2, '0')} (${team1Score.total})`;
-    const team2ScoreText = `${team2Score.goals}-${team2Score.points.toString().padStart(2, '0')} (${team2Score.total})`;
-    text += `• Final Score: ${team1ScoreText} vs ${team2ScoreText}\n`;
-
-    if (match.elapsedTime) {
-      const minutes = Math.floor(match.elapsedTime / 60);
-      const seconds = match.elapsedTime % 60;
-      text += `• Duration: ${minutes}:${seconds.toString().padStart(2, '0')}\n`;
-    }
-
-    text += '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
-    text += '📱 Generated by Match Tracker';
+    text += '\n\n================================\n';
+    text += `Total Events: ${match.events.length}\n`;
+    text += '\nGenerated by Match Tracker';
 
     return text;
   }
