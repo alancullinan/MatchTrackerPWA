@@ -2227,25 +2227,58 @@
         event.type === EventType.SUBSTITUTION ? 'Substitution' :
         event.type === EventType.NOTE ? 'Note' : '';
 
-      // Add flag emoji beside scoring outcomes (Goal/Point/Two Pointer)
-      let flagEmoji = '';
-      if (event.type === EventType.SHOT) {
-        if (event.shotOutcome === ShotOutcome.GOAL) {
-          flagEmoji = '🟩 ';
-        } else if (event.shotOutcome === ShotOutcome.POINT) {
-          flagEmoji = '⬜ ';
-        } else if (event.shotOutcome === ShotOutcome.TWO_POINTER) {
-          flagEmoji = '🟧 ';
-        }
-      }
+      // Draw flag icon for scoring outcomes, then text
+      if (event.type === EventType.SHOT &&
+          (event.shotOutcome === ShotOutcome.GOAL ||
+           event.shotOutcome === ShotOutcome.POINT ||
+           event.shotOutcome === ShotOutcome.TWO_POINTER)) {
 
-      // Draw outcome text with flag emoji (no capsule background)
-      const textWithFlag = flagEmoji + outcomeText;
-      ctx.fillStyle = '#f3f4f6'; // white
-      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(textWithFlag, canvas.width / 2, currentY);
-      currentY += 70;
+        // Measure text width to calculate flag position
+        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        const textWidth = ctx.measureText(outcomeText).width;
+        const flagSize = 32;
+        const spacing = 15;
+        const totalWidth = flagSize + spacing + textWidth;
+        const startX = (canvas.width - totalWidth) / 2;
+
+        // Draw flag shape (pole + triangle flag)
+        const flagX = startX;
+        const flagY = currentY - 28;
+
+        // Pole
+        ctx.fillStyle = '#9ca3af'; // gray pole
+        ctx.fillRect(flagX, flagY, 3, 36);
+
+        // Flag triangle
+        ctx.beginPath();
+        ctx.moveTo(flagX + 3, flagY);
+        ctx.lineTo(flagX + 3 + flagSize, flagY + 12);
+        ctx.lineTo(flagX + 3, flagY + 24);
+        ctx.closePath();
+
+        if (event.shotOutcome === ShotOutcome.GOAL) {
+          ctx.fillStyle = '#22C55E'; // green
+        } else if (event.shotOutcome === ShotOutcome.POINT) {
+          ctx.fillStyle = '#FFFFFF'; // white
+        } else if (event.shotOutcome === ShotOutcome.TWO_POINTER) {
+          ctx.fillStyle = '#FB923C'; // orange
+        }
+        ctx.fill();
+
+        // Draw outcome text beside flag
+        ctx.fillStyle = '#f3f4f6'; // white text
+        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(outcomeText, flagX + flagSize + spacing, currentY);
+        currentY += 70;
+      } else {
+        // Plain text for non-scoring events (no flag)
+        ctx.fillStyle = '#f3f4f6'; // white
+        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(outcomeText, canvas.width / 2, currentY);
+        currentY += 70;
+      }
 
       // Team name (more prominent - larger and white)
       const team = event.teamId ? (event.teamId === match.team1.id ? match.team1 : match.team2) : null;
@@ -6217,7 +6250,7 @@
       // Share button: positioned to the left of delete button
       const shareBtn = document.createElement('button');
       shareBtn.title = 'Share event';
-      shareBtn.className = 'event-actions absolute bottom-2 right-11 text-gray-200 hover:text-gray-100';
+      shareBtn.className = 'event-actions absolute bottom-2 right-10 text-gray-200 hover:text-gray-100';
       shareBtn.innerHTML = '<img src="icons/share.svg" alt="Share Event" class="w-6 h-6" />';
       shareBtn.addEventListener('click', (e) => {
         e.stopPropagation();
