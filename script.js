@@ -2228,7 +2228,209 @@
       showShareSuccessMessage('Unable to share or download image. Please try again.');
     }
   }
-  
+
+  // Generate formatted events export text matching the events list view
+  function generateEventsExport(match) {
+    // Helper to get player from either team
+    const getPlayer = (playerId) => {
+      if (!playerId) return null;
+      return match.team1.players.find(p => p.id === playerId) ||
+             match.team2.players.find(p => p.id === playerId) || null;
+    };
+
+    // Build running score for each event (same as renderEventsList)
+    const scoreByEventId = {};
+    let t1Goals = 0;
+    let t1Points = 0;
+    let t2Goals = 0;
+    let t2Points = 0;
+
+    match.events.forEach((ev) => {
+      if (ev.type === EventType.SHOT) {
+        if (ev.teamId === match.team1.id) {
+          if (ev.shotOutcome === ShotOutcome.GOAL) t1Goals += 1;
+          else if (ev.shotOutcome === ShotOutcome.POINT) t1Points += 1;
+          else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t1Points += 2;
+        } else if (ev.teamId === match.team2.id) {
+          if (ev.shotOutcome === ShotOutcome.GOAL) t2Goals += 1;
+          else if (ev.shotOutcome === ShotOutcome.POINT) t2Points += 1;
+          else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t2Points += 2;
+        }
+      }
+      scoreByEventId[ev.id] = { t1Goals, t1Points, t2Goals, t2Points };
+    });
+
+    // Build export text with header
+    let text = `${match.competition || 'Match'} - Events\n\n`;
+    text += `${match.team1.name} vs ${match.team2.name}\n`;
+
+    if (match.dateTime) {
+      const matchDate = new Date(match.dateTime).toLocaleDateString(undefined, {
+        day: 'numeric', month: 'long', year: 'numeric'
+      });
+      text += `${matchDate}`;
+    }
+    if (match.venue) {
+      text += ` | ${match.venue}`;
+    }
+    text += '\n\n';
+    text += '================================\n\n';
+
+    // Process events in chronological order (as they appear in the array)
+    match.events.forEach((ev, index) => {
+      // Time and period (top right in UI, but we'll put it first)
+      const minutes = Math.floor(ev.timeElapsed / 60);
+      const timeStr = `${minutes} min`;
+      text += `[${timeStr} - ${ev.period}]\n`;
+
+      // Team name
+      const team = ev.teamId ? (ev.teamId === match.team1.id ? match.team1 : match.team2) : null;
+      if (team) {
+        text += `${team.name}\n`;
+      }
+
+      // Event type/outcome
+      let outcomeText = '';
+      if (ev.type === EventType.SHOT) {
+        outcomeText = ev.shotOutcome
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/\b\w/g, (l) => l.toUpperCase());
+      } else if (ev.type === EventType.CARD) {
+        outcomeText = `${ev.cardType ? ev.cardType.charAt(0).toUpperCase() + ev.cardType.slice(1) : ''} Card`;
+      } else if (ev.type === EventType.FOUL_CONCEDED) {
+        outcomeText = `Foul${ev.foulOutcome ? ' (' + ev.foulOutcome.charAt(0).toUpperCase() + ev.foulOutcome.slice(1) + ')' : ''}`;
+        if (ev.cardType) {
+          outcomeText += ` + ${ev.cardType.charAt(0).toUpperCase() + ev.cardType.slice(1)} Card`;
+        }
+      } else if (ev.type === EventType.KICKOUT) {
+        outcomeText = `Kick-out ${ev.wonKickout ? 'Won' : 'Lost'}`;
+      } else if (ev.type === EventType.SUBSTITUTION) {
+        outcomeText = 'Substitution';
+      } else if (ev.type === EventType.NOTE) {
+        outcomeText = 'Note';
+      }
+      text += `${outcomeText}\n`;
+
+      // Scoreboard (only for scoring shots)
+      const scoreboard = scoreByEventId[ev.id];
+      if (ev.type === EventType.SHOT &&
+          (ev.shotOutcome === ShotOutcome.GOAL ||
+           ev.shotOutcome === ShotOutcome.POINT ||
+           ev.shotOutcome === ShotOutcome.TWO_POINTER)) {
+        text += `${match.team1.name}: ${scoreboard.t1Goals}-${scoreboard.t1Points}\n`;
+        text += `${match.team2.name}: ${scoreboard.t2Goals}-${scoreboard.t2Points}\n`;
+      }
+
+      // Player info for shots
+      if (ev.type === EventType.SHOT) {
+        const player = getPlayer(ev.player1Id);
+        if (player) {
+          const defaultName = `No.${player.jerseyNumber}`;
+          let line = `#${player.jerseyNumber}`;
+          if (player.name && player.name !== defaultName) {
+            line += ` ${player.name}`;
+          }
+          text += `${line}\n`;
+        }
+        // Shot type
+        if (ev.shotType) {
+          const shotTypeMap = {
+            fromPlay: 'From Play',
+            free: 'Free',
+            penalty: 'Penalty',
+            fortyFive: '45',
+            sixtyFive: '65',
+            sideline: 'Sideline',
+            mark: 'Mark'
+          };
+          const shotTypeText = shotTypeMap[ev.shotType] || ev.shotType
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/\b\w/g, (l) => l.toUpperCase());
+          text += `${shotTypeText}\n`;
+        }
+      }
+
+      // Player info for substitutions
+      if (ev.type === EventType.SUBSTITUTION) {
+        const playerOut = getPlayer(ev.player1Id);
+        const playerIn = getPlayer(ev.player2Id);
+        const outStr = playerOut
+          ? `#${playerOut.jerseyNumber}${playerOut.name && playerOut.name !== `No.${playerOut.jerseyNumber}` ? ' ' + playerOut.name : ''}`
+          : '';
+        const inStr = playerIn
+          ? `#${playerIn.jerseyNumber}${playerIn.name && playerIn.name !== `No.${playerIn.jerseyNumber}` ? ' ' + playerIn.name : ''}`
+          : '';
+        text += `${outStr} -> ${inStr}\n`;
+      }
+
+      // Player info for cards and fouls
+      if (ev.type === EventType.CARD || ev.type === EventType.FOUL_CONCEDED) {
+        const player = getPlayer(ev.player1Id);
+        if (player) {
+          const defaultName = `No.${player.jerseyNumber}`;
+          let line = `#${player.jerseyNumber}`;
+          if (player.name && player.name !== defaultName) {
+            line += ` ${player.name}`;
+          }
+          text += `${line}\n`;
+        }
+      }
+
+      // Notes
+      if (ev.noteText && ev.noteText.trim()) {
+        text += `${ev.noteText}\n`;
+      }
+
+      // Event separator
+      if (index < match.events.length - 1) {
+        text += '\n--------------------------------\n\n';
+      }
+    });
+
+    text += '\n\n================================\n';
+    text += `Total Events: ${match.events.length}\n`;
+    text += '\nGenerated by Match Tracker';
+
+    return text;
+  }
+
+  // Share events list
+  async function shareEventsList() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+
+    const exportText = generateEventsExport(match);
+
+    // Try Web Share API (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${match.competition || 'Match'} Events`,
+          text: exportText
+        });
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          // User cancelled, just return
+          return;
+        }
+        console.log('Share failed, trying download:', err);
+      }
+    }
+
+    // Fallback: Download as text file
+    const blob = new Blob([exportText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileName = `${match.team1.name}_vs_${match.team2.name}_events.txt`.replace(/\s+/g, '_');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   async function shareMatchStats() {
     if (!currentMatchStats) return;
     
@@ -3007,7 +3209,7 @@
     // Attach click handler for the list button to open the events list modal
     listBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      showEventsModal();
+      showEventsView();
       display.classList.add('hidden');
     });
     // Attach click on display to edit last event (excluding the list button)
@@ -3128,33 +3330,31 @@
   }
 
   /**
-   * Show the Events list modal.  When the user taps the list button in the
-   * last event display, the full chronological list of events appears in
-   * this modal.  The list allows editing and deleting events as before.
+   * Show the Events list view.  When the user taps the list button in the
+   * last event display, navigate to the full events view page.
    */
-  function showEventsModal() {
-    const modal = document.getElementById('events-modal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+  function showEventsView() {
     // Render events list for current match
     const match = findMatchById(appState.currentMatchId);
     if (match) {
       renderEventsList(match);
     }
+    showView('events-view');
   }
 
   /**
-   * Hide the Events list modal.
+   * Hide the Events list view and return to match details.
    */
-  function hideEventsModal() {
-    const modal = document.getElementById('events-modal');
-    if (!modal) return;
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-    // When closing the events modal, reveal the last event display again
-    const lastDisplay = document.getElementById('last-event-display');
-    if (lastDisplay) lastDisplay.classList.remove('hidden');
+  function hideEventsView() {
+    showView('match-details-view');
+    // Restore the last event display when returning from events view
+    const match = findMatchById(appState.currentMatchId);
+    if (match && match.events && match.events.length > 0) {
+      const lastDisplay = document.getElementById('last-event-display');
+      if (lastDisplay) {
+        lastDisplay.classList.remove('hidden');
+      }
+    }
   }
 
   // Quickly add a scoring event without opening event form
@@ -5988,12 +6188,17 @@
     const cancelEditEventBtn = document.getElementById('cancel-edit-event-btn');
     if (cancelEditEventBtn) cancelEditEventBtn.addEventListener('click', cancelEditEvent);
 
-    // Close events list modal button
-    const closeEventsBtn = document.getElementById('close-events-modal-btn');
-    if (closeEventsBtn) {
-      closeEventsBtn.addEventListener('click', () => hideEventsModal());
+    // Back button for events view
+    const eventsBackBtn = document.getElementById('events-back-btn');
+    if (eventsBackBtn) {
+      eventsBackBtn.addEventListener('click', () => hideEventsView());
     }
 
+    // Share events button
+    const shareEventsBtn = document.getElementById('share-events-btn');
+    if (shareEventsBtn) {
+      shareEventsBtn.addEventListener('click', () => shareEventsList());
+    }
 
     // Period action confirmation modal logic
     const periodButton = document.getElementById('end-period-btn');
