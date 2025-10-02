@@ -513,6 +513,7 @@ main {
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
+  box-sizing: border-box !important;
 }
 
 /* Prevent scrolling on html element when in match view */
