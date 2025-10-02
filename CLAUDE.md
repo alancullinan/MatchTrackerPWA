@@ -33,12 +33,29 @@ This is a vanilla JavaScript single-page application with no external dependenci
 
 ### View Architecture
 JavaScript-controlled section visibility system using classes:
-- **Match list view** - Main screen (`#match-list-view`)  
+- **Home view** - Navigation hub with three main buttons (`#home-view`)
+- **Match list view** - Browse all matches (`#match-list-view`)
 - **Match form view** - Create/edit matches (`#match-form-view`)
 - **Match details view** - Live tracking interface (`#match-details-view`)
 - **Edit players view** - Team roster management (`#edit-players-view`)
+- **Events view** - Full event history for a match (`#events-view`)
+- **Player panels view** - Manage reusable player rosters (`#player-panels-view`)
+- **Panel editor view** - Create/edit player panels (`#panel-editor-view`)
+- **Player selection view** - Select players from panels (`#player-selection-view`)
 
 Views are toggled via `showView(viewName)` function that manages display states.
+
+### Navigation Flow
+The app follows this navigation hierarchy:
+```
+Home View
+├── Matches → Match List → Match Form (create/edit)
+│                       └→ Match Details → Events View
+│                                       └→ Edit Players → Player Selection
+│                                       └→ Statistics Modal
+├── Player Panels → Panel Editor
+└── Export/Import Data → Data Management Modal
+```
 
 ## Key Features
 
@@ -47,7 +64,10 @@ Views are toggled via `showView(viewName)` function that manages display states.
 - **Scoring**: Goals, points, and two-pointers (for football) with different shot types
 - **Event Tracking**: Cards, fouls, kickouts, substitutions, notes
 - **Player Management**: Auto-generated player rosters (1-30 for each team)
-- **Data Persistence**: All data stored in browser localStorage
+- **Player Panels**: Create reusable player rosters that can be assigned to teams across multiple matches
+- **Match Statistics**: View detailed shooting accuracy, scorers breakdown, and team statistics
+- **Data Management**: Export all matches to JSON file and import backups
+- **Data Persistence**: Dual storage strategy with localStorage primary and IndexedDB fallback
 
 ## Match Types & Scoring
 
@@ -77,6 +97,20 @@ The entire application logic is contained in a single IIFE (Immediately Invoked 
 - **Event Delegation**: Click handlers attached to dynamically generated content
 - **Responsive Updates**: Real-time UI updates when match state changes
 
+### Modal Architecture
+The app uses multiple specialized modals for different event types:
+- **Score Event Modal** (`#score-event-modal`) - Goal/Point/Two-pointer recording with shot type and player selection
+- **Foul Event Modal** (`#foul-event-modal`) - Foul type (free/penalty), card type, and player selection
+- **Kickout Event Modal** (`#kickout-event-modal`) - Kickout outcome (won/lost) and player selection
+- **Substitution Event Modal** (`#substitution-event-modal`) - Player off/on selection
+- **Note Event Modal** (`#note-event-modal`) - Free-text note entry
+- **Event Type Modal** (`#event-type-modal`) - Initial event type selector (miss/sub/foul/kickout/note)
+- **Period Confirm Modal** (`#period-confirm-modal`) - Confirm period transitions
+- **Match Stats Modal** (`#match-stats-modal`) - Display shooting accuracy and scorers
+- **Data Management Modal** (`#data-management-modal`) - Export/import interface
+
+All modals follow a consistent pattern: Cancel button (left), title (center), Done/Add button (right)
+
 ### CSS Structure (styles.css)
 - **Mobile-first responsive design** with touch-optimized targets
 - **Custom utility classes** mimicking Tailwind patterns
@@ -86,11 +120,25 @@ The entire application logic is contained in a single IIFE (Immediately Invoked 
 
 ## Data Structure
 
+### Match Data
 Matches are stored in localStorage with this structure:
 - Match metadata (teams, competition, date, venue, referee, match type)
 - Timer state (current period, elapsed time, running status)
 - Events array (shots, fouls, cards, substitutions, notes)
 - Player rosters for both teams
+
+### Player Panel Data
+Player panels are stored separately and can be reused across matches:
+- Panel metadata (id, name, creation timestamp)
+- Players array (jersey number, name, position)
+- Panels are stored in `playerPanels` key in localStorage
+
+### Storage Architecture
+The app uses a dual-storage strategy via `StorageManager`:
+- **Primary**: localStorage (faster, ~5-10MB quota)
+- **Fallback**: IndexedDB (larger quota, used when localStorage is full)
+- All saves attempt localStorage first, then automatically fall back to IndexedDB
+- Data is stored with timestamps for potential sync features
 
 ## UI Patterns
 
@@ -127,6 +175,9 @@ Events are stored as objects with this structure:
 - **Naming convention**: "Player 1", "Player 2", etc. (editable)
 - **Event tracking**: Each player accumulates statistics from events
 - **Substitution support**: Players can be substituted during matches
+- **Player Panels**: Reusable rosters that can be created once and assigned to teams across multiple matches
+- **Panel Selection**: When editing players, can import from existing panels or create new ones
+- **Last Selected Panels**: App remembers which panel was last used for each team in each match
 
 ### PWA Features
 - **Service Worker**: Caches all static assets for offline functionality
@@ -134,6 +185,12 @@ Events are stored as objects with this structure:
 - **Standalone mode**: Runs as a native-like app when installed
 - **Orientation Lock**: Portrait-primary orientation enforced in manifest.json
 - **Touch optimizations**: All interactions designed for mobile use
+
+### Data Management Features
+- **Export**: Download all matches and player panels as a single JSON file
+- **Import**: Restore data from backup JSON files
+- **Storage Info**: View current localStorage usage and available space
+- **Backup Strategy**: Users can manually export data before localStorage fills up
 
 ## Important Implementation Guidelines
 
@@ -155,6 +212,8 @@ Events are stored as objects with this structure:
 - Maintain the period-based logic system for all new event types
 - Use existing modal patterns for any new UI interactions
 - Follow the team parameter convention (1 or 2) for dual-team operations
+- Use `StorageManager.saveData()` and `StorageManager.loadData()` for all data persistence
+- When adding new modals, follow the existing pattern: Cancel/Done buttons at top, content in middle
 
 ### Critical Implementation Notes
 - **No external dependencies**: Project uses only vanilla JavaScript, HTML, and CSS
