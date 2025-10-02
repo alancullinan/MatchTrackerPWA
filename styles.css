@@ -510,6 +510,8 @@ main {
 
 /* Apply layout styles to body when in match view (no background - that's on html) */
 .match-view-active {
+  background: none !important;
+  background-color: transparent !important;
   margin: 0 !important;
   padding: 0 !important;
   padding-bottom: env(safe-area-inset-bottom, 0px) !important;

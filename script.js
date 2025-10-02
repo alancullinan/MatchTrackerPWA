@@ -3350,6 +3350,14 @@
    */
   function hideEventsView() {
     showView('match-details-view');
+    // Restore the last event display when returning from events view
+    const match = findMatchById(appState.currentMatchId);
+    if (match && match.events && match.events.length > 0) {
+      const lastDisplay = document.getElementById('last-event-display');
+      if (lastDisplay) {
+        lastDisplay.classList.remove('hidden');
+      }
+    }
   }
 
   // Quickly add a scoring event without opening event form
