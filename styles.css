@@ -523,14 +523,7 @@ main {
   overflow: hidden !important;
 }
 
-/* Ensure html also prevents scrolling and covers safe areas */
-html {
-  height: 100vh !important;
-  max-height: 100vh !important;
-  overflow: hidden !important;
-}
-
-/* Apply grass background to html element to cover safe areas */
+/* Apply grass background to html element and prevent scrolling only in match view */
 .match-view-active html {
   background-image: url('icons/grassbackground.jpg') !important;
   background-size: cover !important;
