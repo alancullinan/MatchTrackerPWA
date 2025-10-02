@@ -17,14 +17,15 @@ Since this is a vanilla JavaScript PWA with no build system:
 - **Testing PWA Features**: Must use HTTPS or localhost for service worker functionality
 - **Service Worker Updates**: When modifying cached files, increment the cache version in `sw.js` (currently v1.2.4)
 - **Icon Generation**: Use `create-icons.html` for creating and testing new SVG icons
+- **Deployment Context**: App is scoped to `/MatchTrackerPWA/` path (defined in manifest.json)
 
 ## Architecture
 
 This is a vanilla JavaScript single-page application with no external dependencies:
 
 ### Core Files
-- **index.html** - Single HTML file containing all views and modals (5000+ lines)
-- **script.js** - All JavaScript logic in IIFE pattern (~5500+ lines, 121+ functions)
+- **index.html** - Single HTML file containing all views and modals (~860 lines)
+- **script.js** - All JavaScript logic in IIFE pattern (~6300+ lines)
 - **styles.css** - Mobile-first CSS with Tailwind-like utilities and custom components
 - **tailwind-minimal.css** - Local Tailwind CSS subset for offline functionality
 - **sw.js** - Service worker for PWA caching (cache version: v1.2.4)
@@ -131,6 +132,7 @@ Events are stored as objects with this structure:
 - **Service Worker**: Caches all static assets for offline functionality
 - **App Shortcuts**: "New Match" shortcut in manifest.json
 - **Standalone mode**: Runs as a native-like app when installed
+- **Orientation Lock**: Portrait-primary orientation enforced in manifest.json
 - **Touch optimizations**: All interactions designed for mobile use
 
 ## Important Implementation Guidelines
@@ -156,7 +158,7 @@ Events are stored as objects with this structure:
 
 ### Critical Implementation Notes
 - **No external dependencies**: Project uses only vanilla JavaScript, HTML, and CSS
-- **Single HTML file**: All views and modals are contained in `index.html` (5000+ lines)
+- **Single HTML file**: All views and modals are contained in `index.html` (~860 lines)
 - **IIFE architecture**: All JavaScript is wrapped in a single Immediately Invoked Function Expression
 - **LocalStorage persistence**: All data is stored in browser localStorage with automatic saving
 - **Mobile-first design**: All UI components are optimized for touch interaction

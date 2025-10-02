@@ -2496,12 +2496,22 @@
       compLine.textContent = match.competition || match.title || '';
       card.appendChild(compLine);
 
-      // Teams line: display the two team names separated by “vs”.  Use
+      // Teams line: display the two team names separated by "vs".  Use
       // secondary colour to differentiate from the competition line.
       const teamsLine = document.createElement('div');
       teamsLine.className = 'text-gray-300';
       teamsLine.textContent = `${match.team1?.name || ''} vs ${match.team2?.name || ''}`;
       card.appendChild(teamsLine);
+
+      // Score line: calculate and display current score for both teams
+      const team1Score = computeTeamScore(match, 'team1');
+      const team2Score = computeTeamScore(match, 'team2');
+      const scoreLine = document.createElement('div');
+      scoreLine.className = 'text-blue-400 font-semibold text-center mt-1';
+      const team1ScoreText = `${team1Score.goals}-${team1Score.points.toString().padStart(2, '0')} (${team1Score.total})`;
+      const team2ScoreText = `${team2Score.goals}-${team2Score.points.toString().padStart(2, '0')} (${team2Score.total})`;
+      scoreLine.textContent = `${team1ScoreText} vs ${team2ScoreText}`;
+      card.appendChild(scoreLine);
 
       // Date line: format the stored date into a human‑readable string.
       const dateLine = document.createElement('div');
