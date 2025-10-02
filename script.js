@@ -3245,6 +3245,37 @@
     });
   }
 
+  // Helper function to create styled outcome capsule for scoring events
+  function createStyledOutcome(outcomeText, shotOutcome) {
+    if (shotOutcome === ShotOutcome.GOAL ||
+        shotOutcome === ShotOutcome.POINT ||
+        shotOutcome === ShotOutcome.TWO_POINTER) {
+      // Create span with capsule styling
+      const span = document.createElement('span');
+      span.textContent = outcomeText;
+      span.style.display = 'inline-block';
+      span.style.padding = '4px 12px';
+      span.style.borderRadius = '12px';
+      span.style.fontWeight = '600';
+      span.style.fontSize = '0.875rem';
+
+      if (shotOutcome === ShotOutcome.GOAL) {
+        span.style.backgroundColor = '#22C55E';
+        span.style.color = '#FFFFFF';
+      } else if (shotOutcome === ShotOutcome.POINT) {
+        span.style.backgroundColor = '#FFFFFF';
+        span.style.color = '#111827';
+      } else if (shotOutcome === ShotOutcome.TWO_POINTER) {
+        span.style.backgroundColor = '#FB923C';
+        span.style.color = '#FFFFFF';
+      }
+
+      return span;
+    }
+    // For non-scoring outcomes, return plain text
+    return outcomeText;
+  }
+
   // Render the last event summary at bottom of the match details view
   function renderLastEvent(match) {
     const display = document.getElementById('last-event-display');
@@ -3300,22 +3331,33 @@
       outcomeText = last.shotOutcome
         .replace(/([A-Z])/g, ' $1')
         .replace(/\b\w/g, (l) => l.toUpperCase());
+      // Create styled capsule for scoring outcomes
+      const styledOutcome = createStyledOutcome(outcomeText, last.shotOutcome);
+      if (typeof styledOutcome === 'string') {
+        typeLine.textContent = styledOutcome;
+      } else {
+        typeLine.appendChild(styledOutcome);
+      }
     } else if (last.type === EventType.CARD) {
       outcomeText = `${last.cardType ? last.cardType.charAt(0).toUpperCase() + last.cardType.slice(1) : ''} Card`;
+      typeLine.textContent = outcomeText;
     } else if (last.type === EventType.FOUL_CONCEDED) {
       let foulText = `Foul${last.foulOutcome ? ' (' + last.foulOutcome.charAt(0).toUpperCase() + last.foulOutcome.slice(1) + ')' : ''}`;
       if (last.cardType) {
         foulText += ` + ${last.cardType.charAt(0).toUpperCase() + last.cardType.slice(1)} Card`;
       }
       outcomeText = foulText;
+      typeLine.textContent = outcomeText;
     } else if (last.type === EventType.KICKOUT) {
       outcomeText = `Kick‑out ${last.wonKickout ? 'Won' : 'Lost'}`;
+      typeLine.textContent = outcomeText;
     } else if (last.type === EventType.SUBSTITUTION) {
       outcomeText = 'Substitution';
+      typeLine.textContent = outcomeText;
     } else if (last.type === EventType.NOTE) {
       outcomeText = 'Note';
+      typeLine.textContent = outcomeText;
     }
-    typeLine.textContent = outcomeText;
     details.appendChild(typeLine);
     // Scoreboard lines for scoring shots
     if (
@@ -5772,22 +5814,33 @@
         outcomeText = ev.shotOutcome
           .replace(/([A-Z])/g, ' $1')
           .replace(/\b\w/g, (l) => l.toUpperCase());
+        // Create styled capsule for scoring outcomes
+        const styledOutcome = createStyledOutcome(outcomeText, ev.shotOutcome);
+        if (typeof styledOutcome === 'string') {
+          typeLine.textContent = styledOutcome;
+        } else {
+          typeLine.appendChild(styledOutcome);
+        }
       } else if (ev.type === EventType.CARD) {
         outcomeText = `${ev.cardType ? ev.cardType.charAt(0).toUpperCase() + ev.cardType.slice(1) : ''} Card`;
+        typeLine.textContent = outcomeText;
       } else if (ev.type === EventType.FOUL_CONCEDED) {
         let foulText = `Foul${ev.foulOutcome ? ' (' + ev.foulOutcome.charAt(0).toUpperCase() + ev.foulOutcome.slice(1) + ')' : ''}`;
         if (ev.cardType) {
           foulText += ` + ${ev.cardType.charAt(0).toUpperCase() + ev.cardType.slice(1)} Card`;
         }
         outcomeText = foulText;
+        typeLine.textContent = outcomeText;
       } else if (ev.type === EventType.KICKOUT) {
         outcomeText = `Kick‑out ${ev.wonKickout ? 'Won' : 'Lost'}`;
+        typeLine.textContent = outcomeText;
       } else if (ev.type === EventType.SUBSTITUTION) {
         outcomeText = 'Substitution';
+        typeLine.textContent = outcomeText;
       } else if (ev.type === EventType.NOTE) {
         outcomeText = 'Note';
+        typeLine.textContent = outcomeText;
       }
-      typeLine.textContent = outcomeText;
       details.appendChild(typeLine);
       // Scoreboard lines: only for scoring shots (goal/point/twoPointer)
       const scoreboard = scoreByEventId[ev.id];
