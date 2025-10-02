@@ -22,6 +22,15 @@ html, body {
   user-select: none;
 }
 
+/* Allow scrolling on overflow containers */
+.overflow-y-auto,
+.overflow-auto,
+[style*="overflow-y: auto"],
+[style*="overflow: auto"] {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Allow text selection for input fields and textareas */
 input, textarea, [contenteditable] {
   -webkit-user-select: text;
