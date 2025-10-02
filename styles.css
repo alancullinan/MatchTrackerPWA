@@ -473,7 +473,9 @@ main {
 /* Responsive adjustments */
 /* Match details view positioning (grass background now handled by body) */
 #match-details-view {
+  height: 100vh;
   position: relative;
+  overflow: hidden;
 }
 
 /* Ensure content appears above the global overlay */
@@ -500,7 +502,7 @@ main {
   z-index: 10 !important;
 }
 
-/* Apply grass background and layout styles to body when in match view */
+/* Apply grass background to entire body when in match view and prevent scrolling */
 .match-view-active {
   background-image: url('icons/grassbackground.jpg') !important;
   background-size: cover !important;
@@ -513,11 +515,22 @@ main {
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
-  box-sizing: border-box !important;
 }
 
-/* Prevent scrolling on html element when in match view */
-html.match-view-active {
+/* Ensure html prevents scrolling and covers safe areas */
+html {
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+/* Apply grass background to html element to cover safe areas */
+.match-view-active html {
+  background-image: url('icons/grassbackground.jpg') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
@@ -533,7 +546,7 @@ html.match-view-active {
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.25);
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
 }
 
 /* Remove individual grass backgrounds from header and content since body now covers all */
