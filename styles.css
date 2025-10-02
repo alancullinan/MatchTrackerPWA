@@ -7,13 +7,8 @@
  * gracefully, but the primary focus is on usability on phones.
  */
 
-/* Prevent zooming and unwanted touch gestures */
-* {
-  touch-action: manipulation;
-}
-
+/* Allow normal touch behavior including scrolling */
 html, body {
-  touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -22,12 +17,11 @@ html, body {
   user-select: none;
 }
 
-/* Allow scrolling on overflow containers */
+/* Ensure smooth scrolling on iOS */
 .overflow-y-auto,
 .overflow-auto,
 [style*="overflow-y: auto"],
 [style*="overflow: auto"] {
-  touch-action: pan-y !important;
   -webkit-overflow-scrolling: touch;
 }
 
