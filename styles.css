@@ -508,10 +508,13 @@ main {
   position: relative !important;
 }
 
-/* Apply layout styles to body when in match view (no background - that's on html) */
+/* Apply grass background and layout styles to body when in match view */
 .match-view-active {
-  background: none !important;
-  background-color: transparent !important;
+  background-image: url('icons/grassbackground.jpg') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
   margin: 0 !important;
   padding: 0 !important;
   padding-bottom: env(safe-area-inset-bottom, 0px) !important;
@@ -520,20 +523,15 @@ main {
   overflow: hidden !important;
 }
 
-/* Apply grass background to html element and prevent scrolling only in match view */
+/* Prevent scrolling on html element when in match view */
 html.match-view-active {
-  background-image: url('icons/grassbackground.jpg') !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-attachment: fixed !important;
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
 }
 
-/* Dark overlay for entire viewport on html element */
-html.match-view-active::before {
+/* Dark overlay for entire viewport */
+.match-view-active::before {
   content: '';
   position: fixed;
   top: 0;
