@@ -3560,8 +3560,8 @@
       const span = document.createElement('span');
       span.textContent = outcomeText;
       span.style.display = 'inline-block';
-      span.style.padding = '2px 8px';
-      span.style.borderRadius = '12px';
+      span.style.padding = '1px 5px';
+      span.style.borderRadius = '10px';
       span.style.fontWeight = '600';
       span.style.fontSize = '0.875rem';
 
