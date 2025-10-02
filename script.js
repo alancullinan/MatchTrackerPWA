@@ -2218,7 +2218,7 @@
 
       let currentY = 160;
 
-      // Event type/outcome with colored capsule for scoring events
+      // Event type/outcome with flag emoji for scoring events
       const outcomeText = event.shotOutcome ?
         event.shotOutcome.replace(/([A-Z])/g, ' $1').replace(/\b\w/g, (l) => l.toUpperCase()) :
         event.type === EventType.FOUL_CONCEDED ? 'Foul' :
@@ -2227,53 +2227,34 @@
         event.type === EventType.SUBSTITUTION ? 'Substitution' :
         event.type === EventType.NOTE ? 'Note' : '';
 
-      // Draw colored capsule for scoring outcomes
-      if (event.type === EventType.SHOT &&
-          (event.shotOutcome === ShotOutcome.GOAL ||
-           event.shotOutcome === ShotOutcome.POINT ||
-           event.shotOutcome === ShotOutcome.TWO_POINTER)) {
-
-        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-        const textWidth = ctx.measureText(outcomeText).width;
-        const capsuleWidth = textWidth + 32;
-        const capsuleX = (canvas.width - capsuleWidth) / 2;
-        const capsuleY = currentY - 36;
-
-        // Draw rounded rectangle (capsule)
-        ctx.beginPath();
-        ctx.roundRect(capsuleX, capsuleY, capsuleWidth, 56, 12);
-
+      // Add flag emoji beside scoring outcomes (Goal/Point/Two Pointer)
+      let flagEmoji = '';
+      if (event.type === EventType.SHOT) {
         if (event.shotOutcome === ShotOutcome.GOAL) {
-          ctx.fillStyle = '#22C55E';
+          flagEmoji = '🟩 ';
         } else if (event.shotOutcome === ShotOutcome.POINT) {
-          ctx.fillStyle = '#FFFFFF';
+          flagEmoji = '⬜ ';
         } else if (event.shotOutcome === ShotOutcome.TWO_POINTER) {
-          ctx.fillStyle = '#FB923C';
+          flagEmoji = '🟧 ';
         }
-        ctx.fill();
-
-        // Draw text on capsule
-        ctx.fillStyle = event.shotOutcome === ShotOutcome.POINT ? '#111827' : '#FFFFFF';
-        ctx.textAlign = 'center';
-        ctx.fillText(outcomeText, canvas.width / 2, currentY);
-        currentY += 80;
-      } else {
-        // Plain text for non-scoring events
-        ctx.fillStyle = '#f3f4f6'; // gray-100
-        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(outcomeText, canvas.width / 2, currentY);
-        currentY += 70;
       }
 
-      // Team name
+      // Draw outcome text with flag emoji (no capsule background)
+      const textWithFlag = flagEmoji + outcomeText;
+      ctx.fillStyle = '#f3f4f6'; // white
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(textWithFlag, canvas.width / 2, currentY);
+      currentY += 70;
+
+      // Team name (more prominent - larger and white)
       const team = event.teamId ? (event.teamId === match.team1.id ? match.team1 : match.team2) : null;
       if (team) {
-        ctx.fillStyle = '#9ca3af'; // gray-400
-        ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.fillStyle = '#f3f4f6'; // white (was gray-400)
+        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif'; // 48px (was 32px)
         ctx.textAlign = 'center';
         ctx.fillText(team.name, canvas.width / 2, currentY);
-        currentY += 60;
+        currentY += 70;
       }
 
       // Player info
@@ -6236,7 +6217,7 @@
       // Share button: positioned to the left of delete button
       const shareBtn = document.createElement('button');
       shareBtn.title = 'Share event';
-      shareBtn.className = 'event-actions absolute bottom-2 right-10 text-gray-200 hover:text-gray-100';
+      shareBtn.className = 'event-actions absolute bottom-2 right-11 text-gray-200 hover:text-gray-100';
       shareBtn.innerHTML = '<img src="icons/share.svg" alt="Share Event" class="w-6 h-6" />';
       shareBtn.addEventListener('click', (e) => {
         e.stopPropagation();
