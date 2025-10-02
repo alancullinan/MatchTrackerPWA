@@ -10,11 +10,15 @@
 /* Allow normal touch behavior including scrolling */
 html, body {
   -webkit-text-size-adjust: 100%;
-  -webkit-touch-callout: none;
+}
+
+/* Prevent text selection on buttons and UI elements */
+button, img, svg, .match-card, .event-item {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Allow text selection for input fields and textareas */
