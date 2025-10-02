@@ -3669,6 +3669,19 @@
     typeListEl.innerHTML = '';
     playerListEl.innerHTML = '';
     notesInput.value = '';
+
+    // If editing, set notes from existing event
+    if (initial.isEdit && initial.eventId) {
+      const match = findMatchById(appState.currentMatchId);
+      const existingEvent = match?.events.find(e => e.id === initial.eventId);
+      if (existingEvent && existingEvent.noteText) {
+        setTimeout(() => {
+          const notesInput = document.getElementById('score-notes');
+          if (notesInput) notesInput.value = existingEvent.noteText;
+        }, 0);
+      }
+    }
+
     // Build header with appropriate icon and label
     const label = document.createElement('span');
     let labelText;
