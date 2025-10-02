@@ -476,6 +476,7 @@ main {
   height: 100vh;
   position: relative;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* Ensure content appears above the global overlay */
@@ -515,6 +516,7 @@ main {
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
+  overscroll-behavior: none !important;
 }
 
 /* Ensure html prevents scrolling and covers safe areas */
@@ -522,6 +524,7 @@ html {
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
+  overscroll-behavior: none !important;
 }
 
 /* Apply grass background to html element to cover safe areas */
