@@ -524,7 +524,7 @@ main {
 }
 
 /* Apply grass background to html element and prevent scrolling only in match view */
-.match-view-active html {
+html.match-view-active {
   background-image: url('icons/grassbackground.jpg') !important;
   background-size: cover !important;
   background-position: center !important;

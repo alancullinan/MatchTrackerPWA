@@ -2564,10 +2564,13 @@
     
     // Add/remove grass background class for header when in match view
     const body = document.body;
+    const html = document.documentElement;
     if (viewId === 'match-details-view') {
       body.classList.add('match-view-active');
+      html.classList.add('match-view-active');
     } else {
       body.classList.remove('match-view-active');
+      html.classList.remove('match-view-active');
     }
   }
 
