@@ -2193,6 +2193,236 @@
     });
   }
 
+  // Generate share image for individual event
+  function generateEventShareImage(match, event, runningScore) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      // Set canvas size for social sharing (Instagram-style square)
+      canvas.width = 800;
+      canvas.height = 800;
+
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#1f2937'); // gray-800
+      gradient.addColorStop(1, '#111827'); // gray-900
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Competition header
+      ctx.fillStyle = '#f3f4f6'; // gray-100
+      ctx.font = 'bold 38px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(match.competition || 'Match Update', canvas.width / 2, 80);
+
+      let currentY = 160;
+
+      // Event type/outcome with colored capsule for scoring events
+      const outcomeText = event.shotOutcome ?
+        event.shotOutcome.replace(/([A-Z])/g, ' $1').replace(/\b\w/g, (l) => l.toUpperCase()) :
+        event.type === EventType.FOUL_CONCEDED ? 'Foul' :
+        event.type === EventType.CARD ? `${event.cardType} Card` :
+        event.type === EventType.KICKOUT ? `Kick-out ${event.wonKickout ? 'Won' : 'Lost'}` :
+        event.type === EventType.SUBSTITUTION ? 'Substitution' :
+        event.type === EventType.NOTE ? 'Note' : '';
+
+      // Draw colored capsule for scoring outcomes
+      if (event.type === EventType.SHOT &&
+          (event.shotOutcome === ShotOutcome.GOAL ||
+           event.shotOutcome === ShotOutcome.POINT ||
+           event.shotOutcome === ShotOutcome.TWO_POINTER)) {
+
+        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        const textWidth = ctx.measureText(outcomeText).width;
+        const capsuleWidth = textWidth + 32;
+        const capsuleX = (canvas.width - capsuleWidth) / 2;
+        const capsuleY = currentY - 36;
+
+        // Draw rounded rectangle (capsule)
+        ctx.beginPath();
+        ctx.roundRect(capsuleX, capsuleY, capsuleWidth, 56, 12);
+
+        if (event.shotOutcome === ShotOutcome.GOAL) {
+          ctx.fillStyle = '#22C55E';
+        } else if (event.shotOutcome === ShotOutcome.POINT) {
+          ctx.fillStyle = '#FFFFFF';
+        } else if (event.shotOutcome === ShotOutcome.TWO_POINTER) {
+          ctx.fillStyle = '#FB923C';
+        }
+        ctx.fill();
+
+        // Draw text on capsule
+        ctx.fillStyle = event.shotOutcome === ShotOutcome.POINT ? '#111827' : '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.fillText(outcomeText, canvas.width / 2, currentY);
+        currentY += 80;
+      } else {
+        // Plain text for non-scoring events
+        ctx.fillStyle = '#f3f4f6'; // gray-100
+        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(outcomeText, canvas.width / 2, currentY);
+        currentY += 70;
+      }
+
+      // Team name
+      const team = event.teamId ? (event.teamId === match.team1.id ? match.team1 : match.team2) : null;
+      if (team) {
+        ctx.fillStyle = '#9ca3af'; // gray-400
+        ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(team.name, canvas.width / 2, currentY);
+        currentY += 60;
+      }
+
+      // Player info
+      const getPlayer = (playerId) => {
+        if (!playerId) return null;
+        return match.team1.players.find((p) => p.id === playerId) ||
+               match.team2.players.find((p) => p.id === playerId) || null;
+      };
+
+      if (event.type === EventType.SHOT || event.type === EventType.FOUL_CONCEDED ||
+          event.type === EventType.CARD || event.type === EventType.KICKOUT) {
+        const player = getPlayer(event.player1Id);
+        if (player) {
+          const defaultName = `No.${player.jerseyNumber}`;
+          let playerText = `#${player.jerseyNumber}`;
+          if (player.name && player.name !== defaultName) {
+            playerText += ` ${player.name}`;
+          }
+          ctx.fillStyle = '#f3f4f6'; // gray-100
+          ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(playerText, canvas.width / 2, currentY);
+          currentY += 60;
+        }
+      }
+
+      // Substitution players
+      if (event.type === EventType.SUBSTITUTION) {
+        const playerOut = getPlayer(event.player1Id);
+        const playerIn = getPlayer(event.player2Id);
+        const outStr = playerOut ?
+          `#${playerOut.jerseyNumber}${playerOut.name && playerOut.name !== `No.${playerOut.jerseyNumber}` ? ' ' + playerOut.name : ''}` : '';
+        const inStr = playerIn ?
+          `#${playerIn.jerseyNumber}${playerIn.name && playerIn.name !== `No.${playerIn.jerseyNumber}` ? ' ' + playerIn.name : ''}` : '';
+        ctx.fillStyle = '#f3f4f6'; // gray-100
+        ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${outStr} ⟶ ${inStr}`, canvas.width / 2, currentY);
+        currentY += 60;
+      }
+
+      // Time and period
+      const minutes = Math.floor(event.timeElapsed / 60);
+      ctx.fillStyle = '#9ca3af'; // gray-400
+      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${minutes} min - ${event.period}`, canvas.width / 2, currentY);
+      currentY += 50;
+
+      // Shot type for shot events
+      if (event.type === EventType.SHOT && event.shotType) {
+        const shotTypeMap = {
+          fromPlay: 'From Play',
+          free: 'Free',
+          penalty: 'Penalty',
+          fortyFive: '45m/65m',
+          sixtyFive: '45m/65m',
+          sideline: 'Sideline',
+          mark: 'Mark'
+        };
+        const shotTypeText = shotTypeMap[event.shotType] || event.shotType;
+        ctx.fillStyle = '#9ca3af'; // gray-400
+        ctx.font = '26px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(shotTypeText, canvas.width / 2, currentY);
+        currentY += 50;
+      }
+
+      // Foul type for foul events
+      if (event.type === EventType.FOUL_CONCEDED) {
+        let foulText = event.foulOutcome ? event.foulOutcome.charAt(0).toUpperCase() + event.foulOutcome.slice(1) : '';
+        if (event.cardType) {
+          foulText += ` + ${event.cardType.charAt(0).toUpperCase() + event.cardType.slice(1)} Card`;
+        }
+        if (foulText) {
+          ctx.fillStyle = '#9ca3af'; // gray-400
+          ctx.font = '26px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(foulText, canvas.width / 2, currentY);
+          currentY += 50;
+        }
+      }
+
+      // Separator line before score
+      if (runningScore && (event.shotOutcome === ShotOutcome.GOAL ||
+                           event.shotOutcome === ShotOutcome.POINT ||
+                           event.shotOutcome === ShotOutcome.TWO_POINTER)) {
+        currentY += 20;
+        ctx.strokeStyle = '#4b5563'; // gray-600
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(150, currentY);
+        ctx.lineTo(canvas.width - 150, currentY);
+        ctx.stroke();
+        currentY += 50;
+
+        // Running score
+        ctx.fillStyle = '#60a5fa'; // blue-400
+        ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${match.team1.name}: ${runningScore.t1Goals}-${runningScore.t1Points.toString().padStart(2, '0')}`, canvas.width / 2, currentY);
+        currentY += 50;
+        ctx.fillText(`${match.team2.name}: ${runningScore.t2Goals}-${runningScore.t2Points.toString().padStart(2, '0')}`, canvas.width / 2, currentY);
+        currentY += 50;
+      }
+
+      // Notes if present
+      if (event.noteText && event.noteText.trim()) {
+        currentY += 30;
+        ctx.fillStyle = '#9ca3af'; // gray-400
+        ctx.font = '24px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+
+        // Word wrap for long notes
+        const maxWidth = canvas.width - 160;
+        const words = event.noteText.trim().split(' ');
+        let line = '';
+        const lines = [];
+
+        for (let word of words) {
+          const testLine = line + word + ' ';
+          const metrics = ctx.measureText(testLine);
+          if (metrics.width > maxWidth && line !== '') {
+            lines.push(line);
+            line = word + ' ';
+          } else {
+            line = testLine;
+          }
+        }
+        lines.push(line);
+
+        // Draw note icon
+        ctx.fillText('📝', canvas.width / 2, currentY);
+        currentY += 40;
+
+        // Draw wrapped text
+        lines.forEach((line) => {
+          ctx.fillText(line.trim(), canvas.width / 2, currentY);
+          currentY += 35;
+        });
+      }
+
+      // Convert to blob
+      canvas.toBlob((blob) => {
+        resolve(blob);
+      }, 'image/png', 0.9);
+    });
+  }
+
   async function shareBasicMatchInfo() {
     const match = findMatchById(appState.currentMatchId);
     if (!match) return;
@@ -2227,7 +2457,72 @@
       
       showShareSuccessMessage('Match image downloaded to your device!');
       URL.revokeObjectURL(imageUrl);
-      
+
+    } catch (err) {
+      console.log('Image download failed');
+      showShareSuccessMessage('Unable to share or download image. Please try again.');
+    }
+  }
+
+  // Share individual event as image
+  async function shareIndividualEvent(eventId) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+
+    const event = match.events.find((e) => e.id === eventId);
+    if (!event) return;
+
+    // Calculate running score up to this event (same logic as renderEventsList)
+    let t1Goals = 0;
+    let t1Points = 0;
+    let t2Goals = 0;
+    let t2Points = 0;
+
+    for (const ev of match.events) {
+      if (ev.type === EventType.SHOT) {
+        if (ev.teamId === match.team1.id) {
+          if (ev.shotOutcome === ShotOutcome.GOAL) t1Goals += 1;
+          else if (ev.shotOutcome === ShotOutcome.POINT) t1Points += 1;
+          else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t1Points += 2;
+        } else if (ev.teamId === match.team2.id) {
+          if (ev.shotOutcome === ShotOutcome.GOAL) t2Goals += 1;
+          else if (ev.shotOutcome === ShotOutcome.POINT) t2Points += 1;
+          else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t2Points += 2;
+        }
+      }
+      // Stop when we reach the current event
+      if (ev.id === eventId) break;
+    }
+
+    const runningScore = { t1Goals, t1Points, t2Goals, t2Points };
+
+    // Generate event image
+    const imageBlob = await generateEventShareImage(match, event, runningScore);
+
+    // Try sharing image with Web Share API first (mobile)
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([imageBlob], 'event.png', { type: 'image/png' })] })) {
+      try {
+        const imageFile = new File([imageBlob], 'event.png', { type: 'image/png' });
+        await navigator.share({
+          files: [imageFile]
+        });
+        return;
+      } catch (err) {
+        console.log('Image sharing failed, trying image download:', err);
+      }
+    }
+
+    // Fallback: Download image directly
+    try {
+      const imageUrl = URL.createObjectURL(imageBlob);
+      const downloadLink = document.createElement('a');
+      const team = event.teamId === match.team1.id ? match.team1 : match.team2;
+      downloadLink.href = imageUrl;
+      downloadLink.download = `event-${team.name}-${Date.now()}.png`.replace(/\s+/g, '_');
+      downloadLink.click();
+
+      showShareSuccessMessage('Event image downloaded to your device!');
+      URL.revokeObjectURL(imageUrl);
     } catch (err) {
       console.log('Image download failed');
       showShareSuccessMessage('Unable to share or download image. Please try again.');
@@ -3254,7 +3549,7 @@
       const span = document.createElement('span');
       span.textContent = outcomeText;
       span.style.display = 'inline-block';
-      span.style.padding = '4px 12px';
+      span.style.padding = '2px 8px';
       span.style.borderRadius = '12px';
       span.style.fontWeight = '600';
       span.style.fontSize = '0.875rem';
@@ -5937,9 +6232,21 @@
       timeDiv.className = 'absolute top-2 right-2 text-gray-200 text-xs font-medium text-right';
       timeDiv.innerHTML = `${timeStr}<br><span class="text-gray-400">${ev.period}</span>`;
       item.appendChild(timeDiv);
-      // Delete button: render a trash icon instead of an “X” and position it at the
+
+      // Share button: positioned to the left of delete button
+      const shareBtn = document.createElement('button');
+      shareBtn.title = 'Share event';
+      shareBtn.className = 'event-actions absolute bottom-2 right-10 text-gray-200 hover:text-gray-100';
+      shareBtn.innerHTML = '<img src="icons/share.svg" alt="Share Event" class="w-6 h-6" />';
+      shareBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        shareIndividualEvent(ev.id);
+      });
+      item.appendChild(shareBtn);
+
+      // Delete button: render a trash icon instead of an "X" and position it at the
       // bottom right of the event card.  Using absolute positioning allows the
-      // icon to float to the card’s corner independent of the right column.
+      // icon to float to the card's corner independent of the right column.
       const delBtn = document.createElement('button');
       delBtn.title = 'Delete event';
       // Tailwind classes: absolute positioning, bottom/right offsets and red colour
