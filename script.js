@@ -2708,6 +2708,230 @@
     }
   }
 
+  // Generate formatted events export text
+  function generateEventsExport(match) {
+    const team1Score = computeTeamScore(match, 'team1');
+    const team2Score = computeTeamScore(match, 'team2');
+
+    // Helper function to get event icon
+    const getEventIcon = (event) => {
+      if (event.type === EventType.SHOT) {
+        if (event.shotOutcome === ShotOutcome.GOAL) return '⚽';
+        if (event.shotOutcome === ShotOutcome.POINT) return '🎯';
+        if (event.shotOutcome === ShotOutcome.TWO_POINTER) return '🎯';
+        return '❌';
+      }
+      if (event.type === EventType.CARD) {
+        if (event.cardType === CardType.YELLOW) return '🟨';
+        if (event.cardType === CardType.RED) return '🟥';
+        if (event.cardType === CardType.BLACK) return '⬛';
+      }
+      if (event.type === EventType.FOUL_CONCEDED) return '🚫';
+      if (event.type === EventType.SUBSTITUTION) return '🔄';
+      if (event.type === EventType.KICKOUT) return '🥾';
+      if (event.type === EventType.NOTE) return '📝';
+      return '•';
+    };
+
+    // Helper function to format event details
+    const formatEventDetails = (event) => {
+      let details = [];
+
+      if (event.type === EventType.SHOT) {
+        const outcomes = {
+          [ShotOutcome.GOAL]: 'Goal',
+          [ShotOutcome.POINT]: 'Point',
+          [ShotOutcome.TWO_POINTER]: 'Two Pointer',
+          [ShotOutcome.WIDE]: 'Wide',
+          [ShotOutcome.SAVED]: 'Saved',
+          [ShotOutcome.DROPPED_SHORT]: 'Dropped Short',
+          [ShotOutcome.OFF_POST]: 'Off Post'
+        };
+        details.push(`Outcome: ${outcomes[event.shotOutcome] || event.shotOutcome}`);
+
+        if (event.shotType) {
+          const types = {
+            [ShotType.FROM_PLAY]: 'From Play',
+            [ShotType.FREE]: 'Free',
+            [ShotType.PENALTY]: 'Penalty',
+            [ShotType.FORTY_FIVE]: '45',
+            [ShotType.SIXTY_FIVE]: '65',
+            [ShotType.SIDELINE]: 'Sideline',
+            [ShotType.MARK]: 'Mark'
+          };
+          details.push(`Type: ${types[event.shotType] || event.shotType}`);
+        }
+      }
+
+      if (event.type === EventType.CARD) {
+        const cards = {
+          [CardType.YELLOW]: 'Yellow Card',
+          [CardType.RED]: 'Red Card',
+          [CardType.BLACK]: 'Black Card'
+        };
+        details.push(cards[event.cardType] || event.cardType);
+      }
+
+      if (event.type === EventType.FOUL_CONCEDED) {
+        if (event.foulOutcome === 'free') details.push('Free Against');
+        if (event.foulOutcome === 'penalty') details.push('Penalty Against');
+        if (event.cardType && event.cardType !== 'none') {
+          const cards = {
+            [CardType.YELLOW]: 'Yellow Card',
+            [CardType.RED]: 'Red Card',
+            [CardType.BLACK]: 'Black Card'
+          };
+          details.push(cards[event.cardType]);
+        }
+      }
+
+      if (event.type === EventType.KICKOUT) {
+        details.push(event.kickoutOutcome === 'won' ? 'Won Own Kickout' : 'Lost Own Kickout');
+      }
+
+      if (event.type === EventType.SUBSTITUTION) {
+        details.push(`${event.playerOff?.name} (#${event.playerOff?.jerseyNumber}) OFF`);
+        details.push(`${event.playerOn?.name} (#${event.playerOn?.jerseyNumber}) ON`);
+      }
+
+      return details;
+    };
+
+    // Build the export text
+    let text = `🏈 ${match.competition || 'Match'} - Match Events\n\n`;
+    text += `${match.team1.name} vs ${match.team2.name}\n`;
+
+    const matchDate = match.dateTime ? new Date(match.dateTime).toLocaleDateString(undefined, {
+      day: 'numeric', month: 'long', year: 'numeric'
+    }) : '';
+    if (matchDate) text += `📅 ${matchDate}`;
+    if (match.venue) text += ` | 🏟️ ${match.venue}`;
+    text += '\n\n';
+
+    text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+    text += `📋 MATCH EVENTS (${match.events.length} events)\n\n`;
+    text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+
+    // Group events by period
+    const eventsByPeriod = {};
+    match.events.forEach(event => {
+      const period = event.period || MatchPeriod.NOT_STARTED;
+      if (!eventsByPeriod[period]) eventsByPeriod[period] = [];
+      eventsByPeriod[period].push(event);
+    });
+
+    // Period icons
+    const periodIcons = {
+      [MatchPeriod.NOT_STARTED]: '⏸️',
+      [MatchPeriod.FIRST_HALF]: '⚽',
+      [MatchPeriod.HALF_TIME]: '⏸️',
+      [MatchPeriod.SECOND_HALF]: '⚽',
+      [MatchPeriod.FULL_TIME]: '🏁',
+      [MatchPeriod.EXTRA_FIRST]: '⚽',
+      [MatchPeriod.EXTRA_HALF]: '⏸️',
+      [MatchPeriod.EXTRA_SECOND]: '⚽',
+      [MatchPeriod.MATCH_OVER]: '🏁'
+    };
+
+    // Output events by period
+    const periods = Object.keys(eventsByPeriod);
+    periods.forEach((period, index) => {
+      const icon = periodIcons[period] || '•';
+      text += `${icon} ${period.toUpperCase()}\n\n`;
+
+      eventsByPeriod[period].forEach(event => {
+        const teamName = event.teamId === match.team1.id ? match.team1.name : match.team2.name;
+        const eventIcon = getEventIcon(event);
+        const eventTypeName = event.type === EventType.SHOT ? 'Shot' :
+                              event.type === EventType.CARD ? 'Card' :
+                              event.type === EventType.FOUL_CONCEDED ? 'Foul' :
+                              event.type === EventType.KICKOUT ? 'Kickout' :
+                              event.type === EventType.SUBSTITUTION ? 'Substitution' :
+                              event.type === EventType.NOTE ? 'Note' : event.type;
+
+        text += `${event.matchTime || '00:00'} | ${teamName} - ${eventIcon} ${eventTypeName}\n`;
+
+        // Player info (if applicable)
+        if (event.player && event.type !== EventType.SUBSTITUTION) {
+          text += `       Player: ${event.player.name} (#${event.player.jerseyNumber})\n`;
+        }
+
+        // Event details
+        const details = formatEventDetails(event);
+        details.forEach(detail => {
+          text += `       ${detail}\n`;
+        });
+
+        // Notes
+        if (event.noteText && event.noteText.trim()) {
+          text += `       📝 ${event.noteText.trim()}\n`;
+        }
+
+        text += '\n';
+      });
+
+      if (index < periods.length - 1) {
+        text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+      }
+    });
+
+    // Summary section
+    text += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+    text += '📊 SUMMARY\n\n';
+    text += `• Total Events: ${match.events.length}\n`;
+    const team1ScoreText = `${team1Score.goals}-${team1Score.points.toString().padStart(2, '0')} (${team1Score.total})`;
+    const team2ScoreText = `${team2Score.goals}-${team2Score.points.toString().padStart(2, '0')} (${team2Score.total})`;
+    text += `• Final Score: ${team1ScoreText} vs ${team2ScoreText}\n`;
+
+    if (match.elapsedTime) {
+      const minutes = Math.floor(match.elapsedTime / 60);
+      const seconds = match.elapsedTime % 60;
+      text += `• Duration: ${minutes}:${seconds.toString().padStart(2, '0')}\n`;
+    }
+
+    text += '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+    text += '📱 Generated by Match Tracker';
+
+    return text;
+  }
+
+  // Share events list
+  async function shareEventsList() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+
+    const exportText = generateEventsExport(match);
+
+    // Try Web Share API (mobile)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${match.competition || 'Match'} Events`,
+          text: exportText
+        });
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          // User cancelled, just return
+          return;
+        }
+        console.log('Share failed, trying download:', err);
+      }
+    }
+
+    // Fallback: Download as text file
+    const blob = new Blob([exportText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileName = `${match.team1.name}_vs_${match.team2.name}_events.txt`.replace(/\s+/g, '_');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   // Open details of a match
   function openMatchDetails(matchId) {
     appState.currentMatchId = matchId;
@@ -3010,7 +3234,7 @@
     // Attach click handler for the list button to open the events list modal
     listBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      showEventsModal();
+      showEventsView();
       display.classList.add('hidden');
     });
     // Attach click on display to edit last event (excluding the list button)
@@ -3131,33 +3355,23 @@
   }
 
   /**
-   * Show the Events list modal.  When the user taps the list button in the
-   * last event display, the full chronological list of events appears in
-   * this modal.  The list allows editing and deleting events as before.
+   * Show the Events list view.  When the user taps the list button in the
+   * last event display, navigate to the full events view page.
    */
-  function showEventsModal() {
-    const modal = document.getElementById('events-modal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
+  function showEventsView() {
     // Render events list for current match
     const match = findMatchById(appState.currentMatchId);
     if (match) {
       renderEventsList(match);
     }
+    showView('events-view');
   }
 
   /**
-   * Hide the Events list modal.
+   * Hide the Events list view and return to match details.
    */
-  function hideEventsModal() {
-    const modal = document.getElementById('events-modal');
-    if (!modal) return;
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-    // When closing the events modal, reveal the last event display again
-    const lastDisplay = document.getElementById('last-event-display');
-    if (lastDisplay) lastDisplay.classList.remove('hidden');
+  function hideEventsView() {
+    showView('match-details-view');
   }
 
   // Quickly add a scoring event without opening event form
@@ -5991,12 +6205,17 @@
     const cancelEditEventBtn = document.getElementById('cancel-edit-event-btn');
     if (cancelEditEventBtn) cancelEditEventBtn.addEventListener('click', cancelEditEvent);
 
-    // Close events list modal button
-    const closeEventsBtn = document.getElementById('close-events-modal-btn');
-    if (closeEventsBtn) {
-      closeEventsBtn.addEventListener('click', () => hideEventsModal());
+    // Back button for events view
+    const eventsBackBtn = document.getElementById('events-back-btn');
+    if (eventsBackBtn) {
+      eventsBackBtn.addEventListener('click', () => hideEventsView());
     }
 
+    // Share events button
+    const shareEventsBtn = document.getElementById('share-events-btn');
+    if (shareEventsBtn) {
+      shareEventsBtn.addEventListener('click', () => shareEventsList());
+    }
 
     // Period action confirmation modal logic
     const periodButton = document.getElementById('end-period-btn');
