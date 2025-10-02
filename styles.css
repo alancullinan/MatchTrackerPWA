@@ -526,22 +526,28 @@ html.match-view-active {
   overflow: hidden !important;
   overscroll-behavior: none !important;
   touch-action: pan-y pan-x !important;
-}
-
-/* Apply grass background to html element to cover safe areas */
-.match-view-active html {
   background-image: url('icons/grassbackground.jpg') !important;
   background-size: cover !important;
   background-position: center !important;
   background-repeat: no-repeat !important;
   background-attachment: fixed !important;
-  height: 100vh !important;
-  max-height: 100vh !important;
-  overflow: hidden !important;
 }
 
-/* Dark overlay for entire viewport */
-.match-view-active::before {
+/* Dark overlay for html element */
+html.match-view-active::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Dark overlay for body element (in addition to html overlay above) */
+body.match-view-active::before {
   content: '';
   position: fixed;
   top: 0;
