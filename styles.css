@@ -17,14 +17,6 @@ html, body {
   user-select: none;
 }
 
-/* Ensure smooth scrolling on iOS */
-.overflow-y-auto,
-.overflow-auto,
-[style*="overflow-y: auto"],
-[style*="overflow: auto"] {
-  -webkit-overflow-scrolling: touch;
-}
-
 /* Allow text selection for input fields and textareas */
 input, textarea, [contenteditable] {
   -webkit-user-select: text;
@@ -523,8 +515,8 @@ main {
   touch-action: pan-y pan-x !important;
 }
 
-/* Ensure html prevents scrolling and covers safe areas */
-html {
+/* Ensure html covers safe areas only when in match view */
+html.match-view-active {
   height: 100vh !important;
   max-height: 100vh !important;
   overflow: hidden !important;
