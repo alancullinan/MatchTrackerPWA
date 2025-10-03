@@ -26,15 +26,14 @@
   const EventType = {
     // Event types mirror the Swift enums from the original iOS app.  A foul
     // denotes a foul conceded, matching `.foulConceded` in Swift.  Using
-    // meaningful keys makes it trivial to extend later (e.g. periodStart).  
+    // meaningful keys makes it trivial to extend later (e.g. periodStart).
     SHOT: 'shot',
     SUBSTITUTION: 'substitution',
     KICKOUT: 'kickout',
     CARD: 'card',
     FOUL_CONCEDED: 'foulConceded',
-    NOTE: 'note'
-    // Note: periodStart/periodEnd events are not explicitly supported but
-    // could be added later.
+    NOTE: 'note',
+    PERIOD_END: 'periodEnd'
   };
 
   const ShotOutcome = {
@@ -2225,7 +2224,8 @@
         event.type === EventType.CARD ? `${event.cardType} Card` :
         event.type === EventType.KICKOUT ? `Kick-out ${event.wonKickout ? 'Won' : 'Lost'}` :
         event.type === EventType.SUBSTITUTION ? 'Substitution' :
-        event.type === EventType.NOTE ? 'Note' : '';
+        event.type === EventType.NOTE ? 'Note' :
+        event.type === EventType.PERIOD_END ? event.period : '';
 
       // Draw flag icon for scoring outcomes, then text
       if (event.type === EventType.SHOT &&
@@ -2326,15 +2326,7 @@
         currentY += 60;
       }
 
-      // Time and period
-      const minutes = Math.floor(event.timeElapsed / 60);
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${minutes} min - ${event.period}`, canvas.width / 2, currentY);
-      currentY += 50;
-
-      // Shot type for shot events
+      // Shot type for shot events (now before time)
       if (event.type === EventType.SHOT && event.shotType) {
         const shotTypeMap = {
           fromPlay: 'From Play',
@@ -2350,6 +2342,16 @@
         ctx.font = '26px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(shotTypeText, canvas.width / 2, currentY);
+        currentY += 50;
+      }
+
+      // Time and period (now after shot type) - skip for period end events
+      if (event.type !== EventType.PERIOD_END) {
+        const minutes = Math.floor(event.timeElapsed / 60);
+        ctx.fillStyle = '#9ca3af'; // gray-400
+        ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${minutes} min - ${event.period}`, canvas.width / 2, currentY);
         currentY += 50;
       }
 
@@ -2369,9 +2371,7 @@
       }
 
       // Separator line before score
-      if (runningScore && (event.shotOutcome === ShotOutcome.GOAL ||
-                           event.shotOutcome === ShotOutcome.POINT ||
-                           event.shotOutcome === ShotOutcome.TWO_POINTER)) {
+      if (runningScore) {
         currentY += 20;
         ctx.strokeStyle = '#4b5563'; // gray-600
         ctx.lineWidth = 2;
@@ -5587,9 +5587,26 @@
       match.elapsedTime = Math.floor((Date.now() - match.periodStartTimestamp) / 1000);
     }
     stopTimer();
+
     // Set match to paused and update period
     match.isPaused = true;
     match.currentPeriod = getNextPeriod(match.currentPeriod, match);
+
+    // Create period end event when transitioning TO Half Time, Full Time, or Extra Half Time
+    if (
+      match.currentPeriod === MatchPeriod.HALF_TIME ||
+      match.currentPeriod === MatchPeriod.FULL_TIME ||
+      match.currentPeriod === MatchPeriod.EXTRA_HALF
+    ) {
+      const periodEndEvent = {
+        id: Date.now(),
+        type: EventType.PERIOD_END,
+        period: match.currentPeriod, // The period we're entering (Half Time, Full Time, etc.)
+        timeElapsed: match.elapsedTime // Time from the period that just ended
+      };
+      match.events.push(periodEndEvent);
+    }
+
     // Reset timer for next period (elapsed resets to 0) except if match over
     if (match.currentPeriod !== MatchPeriod.MATCH_OVER) {
       match.elapsedTime = 0;
@@ -6146,13 +6163,18 @@
       } else if (ev.type === EventType.NOTE) {
         outcomeText = 'Note';
         typeLine.textContent = outcomeText;
+      } else if (ev.type === EventType.PERIOD_END) {
+        // Period end events show the period name (Half Time, Full Time, etc.)
+        outcomeText = ev.period;
+        typeLine.textContent = outcomeText;
       }
       details.appendChild(typeLine);
-      // Scoreboard lines: only for scoring shots (goal/point/twoPointer)
+      // Scoreboard lines: for scoring shots and period end events
       const scoreboard = scoreByEventId[ev.id];
       if (
-        ev.type === EventType.SHOT &&
-        (ev.shotOutcome === ShotOutcome.GOAL || ev.shotOutcome === ShotOutcome.POINT || ev.shotOutcome === ShotOutcome.TWO_POINTER)
+        (ev.type === EventType.SHOT &&
+        (ev.shotOutcome === ShotOutcome.GOAL || ev.shotOutcome === ShotOutcome.POINT || ev.shotOutcome === ShotOutcome.TWO_POINTER)) ||
+        ev.type === EventType.PERIOD_END
       ) {
         const sLine1 = document.createElement('div');
         sLine1.className = 'text-blue-400 text-sm';
