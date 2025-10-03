@@ -5764,9 +5764,6 @@
     // Start real-time sync
     startEditorTimeSync();
 
-    // Check for conflicts on open
-    checkTimeConflicts(match);
-
     showView('time-period-editor-view');
   }
 
@@ -5774,29 +5771,6 @@
   function updateTimeEditorDisplay() {
     const display = document.getElementById('time-editor-display');
     display.textContent = formatTime(timeEditorState.tempTime);
-  }
-
-  // Get the latest event time for validation
-  function getLatestEventTime(match) {
-    if (!match.events || match.events.length === 0) {
-      return 0;
-    }
-    return Math.max(...match.events.map(e => e.timeElapsed || 0));
-  }
-
-  // Check if time conflicts with events and show warning
-  function checkTimeConflicts(match) {
-    const latestEventTime = getLatestEventTime(match);
-    const warningDiv = document.getElementById('time-warning');
-    const warningText = document.getElementById('time-warning-text');
-
-    if (timeEditorState.tempTime < latestEventTime) {
-      const latestTimeStr = formatTime(latestEventTime);
-      warningText.textContent = `Latest event is at ${latestTimeStr}. Setting time earlier may cause score display issues.`;
-      warningDiv.style.display = 'block';
-    } else {
-      warningDiv.style.display = 'none';
-    }
   }
 
   // Adjust time by seconds
@@ -5817,9 +5791,6 @@
     if (match) {
       timeEditorState.tempTime = match.elapsedTime + timeEditorState.timeOffset;
       updateTimeEditorDisplay();
-
-      // Check for conflicts and show warning
-      checkTimeConflicts(match);
     }
   }
 
