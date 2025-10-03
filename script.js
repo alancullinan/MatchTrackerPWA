@@ -5677,7 +5677,7 @@
     tempTime: 0,
     originalPeriod: null,
     editorInterval: null,
-    hasManualEdit: false
+    timeOffset: 0  // Offset from live match time (in seconds)
   };
 
   // Start syncing time from live match
@@ -5691,21 +5691,17 @@
     }
 
     // Update display immediately
-    if (!timeEditorState.hasManualEdit) {
-      timeEditorState.tempTime = match.elapsedTime;
-      updateTimeEditorDisplay();
-    }
+    timeEditorState.tempTime = match.elapsedTime + timeEditorState.timeOffset;
+    updateTimeEditorDisplay();
 
     // Start interval to sync from live match
     timeEditorState.editorInterval = setInterval(() => {
       const match = findMatchById(appState.currentMatchId);
       if (!match) return;
 
-      // Only sync if user hasn't made manual edits
-      if (!timeEditorState.hasManualEdit) {
-        timeEditorState.tempTime = match.elapsedTime;
-        updateTimeEditorDisplay();
-      }
+      // Always sync, but apply the offset
+      timeEditorState.tempTime = match.elapsedTime + timeEditorState.timeOffset;
+      updateTimeEditorDisplay();
     }, 1000);
   }
 
@@ -5725,7 +5721,7 @@
     // Reset editor state
     timeEditorState.tempTime = match.elapsedTime;
     timeEditorState.originalPeriod = match.currentPeriod;
-    timeEditorState.hasManualEdit = false;
+    timeEditorState.timeOffset = 0;  // No offset initially
 
     // Populate period selector
     const periodSelector = document.getElementById('period-selector');
@@ -5745,18 +5741,23 @@
 
   // Adjust time by seconds
   function adjustTime(seconds) {
+    // Adjust the offset - this will be applied to live time continuously
+    timeEditorState.timeOffset += seconds;
+
+    // Ensure result doesn't go negative
     const match = findMatchById(appState.currentMatchId);
-    if (!match) return;
+    if (match) {
+      const newTime = match.elapsedTime + timeEditorState.timeOffset;
+      if (newTime < 0) {
+        timeEditorState.timeOffset = -match.elapsedTime;
+      }
+    }
 
-    // Get current live time or use tempTime if already edited
-    const baseTime = timeEditorState.hasManualEdit ? timeEditorState.tempTime : match.elapsedTime;
-
-    // Mark that user made manual edit
-    timeEditorState.hasManualEdit = true;
-
-    // Apply adjustment
-    timeEditorState.tempTime = Math.max(0, baseTime + seconds);
-    updateTimeEditorDisplay();
+    // Update display immediately
+    if (match) {
+      timeEditorState.tempTime = match.elapsedTime + timeEditorState.timeOffset;
+      updateTimeEditorDisplay();
+    }
   }
 
   // Save time and period changes
