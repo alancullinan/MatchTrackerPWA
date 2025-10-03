@@ -3794,7 +3794,7 @@
     const shareBtn = document.createElement('button');
     shareBtn.className = 'absolute bottom-2 right-12 text-gray-200 hover:text-gray-100';
     shareBtn.title = 'Share event';
-    shareBtn.innerHTML = '<img src="icons/share.svg" alt="Share Event" class="w-6 h-6" />';
+    shareBtn.innerHTML = '<img src="icons/share.svg" alt="Share Event" class="w-8 h-8" />';
     shareBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       shareIndividualEvent(last.id);
