@@ -2225,7 +2225,7 @@
         event.type === EventType.KICKOUT ? `Kick-out ${event.wonKickout ? 'Won' : 'Lost'}` :
         event.type === EventType.SUBSTITUTION ? 'Substitution' :
         event.type === EventType.NOTE ? 'Note' :
-        event.type === EventType.PERIOD_END ? event.period : '';
+        event.type === EventType.PERIOD_END ? `${Math.floor(event.timeElapsed / 60)} min` : '';
 
       // Draw flag icon for scoring outcomes, then text
       if (event.type === EventType.SHOT &&
@@ -5592,11 +5592,12 @@
     match.isPaused = true;
     match.currentPeriod = getNextPeriod(match.currentPeriod, match);
 
-    // Create period end event when transitioning TO Half Time, Full Time, or Extra Half Time
+    // Create period end event when transitioning TO Half Time, Full Time, Extra Half Time, or Match Over
     if (
       match.currentPeriod === MatchPeriod.HALF_TIME ||
       match.currentPeriod === MatchPeriod.FULL_TIME ||
-      match.currentPeriod === MatchPeriod.EXTRA_HALF
+      match.currentPeriod === MatchPeriod.EXTRA_HALF ||
+      match.currentPeriod === MatchPeriod.MATCH_OVER
     ) {
       const periodEndEvent = {
         id: Date.now(),
@@ -6164,8 +6165,9 @@
         outcomeText = 'Note';
         typeLine.textContent = outcomeText;
       } else if (ev.type === EventType.PERIOD_END) {
-        // Period end events show the period name (Half Time, Full Time, etc.)
-        outcomeText = ev.period;
+        // Period end events show the time elapsed from the period that just ended
+        const minutes = Math.floor(ev.timeElapsed / 60);
+        outcomeText = `${minutes} min`;
         typeLine.textContent = outcomeText;
       }
       details.appendChild(typeLine);
