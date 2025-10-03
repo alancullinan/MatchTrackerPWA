@@ -3790,6 +3790,17 @@
     rightCol.appendChild(periodDiv);
     // Finish assembling right column and append to the display
     display.appendChild(rightCol);
+    // Add a share button positioned at bottom right (left of the list button)
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'absolute bottom-2 right-12 text-gray-200 hover:text-gray-100';
+    shareBtn.title = 'Share event';
+    shareBtn.innerHTML = '<img src="icons/share.svg" alt="Share Event" class="w-6 h-6" />';
+    shareBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      shareIndividualEvent(last.id);
+    });
+    display.appendChild(shareBtn);
+
     // Add an event‑list button positioned at the bottom right of the card.  This
     // button shows an icon of three bars.  The fill‑current attribute makes
     // the SVG adopt the current text colour (blue) from the class below.
@@ -3806,9 +3817,10 @@
       showEventsView();
       display.classList.add('hidden');
     });
-    // Attach click on display to edit last event (excluding the list button)
+    // Attach click on display to edit last event (excluding buttons)
     display.onclick = (e) => {
-      if (e.target.closest('button') === listBtn) return;
+      const clickedButton = e.target.closest('button');
+      if (clickedButton === listBtn || clickedButton === shareBtn) return;
       showEditEventForm(last.id);
     };
   }
