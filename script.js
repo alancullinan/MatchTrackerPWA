@@ -2597,8 +2597,9 @@
     text += '\n\n';
     text += '================================\n\n';
 
-    // Process events in chronological order (as they appear in the array)
-    match.events.forEach((ev, index) => {
+    // Process events in chronological order (oldest first, properly sorted by period and time)
+    const chronologicalEvents = sortEventsByTime(match.events, false);
+    chronologicalEvents.forEach((ev, index) => {
       // Time and period (top right in UI, but we'll put it first)
       const minutes = Math.floor(ev.timeElapsed / 60);
       const timeStr = `${minutes} min`;
@@ -2956,6 +2957,38 @@
     return `${m} min`;
   }
 
+  // Get numeric order for match period (for sorting events chronologically)
+  function getPeriodOrder(period) {
+    const periodOrder = {
+      'Not Started': 0,
+      '1st Half': 1,
+      'Half Time': 2,
+      '2nd Half': 3,
+      'Full Time': 4,
+      'Extra Time 1st Half': 5,
+      'Extra Time Half Time': 6,
+      'Extra Time 2nd Half': 7,
+      'Match Over': 8
+    };
+    return periodOrder[period] ?? 0;
+  }
+
+  // Sort events by period and time (chronologically)
+  // reverse = true: newest first (for event list display)
+  // reverse = false: oldest first (for export/share)
+  function sortEventsByTime(events, reverse = false) {
+    const sorted = [...events].sort((a, b) => {
+      // First sort by period
+      const periodDiff = getPeriodOrder(a.period) - getPeriodOrder(b.period);
+      if (periodDiff !== 0) return periodDiff;
+
+      // Then by time within period
+      return (a.timeElapsed || 0) - (b.timeElapsed || 0);
+    });
+
+    return reverse ? sorted.reverse() : sorted;
+  }
+
   // Get next period given current period and whether match has extra time enabled
   function getNextPeriod(current, match) {
     const order = [
@@ -3304,8 +3337,9 @@
     text += '\n\n';
     text += '================================\n\n';
 
-    // Process events in chronological order (as they appear in the array)
-    match.events.forEach((ev, index) => {
+    // Process events in chronological order (oldest first, properly sorted by period and time)
+    const chronologicalEvents = sortEventsByTime(match.events, false);
+    chronologicalEvents.forEach((ev, index) => {
       // Time and period (top right in UI, but we'll put it first)
       const minutes = Math.floor(ev.timeElapsed / 60);
       const timeStr = `${minutes} min`;
@@ -6255,10 +6289,9 @@
         t2Points
       };
     });
-    // Display most recent events first by reversing the events array.  Events are added
-    // sequentially, so the newest is at the end of the array.  Reversing ensures
-    // the latest actions appear at the top of the list.
-    const sorted = [...match.events].slice().reverse();
+    // Display most recent events first using proper chronological sorting
+    // (by period and time), then reversed so newest appears at top
+    const sorted = sortEventsByTime(match.events, true);
     if (sorted.length === 0) {
       const msg = document.createElement('li');
       msg.className = 'empty-message text-center text-gray-400 py-4';
