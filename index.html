@@ -370,7 +370,6 @@
           <div class="space-y-6">
             <!-- Period Selector -->
             <div class="form-row flex flex-col mb-2">
-              <label for="period-selector" class="mb-1">Match Period</label>
               <select id="period-selector" class="p-2 border bg-gray-700 text-gray-100 border-gray-600">
                 <option value="Not Started">Not Started</option>
                 <option value="1st Half">1st Half</option>
@@ -384,18 +383,20 @@
               </select>
             </div>
 
-            <!-- Time display and controls -->
-            <div class="form-row flex flex-col mb-2">
-              <label class="mb-1">Time Elapsed</label>
-              <div id="time-editor-display" class="text-5xl font-mono font-bold text-center my-6">00:00</div>
-              <div class="flex justify-center" style="gap: 3rem;">
-                <button id="minus-1-min-btn" class="cursor-pointer" title="Decrease 1 minute">
-                  <img src="icons/minus.svg" alt="Minus" class="w-16 h-16" />
-                </button>
-                <button id="plus-1-min-btn" class="cursor-pointer" title="Increase 1 minute">
-                  <img src="icons/plus.svg" alt="Plus" class="w-16 h-16" />
-                </button>
-              </div>
+            <!-- Warning message -->
+            <div id="time-warning" class="bg-yellow-900 border border-yellow-700 text-yellow-100 p-3 rounded" style="display: none;">
+              ⚠️ <span id="time-warning-text"></span>
+            </div>
+
+            <!-- Time display and controls - inline layout -->
+            <div class="flex items-center justify-center gap-8 my-8">
+              <button id="minus-1-min-btn" class="cursor-pointer" title="Decrease 1 minute">
+                <img src="icons/minus.svg" alt="Minus" class="w-16 h-16" />
+              </button>
+              <div id="time-editor-display" class="text-5xl font-mono font-bold">00:00</div>
+              <button id="plus-1-min-btn" class="cursor-pointer" title="Increase 1 minute">
+                <img src="icons/plus.svg" alt="Plus" class="w-16 h-16" />
+              </button>
             </div>
           </div>
         </div>
