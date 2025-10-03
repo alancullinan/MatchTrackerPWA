@@ -2225,7 +2225,7 @@
         event.type === EventType.KICKOUT ? `Kick-out ${event.wonKickout ? 'Won' : 'Lost'}` :
         event.type === EventType.SUBSTITUTION ? 'Substitution' :
         event.type === EventType.NOTE ? 'Note' :
-        event.type === EventType.PERIOD_END ? `${Math.floor(event.timeElapsed / 60)} min` : '';
+        event.type === EventType.PERIOD_END ? event.period : '';
 
       // Draw flag icon for scoring outcomes, then text
       if (event.type === EventType.SHOT &&
@@ -2275,6 +2275,16 @@
         ctx.textAlign = 'center';
         ctx.fillText(outcomeText, canvas.width / 2, currentY);
         currentY += 70;
+      }
+
+      // For period end events, add time elapsed line
+      if (event.type === EventType.PERIOD_END) {
+        const minutes = Math.floor(event.timeElapsed / 60);
+        ctx.fillStyle = '#9ca3af'; // gray-400
+        ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${minutes} min`, canvas.width / 2, currentY);
+        currentY += 60;
       }
 
       // Team name (more prominent - larger and white)
@@ -6165,12 +6175,21 @@
         outcomeText = 'Note';
         typeLine.textContent = outcomeText;
       } else if (ev.type === EventType.PERIOD_END) {
-        // Period end events show the time elapsed from the period that just ended
-        const minutes = Math.floor(ev.timeElapsed / 60);
-        outcomeText = `${minutes} min`;
+        // Period end events show the period name (e.g., "Half Time")
+        outcomeText = ev.period;
         typeLine.textContent = outcomeText;
       }
       details.appendChild(typeLine);
+
+      // For period end events, add time elapsed line before scoreboard
+      if (ev.type === EventType.PERIOD_END) {
+        const minutes = Math.floor(ev.timeElapsed / 60);
+        const timeLine = document.createElement('div');
+        timeLine.className = 'text-gray-300 text-sm';
+        timeLine.textContent = `${minutes} min`;
+        details.appendChild(timeLine);
+      }
+
       // Scoreboard lines: for scoring shots and period end events
       const scoreboard = scoreByEventId[ev.id];
       if (
