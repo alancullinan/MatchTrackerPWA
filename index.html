@@ -365,34 +365,37 @@
           <button type="button" id="done-time-edit-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
         </div>
 
-        <div class="space-y-4 mt-6">
-          <!-- Period Selector -->
-          <div class="form-row flex flex-col mb-2">
-            <label for="period-selector" class="mb-1">Match Period</label>
-            <select id="period-selector" class="p-2 border bg-gray-700 text-gray-100 border-gray-600">
-              <option value="Not Started">Not Started</option>
-              <option value="1st Half">1st Half</option>
-              <option value="Half Time">Half Time</option>
-              <option value="2nd Half">2nd Half</option>
-              <option value="Full Time">Full Time</option>
-              <option value="Extra Time 1st Half">Extra Time 1st Half</option>
-              <option value="Extra Time Half Time">Extra Time Half Time</option>
-              <option value="Extra Time 2nd Half">Extra Time 2nd Half</option>
-              <option value="Match Over">Match Over</option>
-            </select>
-          </div>
+        <!-- Center content vertically with flex -->
+        <div class="flex flex-col justify-center" style="min-height: calc(100vh - 100px);">
+          <div class="space-y-6">
+            <!-- Period Selector -->
+            <div class="form-row flex flex-col mb-2">
+              <label for="period-selector" class="mb-1">Match Period</label>
+              <select id="period-selector" class="p-2 border bg-gray-700 text-gray-100 border-gray-600">
+                <option value="Not Started">Not Started</option>
+                <option value="1st Half">1st Half</option>
+                <option value="Half Time">Half Time</option>
+                <option value="2nd Half">2nd Half</option>
+                <option value="Full Time">Full Time</option>
+                <option value="Extra Time 1st Half">Extra Time 1st Half</option>
+                <option value="Extra Time Half Time">Extra Time Half Time</option>
+                <option value="Extra Time 2nd Half">Extra Time 2nd Half</option>
+                <option value="Match Over">Match Over</option>
+              </select>
+            </div>
 
-          <!-- Time display and controls -->
-          <div class="form-row flex flex-col mb-2">
-            <label class="mb-1">Time Elapsed</label>
-            <div id="time-editor-display" class="text-5xl font-mono font-bold text-center my-4">00:00</div>
-            <div class="flex justify-center gap-6">
-              <button id="minus-1-min-btn" class="cursor-pointer" title="Decrease 1 minute">
-                <img src="icons/minus.svg" alt="Minus" class="w-12 h-12" />
-              </button>
-              <button id="plus-1-min-btn" class="cursor-pointer" title="Increase 1 minute">
-                <img src="icons/plus.svg" alt="Plus" class="w-12 h-12" />
-              </button>
+            <!-- Time display and controls -->
+            <div class="form-row flex flex-col mb-2">
+              <label class="mb-1">Time Elapsed</label>
+              <div id="time-editor-display" class="text-5xl font-mono font-bold text-center my-6">00:00</div>
+              <div class="flex justify-center gap-12">
+                <button id="minus-1-min-btn" class="cursor-pointer" title="Decrease 1 minute">
+                  <img src="icons/minus.svg" alt="Minus" class="w-16 h-16" />
+                </button>
+                <button id="plus-1-min-btn" class="cursor-pointer" title="Increase 1 minute">
+                  <img src="icons/plus.svg" alt="Plus" class="w-16 h-16" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

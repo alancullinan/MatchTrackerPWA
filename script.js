@@ -5745,10 +5745,17 @@
 
   // Adjust time by seconds
   function adjustTime(seconds) {
-    // Mark that user made manual edit (stop auto-sync)
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+
+    // Get current live time or use tempTime if already edited
+    const baseTime = timeEditorState.hasManualEdit ? timeEditorState.tempTime : match.elapsedTime;
+
+    // Mark that user made manual edit
     timeEditorState.hasManualEdit = true;
 
-    timeEditorState.tempTime = Math.max(0, timeEditorState.tempTime + seconds);
+    // Apply adjustment
+    timeEditorState.tempTime = Math.max(0, baseTime + seconds);
     updateTimeEditorDisplay();
   }
 
