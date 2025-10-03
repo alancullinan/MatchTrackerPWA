@@ -386,9 +386,13 @@
           <div class="form-row flex flex-col mb-2">
             <label class="mb-1">Time Elapsed</label>
             <div id="time-editor-display" class="text-5xl font-mono font-bold text-center my-4">00:00</div>
-            <div class="flex justify-center gap-4">
-              <button id="minus-1-min-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-2xl font-semibold">-</button>
-              <button id="plus-1-min-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-2xl font-semibold">+</button>
+            <div class="flex justify-center gap-6">
+              <button id="minus-1-min-btn" class="cursor-pointer" title="Decrease 1 minute">
+                <img src="icons/minus.svg" alt="Minus" class="w-12 h-12" />
+              </button>
+              <button id="plus-1-min-btn" class="cursor-pointer" title="Increase 1 minute">
+                <img src="icons/plus.svg" alt="Plus" class="w-12 h-12" />
+              </button>
             </div>
           </div>
         </div>

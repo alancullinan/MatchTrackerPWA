@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+
+<svg
+   width="800"
+   height="800"
+   viewBox="0 0 24 24"
+   fill="none"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="SVGRepo_bgCarrier"
+     stroke-width="0"
+     style="fill:#2563eb;fill-opacity:1">
+    <rect
+       x="0"
+       y="0"
+       width="24"
+       height="24"
+       rx="12"
+       fill="#2563EB"
+       strokewidth="0"
+       id="rect1"
+       style="fill:#2563eb;fill-opacity:1" />
+  </g>
+  <g
+     id="SVGRepo_iconCarrier">
+    <path
+       d="M 6,12 H 18 M 12,6 v 12"
+       stroke="#ffffff"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-linejoin="round"
+       id="path1" />
+  </g>
+  <rect
+     style="fill:#2563eb;fill-opacity:1;stroke:none;stroke-width:0.072"
+     id="rect2"
+     width="5.2107282"
+     height="6.6819925"
+     x="9.8084288"
+     y="4.2911878"
+     rx="0.31426975" />
+  <rect
+     style="fill:#2563eb;fill-opacity:1;stroke:none;stroke-width:0.072"
+     id="rect3"
+     width="0.39846742"
+     height="1.0421456"
+     x="12.78161"
+     y="5.3639846"
+     rx="0.31426975" />
+  <rect
+     style="fill:#2563eb;fill-opacity:1;stroke:none;stroke-width:0.072"
+     id="rect4"
+     width="5.1187739"
+     height="3.4022987"
+     x="8.9808426"
+     y="7.6015325"
+     rx="0.31426975" />
+  <rect
+     style="fill:#2563eb;fill-opacity:1;stroke:none;stroke-width:0.072"
+     id="rect5"
+     width="5.6398468"
+     height="4.5363984"
+     x="8.9195395"
+     y="15.386973"
+     rx="12" />
+  <rect
+     style="fill:#2563eb;fill-opacity:1;stroke:none;stroke-width:0.072"
+     id="rect6"
+     width="5.0574713"
+     height="3.2183907"
+     x="9.5938692"
+     y="13.7318" />
+  <rect
+     style="fill:#2563eb;fill-opacity:1;stroke:none;stroke-width:0.072"
+     id="rect8"
+     width="11.463603"
+     height="5.4559379"
+     x="6.7739463"
+     y="12.996169"
+     rx="1.9770117"
+     ry="0" />
+</svg>

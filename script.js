@@ -5674,23 +5674,65 @@
 
   // Store current editor state
   const timeEditorState = {
-    tempTime: 0
+    tempTime: 0,
+    originalPeriod: null,
+    editorInterval: null,
+    hasManualEdit: false
   };
+
+  // Start syncing time from live match
+  function startEditorTimeSync() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+
+    // Clear any existing interval
+    if (timeEditorState.editorInterval) {
+      clearInterval(timeEditorState.editorInterval);
+    }
+
+    // Update display immediately
+    if (!timeEditorState.hasManualEdit) {
+      timeEditorState.tempTime = match.elapsedTime;
+      updateTimeEditorDisplay();
+    }
+
+    // Start interval to sync from live match
+    timeEditorState.editorInterval = setInterval(() => {
+      const match = findMatchById(appState.currentMatchId);
+      if (!match) return;
+
+      // Only sync if user hasn't made manual edits
+      if (!timeEditorState.hasManualEdit) {
+        timeEditorState.tempTime = match.elapsedTime;
+        updateTimeEditorDisplay();
+      }
+    }, 1000);
+  }
+
+  // Stop syncing time
+  function stopEditorTimeSync() {
+    if (timeEditorState.editorInterval) {
+      clearInterval(timeEditorState.editorInterval);
+      timeEditorState.editorInterval = null;
+    }
+  }
 
   // Open time/period editor
   function openTimePeriodEditor() {
     const match = findMatchById(appState.currentMatchId);
     if (!match) return;
 
-    // Store current time
+    // Reset editor state
     timeEditorState.tempTime = match.elapsedTime;
+    timeEditorState.originalPeriod = match.currentPeriod;
+    timeEditorState.hasManualEdit = false;
 
     // Populate period selector
     const periodSelector = document.getElementById('period-selector');
     periodSelector.value = match.currentPeriod;
 
-    // Update display
-    updateTimeEditorDisplay();
+    // Start real-time sync
+    startEditorTimeSync();
 
     showView('time-period-editor-view');
   }
@@ -5703,6 +5745,9 @@
 
   // Adjust time by seconds
   function adjustTime(seconds) {
+    // Mark that user made manual edit (stop auto-sync)
+    timeEditorState.hasManualEdit = true;
+
     timeEditorState.tempTime = Math.max(0, timeEditorState.tempTime + seconds);
     updateTimeEditorDisplay();
   }
@@ -5711,6 +5756,9 @@
   function saveTimePeriodChanges() {
     const match = findMatchById(appState.currentMatchId);
     if (!match) return;
+
+    // Stop editor sync
+    stopEditorTimeSync();
 
     const periodSelector = document.getElementById('period-selector');
     const newPeriod = periodSelector.value;
@@ -5736,6 +5784,22 @@
 
   // Cancel time/period editing
   function cancelTimePeriodEditor() {
+    const match = findMatchById(appState.currentMatchId);
+
+    // Stop editor sync
+    stopEditorTimeSync();
+
+    // Restore original period if it was changed
+    if (match && timeEditorState.originalPeriod) {
+      const periodSelector = document.getElementById('period-selector');
+      if (periodSelector.value !== timeEditorState.originalPeriod) {
+        match.currentPeriod = timeEditorState.originalPeriod;
+        updateTimerControls(match);
+        saveAppState();
+      }
+    }
+
+    // Don't touch elapsedTime - timer ran naturally in the background
     showView('match-details-view');
   }
 
