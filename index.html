@@ -193,11 +193,12 @@
             <span id="end-period-label">Start Half</span>
           </button>
           <!-- Center the period and timer absolutely so it stays centred regardless of button widths -->
-          <div class="flex flex-col items-center absolute left-1/2 transform -translate-x-1/2">
+          <!-- Make timer clickable to open time/period editor -->
+          <div class="flex flex-col items-center absolute left-1/2 transform -translate-x-1/2" style="pointer-events: none;">
             <!-- Current period name -->
-            <div id="period-display" class="text-sm font-semibold tracking-wide"></div>
+            <div id="period-display" class="text-sm font-semibold tracking-wide cursor-pointer hover:opacity-80 transition-opacity" style="pointer-events: auto;"></div>
             <!-- Timer display; prominent font size -->
-            <div id="timer-display" class="text-4xl font-mono font-bold">00:00</div>
+            <div id="timer-display" class="text-4xl font-mono font-bold cursor-pointer hover:opacity-80 transition-opacity" style="pointer-events: auto;"></div>
           </div>
           <!-- Timer control buttons.  Only one of these (start, pause, resume) is visible at a time.  They
                are placed to the right of the timer to match the iOS layout. -->
@@ -352,6 +353,88 @@
         <!-- Scrollable events list -->
         <div class="overflow-y-auto">
           <ul id="events-list" class="events-list space-y-2"></ul>
+        </div>
+      </section>
+
+      <!-- Time/Period Editor View -->
+      <section id="time-period-editor-view" class="view" style="display: none;">
+        <div style="height: 12px;"></div>
+        <div class="flex justify-between items-center mb-4">
+          <!-- Back button -->
+          <button id="time-editor-back-btn" class="cursor-pointer" title="Back to Match">
+            <img src="icons/back.svg" alt="Back" class="w-8 h-8" />
+          </button>
+          <!-- Centered title -->
+          <h2 class="text-3xl font-bold">Edit Time</h2>
+          <!-- Empty space for alignment -->
+          <div style="width: 32px;"></div>
+        </div>
+
+        <div class="space-y-6 mt-8">
+          <!-- Period Selector -->
+          <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 class="text-xl font-semibold mb-4 text-center">Match Period</h3>
+            <select id="period-selector" class="w-full p-3 text-lg border bg-gray-700 text-gray-100 border-gray-600 rounded">
+              <option value="Not Started">Not Started</option>
+              <option value="1st Half">1st Half</option>
+              <option value="Half Time">Half Time</option>
+              <option value="2nd Half">2nd Half</option>
+              <option value="Full Time">Full Time</option>
+              <option value="Extra Time 1st Half">Extra Time 1st Half</option>
+              <option value="Extra Time Half Time">Extra Time Half Time</option>
+              <option value="Extra Time 2nd Half">Extra Time 2nd Half</option>
+              <option value="Match Over">Match Over</option>
+            </select>
+          </div>
+
+          <!-- Time Adjustment -->
+          <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 class="text-xl font-semibold mb-4 text-center">Time Elapsed</h3>
+
+            <!-- Current time display -->
+            <div id="time-editor-display" class="text-5xl font-mono font-bold text-center mb-6">00:00</div>
+
+            <!-- Warning message -->
+            <div id="time-warning" class="bg-yellow-900 border border-yellow-700 text-yellow-100 p-3 rounded mb-4" style="display: none;">
+              ⚠️ <span id="time-warning-text"></span>
+            </div>
+
+            <!-- Minute controls -->
+            <div class="mb-6">
+              <div class="text-center text-sm font-semibold mb-2">Minutes</div>
+              <div class="grid grid-cols-4 gap-3">
+                <button id="minus-5-min-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-3 rounded text-lg font-semibold">-5</button>
+                <button id="minus-1-min-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-3 rounded text-lg font-semibold">-1</button>
+                <button id="plus-1-min-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-3 rounded text-lg font-semibold">+1</button>
+                <button id="plus-5-min-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-3 rounded text-lg font-semibold">+5</button>
+              </div>
+            </div>
+
+            <!-- Second controls -->
+            <div>
+              <div class="text-center text-sm font-semibold mb-2">Seconds</div>
+              <div class="grid grid-cols-4 gap-3">
+                <button id="minus-30-sec-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-3 rounded text-lg font-semibold">-30</button>
+                <button id="minus-10-sec-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-3 rounded text-lg font-semibold">-10</button>
+                <button id="plus-10-sec-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-3 rounded text-lg font-semibold">+10</button>
+                <button id="plus-30-sec-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-4 px-3 rounded text-lg font-semibold">+30</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick presets -->
+          <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 class="text-xl font-semibold mb-4 text-center">Quick Set</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <button id="reset-time-btn" class="bg-gray-600 hover:bg-gray-700 text-white py-3 rounded font-semibold">Reset to 00:00</button>
+              <button id="set-35-min-btn" class="bg-gray-600 hover:bg-gray-700 text-white py-3 rounded font-semibold">Set to 35:00</button>
+            </div>
+          </div>
+
+          <!-- Save button -->
+          <button id="save-time-period-btn" class="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-lg text-xl font-semibold">
+            Save Changes
+          </button>
         </div>
       </section>
 

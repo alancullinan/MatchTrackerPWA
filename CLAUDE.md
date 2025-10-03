@@ -62,12 +62,14 @@ Home View
 - **Match Management**: Create, edit, and track multiple matches
 - **Timer System**: Period-based timer (1st Half, Half Time, 2nd Half, Extra Time, etc.)
 - **Scoring**: Goals, points, and two-pointers (for football) with different shot types
-- **Event Tracking**: Cards, fouls, kickouts, substitutions, notes
+- **Event Tracking**: Cards, fouls, kickouts, substitutions, notes, period end events
+- **Event Sharing**: Share individual events as 800x800px images for social media
 - **Player Management**: Auto-generated player rosters (1-30 for each team)
 - **Player Panels**: Create reusable player rosters that can be assigned to teams across multiple matches
 - **Match Statistics**: View detailed shooting accuracy, scorers breakdown, and team statistics
 - **Data Management**: Export all matches to JSON file and import backups
 - **Data Persistence**: Dual storage strategy with localStorage primary and IndexedDB fallback
+- **Match Filtering**: Real-time text filtering of match list by team names or competition
 
 ## Match Types & Scoring
 
@@ -82,13 +84,14 @@ The entire application logic is contained in a single IIFE (Immediately Invoked 
 - **Enumerations**: Defined at the top (MatchPeriod, EventType, ShotOutcome, ShotType, CardType, etc.)
 - **State Management**: All data stored in browser localStorage with automatic persistence
 - **Event System**: Comprehensive event logging with timestamps and match periods
-- **Function Organization**: ~121 functions organized by feature area:
+- **Function Organization**: ~125+ functions organized by feature area:
   - Match CRUD operations
-  - Timer management and period transitions  
-  - Event recording (shots, fouls, cards, substitutions, notes)
+  - Timer management and period transitions
+  - Event recording (shots, fouls, cards, substitutions, notes, period end events)
   - Score calculation and display
   - Player management
   - UI rendering and view switching
+  - Event sharing (canvas-based image generation for social media)
 
 ### Key JavaScript Patterns
 - **Period-based Logic**: `isPlayingPeriod()` function controls when events can be recorded
@@ -161,14 +164,20 @@ Events are stored as objects with this structure:
 ```javascript
 {
   id: timestamp,
-  type: EventType.SHOT, // or CARD, FOUL_CONCEDED, etc.
-  team: 1 or 2,
-  player: playerObject,
+  type: EventType.SHOT, // or CARD, FOUL_CONCEDED, PERIOD_END, etc.
+  teamId: teamId,
+  player1Id: playerId,
   period: MatchPeriod.FIRST_HALF,
-  matchTime: "15:30",
+  timeElapsed: 900, // seconds
   // Event-specific data (e.g., shotOutcome, cardType, etc.)
 }
 ```
+
+#### Period End Events
+- Automatically created when ending a period (Half Time, Full Time, Extra Time Half Time, Match Over)
+- Display format: Period name (e.g., "Half Time") with time elapsed from the period that just ended
+- Show current match score at the time the period ended
+- Created in `endPeriod()` function when transitioning to non-playing periods
 
 ### Player Management System
 - **Auto-generation**: 30 players per team (jerseyNumber 1-30)
@@ -186,11 +195,31 @@ Events are stored as objects with this structure:
 - **Orientation Lock**: Portrait-primary orientation enforced in manifest.json
 - **Touch optimizations**: All interactions designed for mobile use
 
+### Event Sharing Features
+- **Canvas-based Image Generation**: Creates 800x800px images suitable for social media sharing
+- **Share Buttons**: Available on individual events in the events list and on the last event card in match details
+- **Share Image Content**:
+  - Competition name at top
+  - Event outcome with colored flags for scoring events (Goal=green, Point=white, 2 Pointer=orange)
+  - Team name (prominent, 48px font)
+  - Player information (jersey number and name)
+  - Shot type or other event details
+  - Time elapsed and period (except for period end events which only show time)
+  - Current match score (shown for all event types)
+- **Web Share API**: Uses native sharing on supported devices, falls back to file download
+- **Running Score Calculation**: Each shared event shows the match score at that point in time
+
 ### Data Management Features
 - **Export**: Download all matches and player panels as a single JSON file
 - **Import**: Restore data from backup JSON files
 - **Storage Info**: View current localStorage usage and available space
 - **Backup Strategy**: Users can manually export data before localStorage fills up
+
+### Match List Filtering
+- **Real-time Search**: Filter input at top of match list
+- **Search Criteria**: Matches team1 name, team2 name, or competition name
+- **Case-insensitive**: Search is not case-sensitive
+- **Instant Updates**: List updates as you type
 
 ## Important Implementation Guidelines
 

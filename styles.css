@@ -642,6 +642,43 @@ html, body {
   z-index: 100 !important; /* Ensure modals appear above all content including last event card */
 }
 
+/* Timer click area styling */
+#timer-click-area {
+  outline: none;
+  color: inherit;
+  transition: opacity 0.2s ease;
+}
+
+#timer-click-area:active {
+  opacity: 0.7;
+}
+
+/* Time/Period Editor View */
+#time-period-editor-view {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+#time-editor-display {
+  color: #60a5fa; /* blue-400 for emphasis */
+}
+
+/* Warning styling for time conflicts */
+#time-warning {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (min-width: 600px) {
   .timer-controls {
     flex-direction: row;

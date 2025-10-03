@@ -5670,6 +5670,119 @@
     }
   }
 
+  // Time/Period Editor Functions
+
+  // Get the latest event time for validation
+  function getLatestEventTime(match) {
+    if (!match.events || match.events.length === 0) {
+      return 0;
+    }
+    return Math.max(...match.events.map(e => e.timeElapsed || 0));
+  }
+
+  // Store current editor state
+  const timeEditorState = {
+    tempTime: 0,
+    originalTime: 0,
+    originalPeriod: null
+  };
+
+  // Open time/period editor
+  function openTimePeriodEditor() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+
+    // Store original values
+    timeEditorState.tempTime = match.elapsedTime;
+    timeEditorState.originalTime = match.elapsedTime;
+    timeEditorState.originalPeriod = match.currentPeriod;
+
+    // Populate period selector
+    const periodSelector = document.getElementById('period-selector');
+    periodSelector.value = match.currentPeriod;
+
+    // Update display
+    updateTimeEditorDisplay();
+
+    // Check for conflicts
+    checkTimeConflicts(match);
+
+    showView('time-period-editor-view');
+  }
+
+  // Update time editor display
+  function updateTimeEditorDisplay() {
+    const display = document.getElementById('time-editor-display');
+    display.textContent = formatTime(timeEditorState.tempTime);
+  }
+
+  // Check if time conflicts with events
+  function checkTimeConflicts(match) {
+    const latestEventTime = getLatestEventTime(match);
+    const warningDiv = document.getElementById('time-warning');
+    const warningText = document.getElementById('time-warning-text');
+
+    if (timeEditorState.tempTime < latestEventTime) {
+      const latestTimeStr = formatTime(latestEventTime);
+      warningText.textContent = `Warning: Latest event is at ${latestTimeStr}. Setting time earlier may cause confusion.`;
+      warningDiv.style.display = 'block';
+    } else {
+      warningDiv.style.display = 'none';
+    }
+  }
+
+  // Adjust time by seconds
+  function adjustTime(seconds) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+
+    timeEditorState.tempTime = Math.max(0, timeEditorState.tempTime + seconds);
+    updateTimeEditorDisplay();
+    checkTimeConflicts(match);
+  }
+
+  // Set time to specific value
+  function setTime(seconds) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+
+    timeEditorState.tempTime = Math.max(0, seconds);
+    updateTimeEditorDisplay();
+    checkTimeConflicts(match);
+  }
+
+  // Save time and period changes
+  function saveTimePeriodChanges() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+
+    const periodSelector = document.getElementById('period-selector');
+    const newPeriod = periodSelector.value;
+    const wasRunning = !match.isPaused;
+
+    // Update match time and period
+    match.elapsedTime = timeEditorState.tempTime;
+    match.currentPeriod = newPeriod;
+
+    // Recalculate periodStartTimestamp if timer was running
+    if (wasRunning) {
+      match.periodStartTimestamp = Date.now() - (match.elapsedTime * 1000);
+    }
+
+    // Update display and save
+    updateTimerControls(match);
+    updateScoreboard(match);
+    saveAppState();
+
+    // Return to match details
+    showView('match-details-view');
+  }
+
+  // Cancel time/period editing
+  function cancelTimePeriodEditor() {
+    showView('match-details-view');
+  }
+
   // Helper to create a section header
   function createSectionHeader(title) {
     const header = document.createElement('div');
@@ -6886,6 +6999,38 @@
     if (shareEventsBtn) {
       shareEventsBtn.addEventListener('click', () => shareEventsList());
     }
+
+    // Time/period editor listeners - both period and timer display are clickable
+    const periodDisplay = document.getElementById('period-display');
+    const timerDisplay = document.getElementById('timer-display');
+    if (periodDisplay) {
+      periodDisplay.addEventListener('click', openTimePeriodEditor);
+    }
+    if (timerDisplay) {
+      timerDisplay.addEventListener('click', openTimePeriodEditor);
+    }
+
+    const timeEditorBackBtn = document.getElementById('time-editor-back-btn');
+    if (timeEditorBackBtn) {
+      timeEditorBackBtn.addEventListener('click', cancelTimePeriodEditor);
+    }
+
+    // Time adjustment buttons
+    document.getElementById('minus-5-min-btn').addEventListener('click', () => adjustTime(-300));
+    document.getElementById('minus-1-min-btn').addEventListener('click', () => adjustTime(-60));
+    document.getElementById('plus-1-min-btn').addEventListener('click', () => adjustTime(60));
+    document.getElementById('plus-5-min-btn').addEventListener('click', () => adjustTime(300));
+    document.getElementById('minus-30-sec-btn').addEventListener('click', () => adjustTime(-30));
+    document.getElementById('minus-10-sec-btn').addEventListener('click', () => adjustTime(-10));
+    document.getElementById('plus-10-sec-btn').addEventListener('click', () => adjustTime(10));
+    document.getElementById('plus-30-sec-btn').addEventListener('click', () => adjustTime(30));
+
+    // Quick preset buttons
+    document.getElementById('reset-time-btn').addEventListener('click', () => setTime(0));
+    document.getElementById('set-35-min-btn').addEventListener('click', () => setTime(2100)); // 35 minutes = 2100 seconds
+
+    // Save button
+    document.getElementById('save-time-period-btn').addEventListener('click', saveTimePeriodChanges);
 
     // Period action confirmation modal logic
     const periodButton = document.getElementById('end-period-btn');
