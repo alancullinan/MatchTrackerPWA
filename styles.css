@@ -663,22 +663,6 @@ html, body {
   color: #60a5fa; /* blue-400 for emphasis */
 }
 
-/* Warning styling for time conflicts */
-#time-warning {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @media (min-width: 600px) {
   .timer-controls {
     flex-direction: row;
