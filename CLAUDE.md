@@ -39,6 +39,7 @@ JavaScript-controlled section visibility system using classes:
 - **Match details view** - Live tracking interface (`#match-details-view`)
 - **Edit players view** - Team roster management (`#edit-players-view`)
 - **Events view** - Full event history for a match (`#events-view`)
+- **Time/Period editor view** - Edit match time and period during tracking (`#time-period-editor-view`)
 - **Player panels view** - Manage reusable player rosters (`#player-panels-view`)
 - **Panel editor view** - Create/edit player panels (`#panel-editor-view`)
 - **Player selection view** - Select players from panels (`#player-selection-view`)
@@ -51,6 +52,7 @@ The app follows this navigation hierarchy:
 Home View
 ├── Matches → Match List → Match Form (create/edit)
 │                       └→ Match Details → Events View
+│                                       └→ Time/Period Editor (tap timer)
 │                                       └→ Edit Players → Player Selection
 │                                       └→ Statistics Modal
 ├── Player Panels → Panel Editor
@@ -61,8 +63,10 @@ Home View
 
 - **Match Management**: Create, edit, and track multiple matches
 - **Timer System**: Period-based timer (1st Half, Half Time, 2nd Half, Extra Time, etc.)
+- **Timer Editing**: Click timer display to open editor for adjusting match time and period during live tracking
 - **Scoring**: Goals, points, and two-pointers (for football) with different shot types
 - **Event Tracking**: Cards, fouls, kickouts, substitutions, notes, period end events
+- **Event Chronological Sorting**: Events always display in correct chronological order (by period + time), even after time/period edits
 - **Event Sharing**: Share individual events as 800x800px images for social media
 - **Player Management**: Auto-generated player rosters (1-30 for each team)
 - **Player Panels**: Create reusable player rosters that can be assigned to teams across multiple matches
@@ -158,6 +162,11 @@ The app uses a dual-storage strategy via `StorageManager`:
 - **Period transitions**: Automatic progression through match periods (1st Half → Half Time → 2nd Half → etc.)
 - **State persistence**: Timer state saved to localStorage on every update
 - **Period-sensitive UI**: Event buttons disabled during non-playing periods (Half Time, Full Time, etc.)
+- **Live timer editing**: Click period/timer display to open editor view
+  - Real-time sync: Timer continues running in background while editing
+  - Time offset system: Adjustments (+/-) applied as offset to live match time
+  - Cancel behavior: Restores original period only; time continues naturally
+  - Warning: Static message about potential timeline discrepancies when adjusting time
 
 ### Event Recording Architecture
 Events are stored as objects with this structure:
@@ -172,6 +181,13 @@ Events are stored as objects with this structure:
   // Event-specific data (e.g., shotOutcome, cardType, etc.)
 }
 ```
+
+**Event Sorting**: Events are sorted chronologically using `sortEventsByTime(events, reverse)`:
+- Sorts by period order first (using `getPeriodOrder()` helper)
+- Then by `timeElapsed` within each period
+- `reverse = true` for event list view (newest first)
+- `reverse = false` for export/share (oldest first, chronological)
+- Ensures correct ordering even when time/period is edited
 
 #### Period End Events
 - Automatically created when ending a period (Half Time, Full Time, Extra Time Half Time, Match Over)
