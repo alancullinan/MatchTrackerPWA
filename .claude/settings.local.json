@@ -6,7 +6,12 @@
       "Bash(node:*)",
       "Bash(git commit:*)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\" \"https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap\")",
+      "Bash(curl -sL -o \"C:/Users/Alan/OneDrive/MatchTrackerPWA/.claude/worktrees/blissful-feistel-31e0e6/fonts/bebas-neue.woff2\" \"https://fonts.gstatic.com/s/bebasneue/v16/JTUSjIg69CK48gW7PXoo9Wlhyw.woff2\")",
+      "Bash(curl -sL -o \"C:/Users/Alan/OneDrive/MatchTrackerPWA/.claude/worktrees/blissful-feistel-31e0e6/fonts/manrope.woff2\" \"https://fonts.gstatic.com/s/manrope/v20/xn7gYHE41ni1AdIRggexSg.woff2\")",
+      "Bash(curl -sL -o \"C:/Users/Alan/OneDrive/MatchTrackerPWA/.claude/worktrees/blissful-feistel-31e0e6/fonts/jetbrains-mono.woff2\" \"https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxDcwg.woff2\")",
+      "mcp__Claude_Preview__preview_start"
     ],
     "deny": []
   }
