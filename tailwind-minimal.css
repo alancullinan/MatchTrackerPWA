@@ -14,49 +14,49 @@
   --tw-transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
-/* Body override to ensure dark theme */
+/* Body override — defer to styles.css design tokens */
 body.bg-gray-900 {
-  background-color: rgb(17 24 39) !important;
-  color: rgb(243 244 246) !important;
+  background-color: transparent !important;
+  color: inherit !important;
 }
 
-/* Background colors - ensure these override any conflicting styles */
-.bg-gray-900 { background-color: rgb(17 24 39) !important; }
-.bg-gray-800 { background-color: rgb(31 41 55) !important; }
-.bg-gray-700 { background-color: rgb(55 65 81) !important; }
-.bg-gray-600 { background-color: rgb(75 85 99) !important; }
-.bg-blue-600 { background-color: rgb(37 99 235) !important; }
-.bg-blue-700 { background-color: rgb(29 78 216) !important; }
-.bg-green-600 { background-color: rgb(22 163 74) !important; }
-.bg-green-700 { background-color: rgb(21 128 61) !important; }
-.bg-yellow-600 { background-color: rgb(202 138 4) !important; }
+/* Background colors — remapped to the pitch palette so existing markup picks up the new theme */
+.bg-gray-900 { background-color: var(--pitch-900) !important; }
+.bg-gray-800 { background-color: var(--pitch-800) !important; }
+.bg-gray-700 { background-color: var(--pitch-700) !important; }
+.bg-gray-600 { background-color: var(--touchline) !important; }
+.bg-blue-600 { background-color: var(--primary) !important; }
+.bg-blue-700 { background-color: var(--primary-press) !important; }
+.bg-green-600 { background-color: var(--primary) !important; }
+.bg-green-700 { background-color: var(--primary-press) !important; }
+.bg-yellow-600 { background-color: var(--scoreboard-amber) !important; }
 .bg-black { background-color: rgb(0 0 0) !important; }
 
-/* Text colors */
-.text-gray-100 { color: rgb(243 244 246); }
-.text-gray-300 { color: rgb(209 213 219); }
-.text-gray-400 { color: rgb(156 163 175); }
-.text-blue-500 { color: rgb(59 130 246); }
-.text-blue-400 { color: rgb(96 165 250); }
-.text-green-400 { color: rgb(74 222 128); }
-.text-red-400 { color: rgb(248 113 113); }
-.text-yellow-400 { color: rgb(250 204 21); }
-.text-white { color: rgb(255 255 255); }
-.text-gray-200 { color: rgb(229 231 235); }
+/* Text colors — remapped to the pitch palette */
+.text-gray-100 { color: var(--floodlight); }
+.text-gray-200 { color: var(--floodlight); }
+.text-gray-300 { color: var(--chalk); }
+.text-gray-400 { color: var(--mist); }
+.text-blue-500 { color: var(--scoreboard-glow); }
+.text-blue-400 { color: var(--scoreboard-amber); }
+.text-green-400 { color: var(--primary); }
+.text-red-400 { color: var(--card-red); }
+.text-yellow-400 { color: var(--scoreboard-amber); }
+.text-white { color: var(--floodlight); }
 .text-left { text-align: left; }
 .text-right { text-align: right; }
 
 /* Hover colors */
-.hover\:text-blue-400:hover { color: rgb(96 165 250); }
-.hover\:text-gray-100:hover { color: rgb(243 244 246); }
-.hover\:bg-blue-700:hover { background-color: rgb(29 78 216) !important; }
-.hover\:bg-green-700:hover { background-color: rgb(21 128 61) !important; }
-.hover\:bg-gray-700:hover { background-color: rgb(55 65 81) !important; }
-.hover\:bg-gray-600:hover { background-color: rgb(75 85 99) !important; }
+.hover\:text-blue-400:hover { color: var(--scoreboard-glow); }
+.hover\:text-gray-100:hover { color: var(--floodlight); }
+.hover\:bg-blue-700:hover { background-color: var(--primary-press) !important; }
+.hover\:bg-green-700:hover { background-color: var(--primary-press) !important; }
+.hover\:bg-gray-700:hover { background-color: var(--pitch-700) !important; }
+.hover\:bg-gray-600:hover { background-color: var(--touchline) !important; }
 
 /* Border colors */
-.border-gray-700 { border-color: rgb(55 65 81); }
-.border-gray-600 { border-color: rgb(75 85 99); }
+.border-gray-700 { border-color: var(--touchline); }
+.border-gray-600 { border-color: var(--touchline); }
 
 /* Layout */
 .flex { display: flex; }
@@ -64,6 +64,8 @@ body.bg-gray-900 {
 .grid { display: grid; }
 .items-center { align-items: center; }
 .items-baseline { align-items: baseline; }
+.items-end { align-items: flex-end; }
+.items-start { align-items: flex-start; }
 .justify-between { justify-content: space-between; }
 .justify-center { justify-content: center; }
 .justify-end { justify-content: flex-end; }
@@ -160,6 +162,9 @@ body.bg-gray-900 {
 .left-4 { left: 1rem; }
 .right-2 { right: 0.5rem; }
 .right-4 { right: 1rem; }
+.right-12 { right: 3rem; }
+.right-14 { right: 3.5rem; }
+.right-16 { right: 4rem; }
 
 /* Transform */
 .transform { transform: var(--tw-transform); }

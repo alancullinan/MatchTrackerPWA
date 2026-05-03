@@ -3060,7 +3060,7 @@
       return;
     }
 
-    filtered.forEach((match) => {
+    filtered.forEach((match, idx) => {
       // Create a card wrapper for each match item.  Use a vertical layout with
       // subtle spacing between lines.  The card is clickable to open match
       // details and has relative positioning so we can anchor the delete
@@ -3068,6 +3068,7 @@
       const card = document.createElement('div');
       card.className =
         'match-card relative bg-gray-800 border border-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-700 flex flex-col space-y-1 text-left';
+      card.style.setProperty('--i', idx);
       card.addEventListener('click', () => openMatchDetails(match.id));
 
       // Competition line: show the competition name if provided; otherwise,
@@ -3552,6 +3553,18 @@
     }
   }
 
+  // Re-trigger a CSS .flash animation if the displayed value changed
+  function applyScoreFlash(el, newValue) {
+    if (!el) return;
+    const prev = el.textContent;
+    if (prev !== '' && prev !== String(newValue)) {
+      el.classList.remove('flash');
+      void el.offsetWidth;
+      el.classList.add('flash');
+    }
+    el.textContent = newValue;
+  }
+
   // Compute and render scoreboard for current match
   function updateScoreboard(match) {
     const team1Score = computeTeamScore(match, 'team1');
@@ -3561,14 +3574,14 @@
     const card2 = document.getElementById('team2-card');
     if (card1) {
       card1.querySelector('.team-name').textContent = match.team1.name;
-      card1.querySelector('.score-goals').textContent = team1Score.goals;
-      card1.querySelector('.score-points').textContent = team1Score.points;
+      applyScoreFlash(card1.querySelector('.score-goals'), team1Score.goals);
+      applyScoreFlash(card1.querySelector('.score-points'), team1Score.points);
       card1.querySelector('.score-total').textContent = `(${team1Score.total})`;
     }
     if (card2) {
       card2.querySelector('.team-name').textContent = match.team2.name;
-      card2.querySelector('.score-goals').textContent = team2Score.goals;
-      card2.querySelector('.score-points').textContent = team2Score.points;
+      applyScoreFlash(card2.querySelector('.score-goals'), team2Score.goals);
+      applyScoreFlash(card2.querySelector('.score-points'), team2Score.points);
       card2.querySelector('.score-total').textContent = `(${team2Score.total})`;
     }
 
@@ -3630,222 +3643,146 @@
   function renderLastEvent(match) {
     const display = document.getElementById('last-event-display');
     if (!display) return;
-    // If no events, hide
     if (!match || !match.events || match.events.length === 0) {
       display.innerHTML = '';
       display.classList.add('hidden');
       return;
     }
-    // Latest event is the last one in the array because events are appended sequentially.
     const last = match.events[match.events.length - 1];
     if (!last) {
       display.innerHTML = '';
       display.classList.add('hidden');
       return;
     }
-    // Compute the running score up to this last event to display the scoreboard
-    let t1Goals = 0;
-    let t1Points = 0;
-    let t2Goals = 0;
-    let t2Points = 0;
+
+    // Running score up to and including this event
+    let t1Goals = 0, t1Points = 0, t2Goals = 0, t2Points = 0;
     match.events.forEach((ev) => {
-      if (ev.type === EventType.SHOT) {
-        if (ev.teamId === match.team1.id) {
-          if (ev.shotOutcome === ShotOutcome.GOAL) t1Goals += 1;
-          else if (ev.shotOutcome === ShotOutcome.POINT) t1Points += 1;
-          else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t1Points += 2;
-        } else if (ev.teamId === match.team2.id) {
-          if (ev.shotOutcome === ShotOutcome.GOAL) t2Goals += 1;
-          else if (ev.shotOutcome === ShotOutcome.POINT) t2Points += 1;
-          else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t2Points += 2;
-        }
+      if (ev.type !== EventType.SHOT) return;
+      if (ev.teamId === match.team1.id) {
+        if (ev.shotOutcome === ShotOutcome.GOAL) t1Goals += 1;
+        else if (ev.shotOutcome === ShotOutcome.POINT) t1Points += 1;
+        else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t1Points += 2;
+      } else if (ev.teamId === match.team2.id) {
+        if (ev.shotOutcome === ShotOutcome.GOAL) t2Goals += 1;
+        else if (ev.shotOutcome === ShotOutcome.POINT) t2Points += 1;
+        else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t2Points += 2;
       }
-      if (ev.id === last.id) return;
     });
-    // Prepare left and right sections similar to the events list styling
-    display.innerHTML = '';
-    // Left column
-    const details = document.createElement('div');
-    details.className = 'flex-1';
-    // Team name line
-    const teamName = document.createElement('div');
-    teamName.className = 'font-semibold text-gray-200';
+
     const team = last.teamId ? (last.teamId === match.team1.id ? match.team1 : match.team2) : null;
-    teamName.textContent = team ? team.name : '';
-    details.appendChild(teamName);
-    // Type/outcome line
-    const typeLine = document.createElement('div');
-    typeLine.className = 'text-gray-300 text-sm';
+    const getPlayer = (id) => id
+      ? (match.team1.players.find((p) => p.id === id) || match.team2.players.find((p) => p.id === id) || null)
+      : null;
+    const formatPlayer = (p) => {
+      if (!p) return '';
+      const def = `No.${p.jerseyNumber}`;
+      return p.name && p.name !== def ? `#${p.jerseyNumber} ${p.name}` : `#${p.jerseyNumber}`;
+    };
+    const minutes = Math.floor(last.timeElapsed / 60);
+
+    // Build outcome chip / label
     let outcomeText = '';
+    let chipNode = null;
     if (last.type === EventType.SHOT) {
       outcomeText = last.shotOutcome
         .replace(/([A-Z])/g, ' $1')
         .replace(/\b\w/g, (l) => l.toUpperCase());
-      // Create styled capsule for scoring outcomes
-      const styledOutcome = createStyledOutcome(outcomeText, last.shotOutcome);
-      if (typeof styledOutcome === 'string') {
-        typeLine.textContent = styledOutcome;
-      } else {
-        typeLine.appendChild(styledOutcome);
-      }
+      const styled = createStyledOutcome(outcomeText, last.shotOutcome);
+      if (typeof styled !== 'string') chipNode = styled;
     } else if (last.type === EventType.CARD) {
       outcomeText = `${last.cardType ? last.cardType.charAt(0).toUpperCase() + last.cardType.slice(1) : ''} Card`;
-      typeLine.textContent = outcomeText;
     } else if (last.type === EventType.FOUL_CONCEDED) {
       let foulText = `Foul${last.foulOutcome ? ' (' + last.foulOutcome.charAt(0).toUpperCase() + last.foulOutcome.slice(1) + ')' : ''}`;
-      if (last.cardType) {
-        foulText += ` + ${last.cardType.charAt(0).toUpperCase() + last.cardType.slice(1)} Card`;
-      }
+      if (last.cardType) foulText += ` + ${last.cardType.charAt(0).toUpperCase() + last.cardType.slice(1)} Card`;
       outcomeText = foulText;
-      typeLine.textContent = outcomeText;
     } else if (last.type === EventType.KICKOUT) {
       outcomeText = `Kick‑out ${last.wonKickout ? 'Won' : 'Lost'}`;
-      typeLine.textContent = outcomeText;
     } else if (last.type === EventType.SUBSTITUTION) {
       outcomeText = 'Substitution';
-      typeLine.textContent = outcomeText;
     } else if (last.type === EventType.NOTE) {
       outcomeText = 'Note';
-      typeLine.textContent = outcomeText;
     }
-    details.appendChild(typeLine);
-    // Scoreboard lines for scoring shots
-    if (
-      last.type === EventType.SHOT &&
-      (last.shotOutcome === ShotOutcome.GOAL || last.shotOutcome === ShotOutcome.POINT || last.shotOutcome === ShotOutcome.TWO_POINTER)
-    ) {
-      const sbLine1 = document.createElement('div');
-      sbLine1.className = 'text-blue-400 text-sm';
-      sbLine1.textContent = `${match.team1.name}: ${t1Goals}-${t1Points}`;
-      const sbLine2 = document.createElement('div');
-      sbLine2.className = 'text-blue-400 text-sm';
-      sbLine2.textContent = `${match.team2.name}: ${t2Goals}-${t2Points}`;
-      details.appendChild(sbLine1);
-      details.appendChild(sbLine2);
-    }
-    // Player and extra lines for shots
-    const getPlayer = (playerId) => {
-      if (!playerId) return null;
-      return (
-        match.team1.players.find((p) => p.id === playerId) ||
-        match.team2.players.find((p) => p.id === playerId) ||
-        null
-      );
-    };
+
+    // Compose subtitle parts (single muted line)
+    const parts = [];
     if (last.type === EventType.SHOT) {
-      const player = getPlayer(last.player1Id);
-      if (player) {
-        const defaultName = `No.${player.jerseyNumber}`;
-        const pLine = document.createElement('div');
-        pLine.className = 'text-gray-300 text-sm';
-        let line = `#${player.jerseyNumber}`;
-        if (player.name && player.name !== defaultName) {
-          line += ` ${player.name}`;
-        }
-        pLine.textContent = line;
-        details.appendChild(pLine);
-      }
-      // Shot type line
       if (last.shotType) {
-        const shotLine = document.createElement('div');
-        shotLine.className = 'text-gray-400 text-sm';
-        const shotTypeMap = {
-          fromPlay: 'From Play',
-          free: 'Free',
-          penalty: 'Penalty',
-          '45m65m': '45m/65m',
-          sideline: 'Sideline',
-          mark: 'Mark'
-        };
-        shotLine.textContent = shotTypeMap[last.shotType] || last.shotType
-          .replace(/([A-Z])/g, ' $1')
-          .replace(/\b\w/g, (l) => l.toUpperCase());
-        details.appendChild(shotLine);
+        const map = { fromPlay: 'From Play', free: 'Free', penalty: 'Penalty', '45m65m': '45m/65m', sideline: 'Sideline', mark: 'Mark' };
+        parts.push(map[last.shotType] || last.shotType
+          .replace(/([A-Z])/g, ' $1').replace(/\b\w/g, (l) => l.toUpperCase()));
       }
-    }
-    // Substitution player lines
-    if (last.type === EventType.SUBSTITUTION) {
+      const player = getPlayer(last.player1Id);
+      if (player) parts.push(formatPlayer(player));
+      if (last.shotOutcome === ShotOutcome.GOAL || last.shotOutcome === ShotOutcome.POINT || last.shotOutcome === ShotOutcome.TWO_POINTER) {
+        parts.push(`${t1Goals}-${String(t1Points).padStart(2, '0')} v ${t2Goals}-${String(t2Points).padStart(2, '0')}`);
+      }
+    } else if (last.type === EventType.SUBSTITUTION) {
       const outP = getPlayer(last.player1Id);
       const inP = getPlayer(last.player2Id);
-      const subLine = document.createElement('div');
-      subLine.className = 'text-gray-300 text-sm';
-      const outStr = outP ? `#${outP.jerseyNumber}${outP.name && outP.name !== `No.${outP.jerseyNumber}` ? ' ' + outP.name : ''}` : '';
-      const inStr = inP ? `#${inP.jerseyNumber}${inP.name && inP.name !== `No.${inP.jerseyNumber}` ? ' ' + inP.name : ''}` : '';
-      subLine.textContent = `${outStr} ⟶ ${inStr}`;
-      details.appendChild(subLine);
-    }
-    // Card/foul player line
-    if (last.type === EventType.CARD || last.type === EventType.FOUL_CONCEDED) {
+      if (outP || inP) parts.push(`${formatPlayer(outP)} → ${formatPlayer(inP)}`);
+    } else if (last.type === EventType.CARD || last.type === EventType.FOUL_CONCEDED) {
       const p = getPlayer(last.player1Id);
-      if (p) {
-        const defaultName = `No.${p.jerseyNumber}`;
-        const pLine = document.createElement('div');
-        pLine.className = 'text-gray-300 text-sm';
-        let line = `#${p.jerseyNumber}`;
-        if (p.name && p.name !== defaultName) {
-          line += ` ${p.name}`;
-        }
-        pLine.textContent = line;
-        details.appendChild(pLine);
-      }
+      if (p) parts.push(formatPlayer(p));
     }
-    // Note text line for any event with notes
-    if (last.noteText && last.noteText.trim()) {
-      const nLine = document.createElement('div');
-      nLine.className = 'text-gray-300 text-sm';
-      nLine.textContent = last.noteText;
-      details.appendChild(nLine);
+    if (last.noteText && last.noteText.trim()) parts.push(last.noteText.trim());
+    parts.push(`${minutes} min`);
+    parts.push(last.period);
+
+    // Build DOM
+    display.innerHTML = '';
+
+    const content = document.createElement('div');
+    content.className = 'flex-1 min-w-0';
+
+    const headline = document.createElement('div');
+    headline.className = 'last-event-headline flex items-center gap-2';
+    if (team) {
+      const teamSpan = document.createElement('span');
+      teamSpan.className = 'last-event-team';
+      teamSpan.textContent = team.name;
+      headline.appendChild(teamSpan);
     }
-    // Ensure minimum 4 lines to prevent button overlap
-    const currentLines = details.children.length;
-    const minLines = 4;
-    if (currentLines < minLines) {
-      for (let i = currentLines; i < minLines; i++) {
-        const spacer = document.createElement('div');
-        spacer.className = 'text-gray-300 text-sm';
-        spacer.innerHTML = '&nbsp;'; // Invisible content to maintain line height
-        details.appendChild(spacer);
-      }
+    if (chipNode) {
+      headline.appendChild(chipNode);
+    } else if (outcomeText) {
+      const fallback = document.createElement('span');
+      fallback.className = 'last-event-outcome';
+      fallback.textContent = outcomeText;
+      headline.appendChild(fallback);
     }
-    // Append details to display
-    display.appendChild(details);
-    // Right column: time, period and list button
-    const rightCol = document.createElement('div');
-    rightCol.className = 'flex flex-col items-end ml-3 flex-shrink-0';
-    const minutes = Math.floor(last.timeElapsed / 60);
-    const timeStr = `${minutes} min`;
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'text-gray-200 text-sm font-medium';
-    timeDiv.textContent = timeStr;
-    rightCol.appendChild(timeDiv);
-    const periodDiv = document.createElement('div');
-    periodDiv.className = 'text-gray-400 text-xs';
-    periodDiv.textContent = last.period;
-    rightCol.appendChild(periodDiv);
-    // Finish assembling right column and append to the display
-    display.appendChild(rightCol);
-    // Add a share button positioned at bottom right (left of the list button)
+    content.appendChild(headline);
+
+    const subtitle = document.createElement('div');
+    subtitle.className = 'last-event-subtitle';
+    subtitle.textContent = parts.join(' · ');
+    content.appendChild(subtitle);
+
+    display.appendChild(content);
+
+    // Action buttons (inline, right side)
+    const actions = document.createElement('div');
+    actions.className = 'flex items-center ml-3 flex-shrink-0';
+
     const shareBtn = document.createElement('button');
-    shareBtn.className = 'absolute bottom-2 right-12 text-gray-200 hover:text-gray-100';
+    shareBtn.className = 'cursor-pointer mr-2';
     shareBtn.title = 'Share event';
     shareBtn.innerHTML = '<img src="icons/share.svg" alt="Share Event" class="w-8 h-8" />';
     shareBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       shareIndividualEvent(last.id);
     });
-    display.appendChild(shareBtn);
+    actions.appendChild(shareBtn);
 
-    // Add an event‑list button positioned at the bottom right of the card.  This
-    // button shows an icon of three bars.  The fill‑current attribute makes
-    // the SVG adopt the current text colour (blue) from the class below.
     const listBtn = document.createElement('button');
     listBtn.id = 'show-events-btn';
-    listBtn.className = 'absolute bottom-2 right-2 text-blue-400';
+    listBtn.className = 'cursor-pointer';
     listBtn.title = 'Show all events';
     listBtn.innerHTML = '<img src="icons/burger.svg" alt="Show all events" class="w-8 h-8" />';
-    display.appendChild(listBtn);
+    actions.appendChild(listBtn);
+
+    display.appendChild(actions);
     display.classList.remove('hidden');
-    // Attach click handler for the list button to open the events list modal
     listBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       showEventsView();
@@ -4086,49 +4023,48 @@
       }
     }
 
-    // Build header with appropriate icon and label
-    const label = document.createElement('span');
-    let labelText;
-    
-    // Check if this is a miss event (any non-scoring outcome)
+    // Build header with appropriate icon and label.
+    // Wrapped in a helper so the score-type picker (added below) can re-render
+    // the title when the user toggles between Point and 2 Pointer.
     const isMissEvent = outcome !== ShotOutcome.GOAL && outcome !== ShotOutcome.POINT && outcome !== ShotOutcome.TWO_POINTER;
-    
-    if (isMissEvent) {
-      // For miss events, use the miss icon and generic "Miss" label
-      const missIcon = document.createElement('img');
-      missIcon.src = 'icons/miss.svg';
-      missIcon.alt = 'Miss';
-      missIcon.classList.add('w-6', 'h-6');
-      titleEl.appendChild(missIcon);
-      labelText = 'Miss';
-    } else {
-      // For scoring events, use the flag icon as before
-      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      icon.setAttribute('viewBox', '0 0 24 24');
-      icon.setAttribute('aria-hidden', 'true');
-      icon.classList.add('w-6', 'h-6');
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('fill-rule', 'evenodd');
-      path.setAttribute('d', 'M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z');
-      path.setAttribute('clip-rule', 'evenodd');
-      // Fill color according to outcome
-      if (outcome === ShotOutcome.GOAL) {
-        path.setAttribute('fill', '#22C55E');
-        labelText = 'Goal';
-      } else if (outcome === ShotOutcome.TWO_POINTER) {
-        path.setAttribute('fill', '#FB923C');
-        labelText = '2 Pointer';
+    function renderScoreModalTitle(outcomeVal) {
+      titleEl.innerHTML = '';
+      let labelText;
+      if (isMissEvent) {
+        const missIcon = document.createElement('img');
+        missIcon.src = 'icons/miss.svg';
+        missIcon.alt = 'Miss';
+        missIcon.classList.add('w-6', 'h-6');
+        titleEl.appendChild(missIcon);
+        labelText = 'Miss';
       } else {
-        path.setAttribute('fill', '#FFFFFF');
-        labelText = 'Point';
+        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('viewBox', '0 0 24 24');
+        icon.setAttribute('aria-hidden', 'true');
+        icon.classList.add('w-6', 'h-6');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('fill-rule', 'evenodd');
+        path.setAttribute('d', 'M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z');
+        path.setAttribute('clip-rule', 'evenodd');
+        if (outcomeVal === ShotOutcome.GOAL) {
+          path.setAttribute('fill', '#22C55E');
+          labelText = 'Goal';
+        } else if (outcomeVal === ShotOutcome.TWO_POINTER) {
+          path.setAttribute('fill', '#FB923C');
+          labelText = '2 Pointer';
+        } else {
+          path.setAttribute('fill', '#FFFFFF');
+          labelText = 'Point';
+        }
+        icon.appendChild(path);
+        titleEl.appendChild(icon);
       }
-      icon.appendChild(path);
-      titleEl.appendChild(icon);
+      const labelEl = document.createElement('span');
+      labelEl.textContent = labelText;
+      labelEl.classList.add('text-xl', 'font-semibold');
+      titleEl.appendChild(labelEl);
     }
-    
-    label.textContent = labelText;
-    label.classList.add('text-xl', 'font-semibold');
-    titleEl.appendChild(label);
+    renderScoreModalTitle(outcome);
     // Meta section removed to save space
     
     if (isMissEvent) {
@@ -4235,12 +4171,60 @@
         typeListEl.appendChild(btn);
       });
     } else {
+      // For scoring events: optionally show a Point / 2-Pointer toggle for
+      // football & ladies football (the orange flag was removed from the
+      // scoreboard; the choice now lives here).
+      const supportsTwoPointer = match.matchType === 'football' || match.matchType === 'ladies_football';
+      const isPointScoring = outcome === ShotOutcome.POINT || outcome === ShotOutcome.TWO_POINTER;
+      if (supportsTwoPointer && isPointScoring) {
+        const scoreTypeHeader = document.createElement('div');
+        scoreTypeHeader.className = 'text-sm font-medium text-gray-300 mb-2';
+        scoreTypeHeader.textContent = 'Score Type';
+        typeListEl.appendChild(scoreTypeHeader);
+
+        const scoreTypeContainer = document.createElement('div');
+        scoreTypeContainer.className = 'mb-3';
+
+        const scoreTypeOptions = [
+          { value: ShotOutcome.POINT, label: 'Point' },
+          { value: ShotOutcome.TWO_POINTER, label: '2 Pointer' }
+        ];
+        scoreTypeOptions.forEach(({ value, label }) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.value = value;
+          btn.dataset.section = 'scoreType';
+          btn.textContent = label;
+          btn.className = 'w-full text-left p-2 border border-gray-600 rounded text-sm mb-1';
+          if (value === scoreModalData.outcome) {
+            btn.classList.add('bg-blue-600', 'text-white');
+          } else {
+            btn.classList.add('bg-gray-700', 'text-gray-100');
+          }
+          btn.addEventListener('click', () => {
+            scoreModalData.outcome = value;
+            scoreTypeContainer.querySelectorAll('button').forEach((item) => {
+              if (item.dataset.value === value) {
+                item.classList.add('bg-blue-600', 'text-white');
+                item.classList.remove('bg-gray-700', 'text-gray-100');
+              } else {
+                item.classList.remove('bg-blue-600', 'text-white');
+                item.classList.add('bg-gray-700', 'text-gray-100');
+              }
+            });
+            renderScoreModalTitle(value);
+          });
+          scoreTypeContainer.appendChild(btn);
+        });
+        typeListEl.appendChild(scoreTypeContainer);
+      }
+
       // For scoring events, show shot types with header
       const shotTypeHeader = document.createElement('div');
       shotTypeHeader.className = 'text-sm font-medium text-gray-300 mb-2';
       shotTypeHeader.textContent = 'Shot Type';
       typeListEl.appendChild(shotTypeHeader);
-      
+
       const shotOptions = [
         { value: ShotType.FROM_PLAY, label: 'From Play' },
         { value: ShotType.FREE, label: 'Free' },
@@ -5451,10 +5435,21 @@
     if (display) {
       display.textContent = formatTime(match.elapsedTime);
     }
-    // Also update the period text above the timer
+    // Also update the period text above the timer; trigger swap animation on change
     const periodElem = document.getElementById('period-display');
     if (periodElem) {
+      const prev = periodElem.textContent;
+      if (prev && prev !== match.currentPeriod) {
+        periodElem.classList.remove('swapping');
+        void periodElem.offsetWidth;
+        periodElem.classList.add('swapping');
+      }
       periodElem.textContent = match.currentPeriod;
+    }
+    // Toggle running pulse on the timer
+    const display2 = document.getElementById('timer-display');
+    if (display2) {
+      display2.classList.toggle('is-running', !match.isPaused && isPlayingPeriod(match.currentPeriod));
     }
     // In this version we no longer expose a separate "start" button; the match is started
     // via a long press on the start/end half button.  We keep references to the pause and resume
@@ -6299,11 +6294,27 @@
       list.appendChild(msg);
       return;
     }
-    sorted.forEach((ev) => {
+    sorted.forEach((ev, idx) => {
       const item = document.createElement('li');
       // Use a card-like appearance with border and subtle hover effect
       item.className = 'event-item px-4 py-3 mb-2 cursor-pointer bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg min-h-20 relative';
-      
+      item.style.setProperty('--i', idx);
+      // Tag the row with an event-type-* class so the left accent bar picks up
+      // the appropriate color (defined in styles.css)
+      let typeClass = '';
+      if (ev.type === EventType.SHOT) {
+        if (ev.shotOutcome === ShotOutcome.GOAL) typeClass = 'event-type-goal';
+        else if (ev.shotOutcome === ShotOutcome.POINT) typeClass = 'event-type-point';
+        else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) typeClass = 'event-type-twopt';
+      } else if (ev.type === EventType.CARD) typeClass = 'event-type-card';
+      else if (ev.type === EventType.FOUL_CONCEDED) typeClass = 'event-type-foul';
+      else if (ev.type === EventType.KICKOUT) typeClass = 'event-type-kickout';
+      else if (ev.type === EventType.SUBSTITUTION) typeClass = 'event-type-sub';
+      else if (ev.type === EventType.NOTE) typeClass = 'event-type-note';
+      else if (ev.type === EventType.PERIOD_END) typeClass = 'event-type-period';
+      if (typeClass) item.classList.add(typeClass);
+
+
       // Event details (left side content)
       const details = document.createElement('div');
       details.className = 'event-details pr-20';

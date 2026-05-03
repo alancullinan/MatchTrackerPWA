@@ -1,4 +1,4 @@
-const CACHE_NAME = 'match-tracker-v1.2.4';
+const CACHE_NAME = 'match-tracker-v1.3.1';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -6,6 +6,10 @@ const urlsToCache = [
   '/styles.css',
   '/tailwind-minimal.css',
   '/manifest.json',
+  // Self-hosted fonts (offline-first)
+  '/fonts/bebas-neue.woff2',
+  '/fonts/manrope.woff2',
+  '/fonts/jetbrains-mono.woff2',
   // Icons
   '/icons/back-grey-blue.svg',
   '/icons/back.svg',
