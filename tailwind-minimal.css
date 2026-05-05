@@ -130,6 +130,7 @@ body.bg-gray-900 {
 .w-24 { width: 6rem; }
 .w-11\/12 { width: 91.666667%; }
 .w-full { width: 100%; }
+.min-w-0 { min-width: 0; }
 .h-6 { height: 1.5rem; }
 .h-8 { height: 2rem; }
 .h-10 { height: 2.5rem; }

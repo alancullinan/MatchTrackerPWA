@@ -837,6 +837,13 @@ button.cursor-pointer > img,
   font-family: var(--font-body);
 }
 
+/* Force the content column to shrink so the right-side actions can never
+   overflow the card edge, even if a Tailwind utility (min-w-0) isn't loaded. */
+#match-details-view #last-event-display > div:first-child {
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
 /* Headline: bold team + outcome chip on one line */
 .last-event-headline {
   margin-bottom: 2px;
