@@ -3655,21 +3655,6 @@
       return;
     }
 
-    // Running score up to and including this event
-    let t1Goals = 0, t1Points = 0, t2Goals = 0, t2Points = 0;
-    match.events.forEach((ev) => {
-      if (ev.type !== EventType.SHOT) return;
-      if (ev.teamId === match.team1.id) {
-        if (ev.shotOutcome === ShotOutcome.GOAL) t1Goals += 1;
-        else if (ev.shotOutcome === ShotOutcome.POINT) t1Points += 1;
-        else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t1Points += 2;
-      } else if (ev.teamId === match.team2.id) {
-        if (ev.shotOutcome === ShotOutcome.GOAL) t2Goals += 1;
-        else if (ev.shotOutcome === ShotOutcome.POINT) t2Points += 1;
-        else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) t2Points += 2;
-      }
-    });
-
     const team = last.teamId ? (last.teamId === match.team1.id ? match.team1 : match.team2) : null;
     const getPlayer = (id) => id
       ? (match.team1.players.find((p) => p.id === id) || match.team2.players.find((p) => p.id === id) || null)
@@ -3714,9 +3699,6 @@
       }
       const player = getPlayer(last.player1Id);
       if (player) parts.push(formatPlayer(player));
-      if (last.shotOutcome === ShotOutcome.GOAL || last.shotOutcome === ShotOutcome.POINT || last.shotOutcome === ShotOutcome.TWO_POINTER) {
-        parts.push(`${t1Goals}-${String(t1Points).padStart(2, '0')} v ${t2Goals}-${String(t2Points).padStart(2, '0')}`);
-      }
     } else if (last.type === EventType.SUBSTITUTION) {
       const outP = getPlayer(last.player1Id);
       const inP = getPlayer(last.player2Id);

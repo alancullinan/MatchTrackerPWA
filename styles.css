@@ -837,6 +837,13 @@ button.cursor-pointer > img,
   font-family: var(--font-body);
 }
 
+/* Force the content column to shrink so the right-side actions can never
+   overflow the card edge, even if a Tailwind utility (min-w-0) isn't loaded. */
+#match-details-view #last-event-display > div:first-child {
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
 /* Headline: bold team + outcome chip on one line */
 .last-event-headline {
   margin-bottom: 2px;
@@ -861,16 +868,18 @@ button.cursor-pointer > img,
   border: 1px solid var(--touchline);
 }
 
-/* Subtitle: all meta in one muted line, truncated if too long */
+/* Subtitle: all meta in muted text — wraps to a second line when needed,
+   capped at 2 lines so a long note doesn't blow up the card height. */
 .last-event-subtitle {
   font-family: var(--font-body) !important;
   color: var(--mist);
   font-size: 0.8125rem;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
   letter-spacing: 0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* ===== Grass background for match view ===== */
