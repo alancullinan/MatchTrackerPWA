@@ -1,1 +1,2 @@
-
+# Claude Code worktrees — these are local working trees, not part of the repo
+.claude/worktrees/
