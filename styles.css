@@ -634,7 +634,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-radius: var(--r-lg) !important;
   box-shadow: var(--sh-board);
   backdrop-filter: blur(6px) saturate(1.05);
-  padding: var(--sp-4) !important;
+  padding: var(--sp-5) var(--sp-4) !important;
   position: relative;
 }
 
@@ -1297,6 +1297,29 @@ body.match-view-active::before {
   letter-spacing: 0.10em;
   text-transform: uppercase;
   border-radius: var(--r-pill) !important;
+}
+
+/* Color-code timer controls so opposite actions read at a glance.
+   END HALF and PAUSE are "stop" actions → amber.
+   RESUME is the "go" action → stays primary green (default). */
+#end-period-btn.bg-blue-600,
+#pause-timer-btn.bg-blue-600 {
+  background-color: var(--scoreboard-amber) !important;
+  color: var(--pitch-900) !important;
+}
+#end-period-btn.bg-blue-600:hover,
+#pause-timer-btn.bg-blue-600:hover,
+#end-period-btn.hover\:bg-blue-700:hover,
+#pause-timer-btn.hover\:bg-blue-700:hover {
+  background-color: var(--scoreboard-glow) !important;
+}
+
+/* Top-bar action trio: more breathing room between share / stats / edit */
+#match-details-view > div:first-child > div.flex.items-center {
+  gap: var(--sp-4);
+}
+#match-details-view > div:first-child > div.flex.items-center > .mr-3 {
+  margin-right: 0 !important;
 }
 
 /* ===== Scrollbars (subtle, themed) ===== */
