@@ -706,7 +706,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 #match-details-view .score-total {
   font-family: var(--font-display) !important;
-  font-size: 0.875rem !important;
+  font-size: 1.125rem !important;
   letter-spacing: 0.14em;
   color: var(--chalk) !important;
   text-transform: uppercase;
