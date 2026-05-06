@@ -4244,19 +4244,21 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.dataset.value = value;
+        btn.dataset.section = 'shot';
         btn.textContent = label;
         btn.className = 'w-full text-left p-2 border border-gray-600 rounded text-sm';
-        
+
         if (value === scoreModalData.selectedShotType) {
           btn.classList.add('bg-blue-600', 'text-white');
         } else {
           btn.classList.add('bg-gray-700', 'text-gray-100');
         }
-        
+
         btn.addEventListener('click', () => {
           scoreModalData.selectedShotType = value;
-          // Highlight selected shot type
-          typeListEl.querySelectorAll('button').forEach((item) => {
+          // Highlight selected shot type — scope to shot buttons only, so the
+          // Point / 2-Pointer score-type buttons keep their selected state.
+          typeListEl.querySelectorAll('[data-section="shot"]').forEach((item) => {
             if (item.dataset.value === value) {
               item.classList.add('bg-blue-600', 'text-white');
               item.classList.remove('bg-gray-700', 'text-gray-100');
