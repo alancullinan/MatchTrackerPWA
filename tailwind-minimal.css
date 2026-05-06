@@ -139,6 +139,7 @@ body.bg-gray-900 {
 .min-h-screen { min-height: 100vh; }
 .min-h-16 { min-height: 4rem; }
 .min-h-20 { min-height: 5rem; }
+.min-h-\[3\.5rem\] { min-height: 3.5rem; }
 
 /* Max width */
 .max-w-4xl { max-width: 56rem; }
