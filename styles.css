@@ -219,6 +219,8 @@ header h1 {
 
 main {
   padding: var(--sp-4);
+  /* Push content below the Dynamic Island / status bar on iOS */
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--sp-4));
 }
 
 .view {
