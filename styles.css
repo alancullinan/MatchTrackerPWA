@@ -606,14 +606,28 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   z-index: 1;
 }
 
-/* Period label above the timer */
+/* Scoreboard module: subtle backing panel framing the period + timer so
+   they read as a discrete "scoreboard segment" rather than floating digits.
+   Uses :has() to target the wrapper that contains #timer-display. */
+#match-details-view div:has(> #timer-display) {
+  background: linear-gradient(180deg, rgba(11, 31, 20, 0.55) 0%, rgba(11, 31, 20, 0.78) 100%);
+  border: 1px solid rgba(199, 209, 194, 0.16);
+  border-radius: var(--r-md);
+  padding: 4px 12px 6px 12px;
+  backdrop-filter: blur(6px) saturate(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+/* Period label above the timer — slightly more compact letter-spacing
+   inside the panel */
 #period-display {
   font-family: var(--font-display);
-  font-size: 0.875rem !important;
-  letter-spacing: 0.18em;
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.16em;
   color: var(--scoreboard-amber);
   text-transform: uppercase;
   text-shadow: 0 0 8px rgba(255, 182, 40, 0.35);
+  margin-bottom: -2px;
 }
 
 /* Timer — floodlit ivory, modern scoreboard digit */
@@ -1291,12 +1305,16 @@ body.match-view-active::before {
   font-family: var(--font-body);
 }
 
-/* Match details Pause/Resume/End buttons */
+/* Match details Pause/Resume/End buttons — compact pills, sized so the
+   wider "START HALF" label still clears the centered clock panel. */
 #end-period-btn, #pause-timer-btn, #resume-timer-btn {
   font-family: var(--font-display);
-  letter-spacing: 0.10em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   border-radius: var(--r-pill) !important;
+  padding: 5px 10px !important;
+  font-size: 0.75rem !important;
+  min-height: 30px !important;
 }
 
 /* Color-code timer controls so opposite actions read at a glance.

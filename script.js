@@ -3669,6 +3669,7 @@
     // Build outcome chip / label
     let outcomeText = '';
     let chipNode = null;
+    let headlineText = team ? team.name : '';
     if (last.type === EventType.SHOT) {
       outcomeText = last.shotOutcome
         .replace(/([A-Z])/g, ' $1')
@@ -3687,6 +3688,10 @@
       outcomeText = 'Substitution';
     } else if (last.type === EventType.NOTE) {
       outcomeText = 'Note';
+    } else if (last.type === EventType.PERIOD_END) {
+      // Period transitions don't have a team — promote the period name to
+      // the headline so the ticker reads e.g. "HALF TIME" instead of empty.
+      headlineText = last.period || 'Period End';
     }
 
     // Compose subtitle parts (single muted line)
@@ -3709,7 +3714,9 @@
     }
     if (last.noteText && last.noteText.trim()) parts.push(last.noteText.trim());
     parts.push(`${minutes} min`);
-    parts.push(last.period);
+    // Skip the period in the subtitle for period-end events — the period
+    // name is already the headline, no need to repeat it.
+    if (last.type !== EventType.PERIOD_END) parts.push(last.period);
 
     // Build DOM
     display.innerHTML = '';
@@ -3719,10 +3726,10 @@
 
     const headline = document.createElement('div');
     headline.className = 'last-event-headline flex items-center gap-2';
-    if (team) {
+    if (headlineText) {
       const teamSpan = document.createElement('span');
       teamSpan.className = 'last-event-team';
-      teamSpan.textContent = team.name;
+      teamSpan.textContent = headlineText;
       headline.appendChild(teamSpan);
     }
     if (chipNode) {
