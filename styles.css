@@ -528,7 +528,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   flex: 1;
 }
 
-/* ===== Match list view: sticky header + search, scrollable list ===== */
+/* ===== Match list + Player Panels: sticky header + search, scrollable list ===== */
+#player-panels-view {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - 44px);
+  overflow: hidden;
+}
+
+#player-panels-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  mask-image: linear-gradient(to bottom, transparent 0px, black 24px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 24px);
+}
+
 #match-list-view {
   display: flex;
   flex-direction: column;
