@@ -3133,7 +3133,12 @@
   function showView(viewId) {
     const views = document.querySelectorAll('.view');
     views.forEach((v) => {
-      v.style.display = v.id === viewId ? 'block' : 'none';
+      // match-list-view uses flex so the list scrolls independently of
+      // the sticky header+search; all other views stay as block.
+      const showAs = (v.id === viewId)
+        ? (v.id === 'match-list-view' ? 'flex' : 'block')
+        : 'none';
+      v.style.display = showAs;
     });
     // Hide the header (app title) on match list and match form views, show it on match details.
     const header = document.querySelector('header');
