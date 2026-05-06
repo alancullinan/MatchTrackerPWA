@@ -541,6 +541,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+#player-panels-list.is-scrolled {
   mask-image: linear-gradient(to bottom, transparent 0px, black 24px);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 24px);
 }
@@ -558,7 +561,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  /* Fade the top of the list so cards dissolve into the header as they scroll under */
+}
+
+/* Fade the top of the list only once content has scrolled under the header */
+#match-list.is-scrolled {
   mask-image: linear-gradient(to bottom, transparent 0px, black 24px);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 24px);
 }
