@@ -7012,6 +7012,15 @@
       });
     }
 
+    // Toggle top fade only when the list has scrolled under the sticky header
+    ['match-list', 'player-panels-list'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const update = () => el.classList.toggle('is-scrolled', el.scrollTop > 0);
+      el.addEventListener('scroll', update, { passive: true });
+      update();
+    });
+
     // Form submission
     document.getElementById('match-form').addEventListener('submit', handleMatchFormSubmit);
     // Cancel form (top bar).  Some versions of the UI include a bottom cancel button
