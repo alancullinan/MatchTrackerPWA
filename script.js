@@ -7430,6 +7430,11 @@
     await loadAppState();
     renderMatchList(); // Prepare match list data even though we don't show it initially
     initEventListeners();
+    // Best-effort orientation lock for installed PWAs (Android/Chrome). iOS
+    // Safari ignores this; the CSS landscape-lock overlay handles that case.
+    if (screen.orientation && typeof screen.orientation.lock === 'function') {
+      screen.orientation.lock('portrait').catch(() => { /* unsupported / not in fullscreen */ });
+    }
     // Show home screen by default instead of match list
     showHomeView();
     // Hide the header by default since the home view does not display a title.  It will

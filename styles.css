@@ -6,6 +6,51 @@
  * from first launch.
  */
 
+/* ===== Landscape lock overlay ===== */
+#landscape-lock {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: linear-gradient(180deg, #0B1F14 0%, #081A11 100%);
+  color: #f3f4f6;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+#landscape-lock .landscape-lock-inner {
+  max-width: 28rem;
+}
+#landscape-lock .landscape-lock-icon {
+  font-size: 4rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+  display: inline-block;
+  animation: landscape-rotate 1.6s ease-in-out infinite;
+  color: #34D399;
+}
+#landscape-lock h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.75rem;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.5rem;
+}
+#landscape-lock p {
+  font-size: 0.95rem;
+  color: #9ca3af;
+  margin: 0;
+}
+@keyframes landscape-rotate {
+  0%, 40% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  #landscape-lock { display: flex; }
+  body > header,
+  body > main { display: none !important; }
+}
+
 /* ===== Self-hosted fonts (offline-first) ===== */
 @font-face {
   font-family: 'Bebas Neue';
