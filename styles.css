@@ -1409,8 +1409,8 @@ body.match-view-active::before {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   border-radius: var(--r-pill) !important;
-  padding: 5px 10px !important;
-  font-size: 0.75rem !important;
+  padding: 3px 10px !important;
+  font-size: 0.9375rem !important;
   min-height: 30px !important;
 }
 
