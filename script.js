@@ -440,10 +440,15 @@
   }
   
   // Render the list of all player panels
-  function renderPlayerPanelsList() {
+  function renderPlayerPanelsList(filterText = '') {
     const container = document.getElementById('player-panels-list');
     if (!container) return;
-    
+
+    const query = filterText.trim().toLowerCase();
+    const filtered = query
+      ? appState.playerPanels.filter(p => p.name.toLowerCase().includes(query))
+      : appState.playerPanels;
+
     if (appState.playerPanels.length === 0) {
       container.innerHTML = `
         <div class="text-center text-gray-400 py-8">
@@ -453,15 +458,21 @@
       `;
       return;
     }
-    
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="text-center text-gray-400 py-8"><p class="text-lg">No panels match "${filterText}"</p></div>`;
+      return;
+    }
+
     // Clear container and create panel cards using the same method as match cards
     container.innerHTML = '';
-    
-    appState.playerPanels.forEach(panel => {
+
+    filtered.forEach((panel, idx) => {
       // Create panel card using exact same method as match cards
       const card = document.createElement('div');
       card.className =
         'match-card relative bg-gray-800 border border-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-700 flex flex-col space-y-1 text-left';
+      card.style.setProperty('--i', idx);
       card.addEventListener('click', () => showPanelEditor(panel.id));
 
       // Panel name line (same as competition line in match cards)
@@ -3133,10 +3144,11 @@
   function showView(viewId) {
     const views = document.querySelectorAll('.view');
     views.forEach((v) => {
-      // match-list-view uses flex so the list scrolls independently of
-      // the sticky header+search; all other views stay as block.
+      // Some views use flex so their list scrolls independently of the
+      // sticky header+search; all others stay as block.
+      const flexViews = ['match-list-view', 'player-panels-view'];
       const showAs = (v.id === viewId)
-        ? (v.id === 'match-list-view' ? 'flex' : 'block')
+        ? (flexViews.includes(v.id) ? 'flex' : 'block')
         : 'none';
       v.style.display = showAs;
     });
@@ -6990,6 +7002,13 @@
     if (matchFilterInput) {
       matchFilterInput.addEventListener('input', (e) => {
         renderMatchList(e.target.value);
+      });
+    }
+
+    const panelFilterInput = document.getElementById('panel-filter-input');
+    if (panelFilterInput) {
+      panelFilterInput.addEventListener('input', (e) => {
+        renderPlayerPanelsList(e.target.value);
       });
     }
 
