@@ -1273,7 +1273,7 @@ body.match-view-active::before {
 #events-list .event-item.event-type-goal     { border-left-color: var(--flag-goal) !important; border-right-color: var(--flag-goal) !important; }
 #events-list .event-item.event-type-point    { border-left-color: var(--flag-point) !important; border-right-color: var(--flag-point) !important; }
 #events-list .event-item.event-type-twopt    { border-left-color: var(--flag-2pt) !important; border-right-color: var(--flag-2pt) !important; }
-#events-list .event-item.event-type-foul     { border-left-color: var(--card-red) !important; border-right-color: var(--card-red) !important; }
+#events-list .event-item.event-type-foul     { border-left-color: var(--mist) !important; border-right-color: var(--mist) !important; }
 #events-list .event-item.event-type-card-yellow { border-left-color: var(--card-yellow) !important; border-right-color: var(--card-yellow) !important; }
 #events-list .event-item.event-type-card-red    { border-left-color: var(--card-red) !important;    border-right-color: var(--card-red) !important; }
 #events-list .event-item.event-type-card-black  { border-left-color: #4B5563 !important;            border-right-color: #4B5563 !important; }
