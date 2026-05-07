@@ -1243,8 +1243,11 @@ body.match-view-active::before {
 .events-list .event-item {
   list-style: none !important;
   background-color: var(--pitch-800) !important;
+  /* Default state: 1px touchline on top/right/bottom, 4px accent on the left.
+     The accent colour is driven by --event-accent (set per event-type below). */
+  --event-accent: var(--mist);
   border: 1px solid var(--touchline) !important;
-  border-left: 4px solid var(--mist) !important;
+  border-left: 4px solid var(--event-accent) !important;
   border-radius: var(--r-md) !important;
   padding: var(--sp-3) var(--sp-4) !important;
   font-family: var(--font-body);
@@ -1256,31 +1259,24 @@ body.match-view-active::before {
   background-color: var(--pitch-700) !important;
 }
 
-/* Team-2 events: move the accent bar to the right edge so a glance at the
-   row tells you which team it belongs to. Reset the left border to match
-   the regular touchline border so only one side shows the accent. */
+/* Team-2 events: accent on the right edge instead of the left, so a glance
+   tells you which team owns the row. The opposite side reverts to the plain
+   touchline border (no tint bleed). */
 #events-list .event-item.event-team-2 {
   border-left: 1px solid var(--touchline) !important;
-  border-right: 4px solid var(--mist) !important;
+  border-right: 4px solid var(--event-accent) !important;
 }
 
-/* Color-code event rows by event type. Impactful events (scores, cards,
-   fouls, period markers) get bright/semantic colours. Routine bookkeeping
-   (sub, note, kickout) stays muted so the eye is drawn to what matters.
-   Each rule sets both border-left-color and border-right-color so it works
-   for team-1 (left accent) and team-2 (right accent). */
-#events-list .event-item.event-type-goal,
-#events-list .event-item.event-type-goal     { border-left-color: var(--flag-goal) !important; border-right-color: var(--flag-goal) !important; }
-#events-list .event-item.event-type-point    { border-left-color: var(--flag-point) !important; border-right-color: var(--flag-point) !important; }
-#events-list .event-item.event-type-twopt    { border-left-color: var(--flag-2pt) !important; border-right-color: var(--flag-2pt) !important; }
-#events-list .event-item.event-type-foul     { border-left-color: var(--mist) !important; border-right-color: var(--mist) !important; }
-#events-list .event-item.event-type-card-yellow { border-left-color: var(--card-yellow) !important; border-right-color: var(--card-yellow) !important; }
-#events-list .event-item.event-type-card-red    { border-left-color: var(--card-red) !important;    border-right-color: var(--card-red) !important; }
-#events-list .event-item.event-type-card-black  { border-left-color: #4B5563 !important;            border-right-color: #4B5563 !important; }
-#events-list .event-item.event-type-sub      { border-left-color: var(--mist) !important; border-right-color: var(--mist) !important; }
-#events-list .event-item.event-type-note     { border-left-color: var(--mist) !important; border-right-color: var(--mist) !important; }
-#events-list .event-item.event-type-kickout  { border-left-color: var(--mist) !important; border-right-color: var(--mist) !important; }
-#events-list .event-item.event-type-period   { border-left-color: var(--scoreboard-amber) !important; border-right-color: var(--scoreboard-amber) !important; }
+/* Per-event-type accent colour. Impactful events (scores, cards, period
+   markers) get bright/semantic colours. Routine bookkeeping (sub, note,
+   kickout, plain fouls) keeps the default muted mist. */
+#events-list .event-item.event-type-goal        { --event-accent: var(--flag-goal); }
+#events-list .event-item.event-type-point       { --event-accent: var(--flag-point); }
+#events-list .event-item.event-type-twopt       { --event-accent: var(--flag-2pt); }
+#events-list .event-item.event-type-card-yellow { --event-accent: var(--card-yellow); }
+#events-list .event-item.event-type-card-red    { --event-accent: var(--card-red); }
+#events-list .event-item.event-type-card-black  { --event-accent: #4B5563; }
+#events-list .event-item.event-type-period      { --event-accent: var(--scoreboard-amber); }
 
 /* Stagger reveal — set --i in JS render loops via inline style */
 @media (prefers-reduced-motion: no-preference) {
