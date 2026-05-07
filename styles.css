@@ -1256,17 +1256,31 @@ body.match-view-active::before {
   background-color: var(--pitch-700) !important;
 }
 
-/* Color-code event rows by detected type via attribute / first child text.
-   Specificity bumped (#id .event-item.event-type-*) to beat the base rule above. */
-#events-list .event-item.event-type-goal     { border-left-color: var(--flag-goal) !important; }
-#events-list .event-item.event-type-point    { border-left-color: var(--flag-point) !important; }
-#events-list .event-item.event-type-twopt    { border-left-color: var(--flag-2pt) !important; }
-#events-list .event-item.event-type-foul     { border-left-color: var(--card-red) !important; }
-#events-list .event-item.event-type-card     { border-left-color: var(--card-yellow) !important; }
-#events-list .event-item.event-type-sub      { border-left-color: var(--scoreboard-amber) !important; }
-#events-list .event-item.event-type-note     { border-left-color: var(--chalk) !important; }
-#events-list .event-item.event-type-kickout  { border-left-color: var(--primary) !important; }
-#events-list .event-item.event-type-period   { border-left-color: var(--scoreboard-amber) !important; }
+/* Team-2 events: move the accent bar to the right edge so a glance at the
+   row tells you which team it belongs to. Reset the left border to match
+   the regular touchline border so only one side shows the accent. */
+#events-list .event-item.event-team-2 {
+  border-left: 1px solid var(--touchline) !important;
+  border-right: 4px solid var(--mist) !important;
+}
+
+/* Color-code event rows by event type. Impactful events (scores, cards,
+   fouls, period markers) get bright/semantic colours. Routine bookkeeping
+   (sub, note, kickout) stays muted so the eye is drawn to what matters.
+   Each rule sets both border-left-color and border-right-color so it works
+   for team-1 (left accent) and team-2 (right accent). */
+#events-list .event-item.event-type-goal,
+#events-list .event-item.event-type-goal     { border-left-color: var(--flag-goal) !important; border-right-color: var(--flag-goal) !important; }
+#events-list .event-item.event-type-point    { border-left-color: var(--flag-point) !important; border-right-color: var(--flag-point) !important; }
+#events-list .event-item.event-type-twopt    { border-left-color: var(--flag-2pt) !important; border-right-color: var(--flag-2pt) !important; }
+#events-list .event-item.event-type-foul     { border-left-color: var(--card-red) !important; border-right-color: var(--card-red) !important; }
+#events-list .event-item.event-type-card-yellow { border-left-color: var(--card-yellow) !important; border-right-color: var(--card-yellow) !important; }
+#events-list .event-item.event-type-card-red    { border-left-color: var(--card-red) !important;    border-right-color: var(--card-red) !important; }
+#events-list .event-item.event-type-card-black  { border-left-color: #4B5563 !important;            border-right-color: #4B5563 !important; }
+#events-list .event-item.event-type-sub      { border-left-color: var(--mist) !important; border-right-color: var(--mist) !important; }
+#events-list .event-item.event-type-note     { border-left-color: var(--mist) !important; border-right-color: var(--mist) !important; }
+#events-list .event-item.event-type-kickout  { border-left-color: var(--mist) !important; border-right-color: var(--mist) !important; }
+#events-list .event-item.event-type-period   { border-left-color: var(--scoreboard-amber) !important; border-right-color: var(--scoreboard-amber) !important; }
 
 /* Stagger reveal — set --i in JS render loops via inline style */
 @media (prefers-reduced-motion: no-preference) {

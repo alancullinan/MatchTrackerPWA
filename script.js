@@ -6307,20 +6307,32 @@
       // Use a card-like appearance with border and subtle hover effect
       item.className = 'event-item px-4 py-3 mb-2 cursor-pointer bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg min-h-20 relative';
       item.style.setProperty('--i', idx);
-      // Tag the row with an event-type-* class so the left accent bar picks up
-      // the appropriate color (defined in styles.css)
+      // Tag the row with an event-type-* class so the accent bar picks up
+      // the appropriate color (defined in styles.css). Cards use the colour
+      // matching the card type. Fouls that include a card adopt the card
+      // colour as well, so the most-impactful info wins.
       let typeClass = '';
       if (ev.type === EventType.SHOT) {
         if (ev.shotOutcome === ShotOutcome.GOAL) typeClass = 'event-type-goal';
         else if (ev.shotOutcome === ShotOutcome.POINT) typeClass = 'event-type-point';
         else if (ev.shotOutcome === ShotOutcome.TWO_POINTER) typeClass = 'event-type-twopt';
-      } else if (ev.type === EventType.CARD) typeClass = 'event-type-card';
+      } else if (ev.type === EventType.CARD || (ev.type === EventType.FOUL_CONCEDED && ev.cardType)) {
+        if (ev.cardType === 'red') typeClass = 'event-type-card-red';
+        else if (ev.cardType === 'black') typeClass = 'event-type-card-black';
+        else typeClass = 'event-type-card-yellow';
+      }
       else if (ev.type === EventType.FOUL_CONCEDED) typeClass = 'event-type-foul';
       else if (ev.type === EventType.KICKOUT) typeClass = 'event-type-kickout';
       else if (ev.type === EventType.SUBSTITUTION) typeClass = 'event-type-sub';
       else if (ev.type === EventType.NOTE) typeClass = 'event-type-note';
       else if (ev.type === EventType.PERIOD_END) typeClass = 'event-type-period';
       if (typeClass) item.classList.add(typeClass);
+
+      // Tag the row with the owning team so the accent bar can sit on the
+      // correct side (left for team 1, right for team 2). Period-end events
+      // have no team and stay on the left as a neutral marker.
+      if (ev.teamId === match.team1.id) item.classList.add('event-team-1');
+      else if (ev.teamId === match.team2.id) item.classList.add('event-team-2');
 
 
       // Event details (left side content)
