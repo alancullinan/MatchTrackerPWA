@@ -1291,12 +1291,17 @@ body.match-view-active::before {
   }
 }
 
-/* ===== Edit Players view ===== */
+/* ===== Edit Players view =====
+   "Team-sheet" treatment: one stripe per player, jersey number set like a
+   scoreboard digit, name in body type, edit slot at the far right. Inherits
+   the 4px left accent vocabulary from .match-card so the screen sits in the
+   same visual family as Matches, Events, and Player Panels. */
+
 .players-edit-container {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
-  margin-top: var(--sp-2);
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
 }
 
 .team-players {
@@ -1305,155 +1310,324 @@ body.match-view-active::before {
   padding: 0;
 }
 
-.team-players h3 {
-  margin: 0 0 var(--sp-2) 0;
-  font-size: 1.125rem;
-  letter-spacing: 0.06em;
+/* --- Team header: title + count on the left, swap toggle on the right.
+   Halfway-line marker below echoes the dashed halfway line in match details. */
+.team-players-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  border-bottom: 1px solid rgba(199, 209, 194, 0.14);
+  position: relative;
+}
+
+.team-players-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.team-players-header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.625rem;
+  letter-spacing: 0.08em;
   color: var(--floodlight);
+  line-height: 1.0;
+}
+
+/* Small mono "30 PLAYERS" caption beneath the team name (rendered by JS). */
+.team-players-count {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--mist);
+  text-transform: uppercase;
+}
+
+/* Short amber stripe under the header — pitch halfway-line reference. */
+.team-players-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 36px;
+  height: 2px;
+  background: var(--scoreboard-amber);
+  box-shadow: 0 0 10px rgba(255, 182, 40, 0.45);
+}
+
+/* --- Swap toggle: distinct mode-toggle vocabulary, NOT a save/cancel button.
+   Ghost pill with a chalk border, amber when on, with a ⇅ glyph prefix that
+   rotates 180° on activation. */
+#swap-players-btn {
+  font-family: var(--font-display) !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase;
+  padding: 7px 14px !important;
+  background-color: rgba(11, 31, 20, 0.55) !important;
+  background-image: none !important;
+  color: var(--chalk) !important;
+  border: 1px solid rgba(199, 209, 194, 0.28) !important;
+  border-radius: var(--r-pill) !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 140ms ease, border-color 140ms ease,
+              color 140ms ease, box-shadow 160ms ease;
+}
+
+#swap-players-btn::before {
+  content: '\21C5'; /* ⇅ */
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--mist);
+  transition: color 140ms ease, transform 200ms ease;
+}
+
+#swap-players-btn:hover {
+  border-color: var(--scoreboard-amber) !important;
+  color: var(--floodlight) !important;
+}
+#swap-players-btn:hover::before {
+  color: var(--scoreboard-amber);
+}
+
+#swap-players-btn.is-on {
+  background-color: rgba(255, 182, 40, 0.16) !important;
+  border-color: var(--scoreboard-amber) !important;
+  color: var(--scoreboard-amber) !important;
+  box-shadow: 0 0 0 1px rgba(255, 182, 40, 0.35),
+              0 0 16px rgba(255, 182, 40, 0.25);
+}
+#swap-players-btn.is-on::before {
+  color: var(--scoreboard-amber);
+  transform: rotate(180deg);
+}
+
+/* --- Player row: the team-sheet stripe.
+   3-column grid — jersey | name | action. */
+.player-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 44px;
+  align-items: stretch;
+  padding: 0;
+  background-color: var(--pitch-800);
+  border: 1px solid var(--touchline);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--r-md);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+              0 6px 16px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  position: relative;
+  transition: background-color 140ms ease, border-left-width 140ms ease,
+              transform 140ms ease;
+}
+
+.player-row:hover {
+  background-color: rgba(22, 68, 47, 0.55);
+}
+
+.player-row:active {
+  border-left-width: 5px;
 }
 
 .team-players .player-row + .player-row {
   margin-top: var(--sp-2);
 }
 
-/* Jersey number badge — unified across Edit Players and Score Event modal. */
+/* --- Jersey number: scoreboard digit, no chip box. */
 .jersey-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  min-width: 2rem;
-  height: 2rem;
-  padding: 0 0.4rem;
-  background-color: var(--pitch-900);
-  color: var(--floodlight);
-  border: 1px solid var(--touchline);
-  border-radius: var(--r-sm);
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  background: transparent;
+  color: var(--scoreboard-amber);
+  border: none;
+  border-right: 1px solid rgba(199, 209, 194, 0.10);
+  border-radius: 0;
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 0.875rem;
+  font-size: 1.375rem;
   line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px rgba(255, 182, 40, 0.30);
 }
 
-/* Card-style player row. Sits as a self-contained card so the screen reads
-   like the rest of the app (Match list, Events list, Panel list). Slightly
-   brighter surface + drop-shadow so rows pop against the dark body bg — at
-   pitch-800 alone the cards blended into the atmospheric body gradient. */
-.player-row {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  background-color: var(--pitch-700);
-  border: 1px solid var(--touchline);
-  border-radius: var(--r-md);
-  margin-bottom: 0;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 2px 6px rgba(0, 0, 0, 0.35);
-  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
-}
-
+/* --- Name input: borderless, type-forward. Focus reveals an amber underline. */
 .player-row input.player-row-name {
   flex: 1;
+  width: 100%;
   min-width: 0;
-  padding: 0.4rem 0.5rem;
+  padding: 13px 16px;
   background-color: transparent;
   color: var(--floodlight);
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
+  border: none;
+  border-radius: 0;
   font-family: var(--font-body);
-  font-size: 0.9375rem;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.005em;
+  outline: none;
+  transition: background-color 140ms ease, box-shadow 160ms ease;
+}
+
+.player-row input.player-row-name::placeholder {
+  color: var(--mist);
 }
 
 .player-row input.player-row-name:focus {
-  outline: none;
-  background-color: var(--pitch-700);
-  border-color: var(--touchline);
+  background-color: rgba(11, 31, 20, 0.45);
+  box-shadow: inset 0 -2px 0 0 var(--scoreboard-glow);
 }
 
-.player-row .player-row-action {
+/* --- Action button: ghost slot at the row's right edge. */
+.player-row .player-row-action,
+button.player-row-action {
   flex-shrink: 0;
-  display: inline-flex;
+  align-self: stretch;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  background: transparent;
-  border: none;
+  width: 100%;
+  height: auto;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-left: 1px solid rgba(199, 209, 194, 0.10) !important;
+  border-radius: 0 !important;
   cursor: pointer;
-  opacity: 0.7;
-  transition: opacity 120ms ease;
-  padding: 0;
+  padding: 0 !important;
   overflow: hidden;
+  position: relative;
+  transition: background-color 140ms ease;
 }
 
-/* Constrain the icon to the button bounds — Tailwind's `w-5/h-5` utilities
-   aren't defined in our minimal Tailwind CSS, so without this rule the
-   underlying SVG (declared as 800x800) would render at its natural size and
-   blow out the layout, painting the whole screen green. */
 .player-row .player-row-action img {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 24px;
+  height: 24px;
+  opacity: 0.72;
+  transition: opacity 140ms ease, transform 140ms ease;
 }
 
-.player-row .player-row-action:hover {
+.player-row .player-row-action:hover,
+button.player-row-action:hover {
+  background-color: rgba(22, 68, 47, 0.6) !important;
+}
+
+.player-row .player-row-action:hover img {
   opacity: 1;
 }
 
-/* Swap mode: rows behave as tap targets, inputs become inert until a row is
-   tapped twice to commit the swap. */
+.player-row .player-row-action:active img {
+  transform: scale(0.92);
+}
+
+/* --- Swap mode states. */
 #players-edit-container[data-swap-mode="on"] .player-row {
   cursor: pointer;
+  border-left-color: rgba(199, 209, 194, 0.30);
+  grid-template-columns: 56px 1fr; /* collapse the hidden action column */
 }
 
 #players-edit-container[data-swap-mode="on"] .player-row input.player-row-name {
   pointer-events: none;
+}
+
+#players-edit-container[data-swap-mode="on"] .player-row input.player-row-name:focus {
   background-color: transparent;
-  border-color: transparent;
+  box-shadow: none;
 }
 
 #players-edit-container[data-swap-mode="on"] .player-row .player-row-action {
-  display: none;
+  display: none !important;
 }
 
 #players-edit-container[data-swap-mode="on"] .player-row.is-swap-selected {
-  border-color: var(--scoreboard-glow);
-  background-color: var(--pitch-800);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
-              0 2px 6px rgba(0, 0, 0, 0.35),
-              0 0 0 2px rgba(255, 211, 107, 0.35);
+  border-left-color: var(--scoreboard-amber);
+  border-left-width: 4px;
+  background-color: rgba(255, 182, 40, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset,
+              0 6px 16px rgba(0, 0, 0, 0.35),
+              0 0 0 1px rgba(255, 182, 40, 0.45),
+              0 0 22px rgba(255, 182, 40, 0.18);
 }
 
+#players-edit-container[data-swap-mode="on"] .player-row.is-swap-selected .jersey-chip {
+  color: var(--scoreboard-glow);
+  text-shadow: 0 0 16px rgba(255, 211, 107, 0.55);
+}
+
+/* --- Commit pulse: ripple of amber outwards from both rows when a swap fires. */
 @keyframes swap-pulse {
-  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 211, 107, 0.55); }
-  50%  { transform: scale(1.015); box-shadow: 0 0 0 8px rgba(255, 211, 107, 0); }
-  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 211, 107, 0); }
+  0%   { box-shadow: 0 1px 0 rgba(255,255,255,.04) inset,
+                     0 6px 16px rgba(0,0,0,.35),
+                     0 0 0 0 rgba(255, 182, 40, 0.7); }
+  60%  { box-shadow: 0 1px 0 rgba(255,255,255,.04) inset,
+                     0 6px 16px rgba(0,0,0,.35),
+                     0 0 0 12px rgba(255, 182, 40, 0); }
+  100% { box-shadow: 0 1px 0 rgba(255,255,255,.04) inset,
+                     0 6px 16px rgba(0,0,0,.35),
+                     0 0 0 0 rgba(255, 182, 40, 0); }
 }
 
 .player-row.is-swap-pulse {
-  animation: swap-pulse 360ms ease-out;
+  animation: swap-pulse 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Swap-mode toggle button — turns amber when active. */
-#swap-players-btn.is-on {
-  background-color: var(--scoreboard-amber) !important;
-  color: var(--pitch-900) !important;
-}
-
-/* Banner shown only while swap mode is active. */
+/* --- Banner: matches the event-meta vocabulary used inside modals
+   (3px amber left rule + soft amber wash). */
 .swap-banner {
   display: none;
-  background-color: rgba(255, 211, 107, 0.10);
-  border: 1px solid rgba(255, 211, 107, 0.35);
+  align-items: center;
+  gap: var(--sp-3);
+  background: linear-gradient(180deg,
+              rgba(255, 182, 40, 0.12) 0%,
+              rgba(255, 182, 40, 0.05) 100%);
+  border: 1px solid rgba(255, 182, 40, 0.35);
+  border-left: 3px solid var(--scoreboard-amber);
   color: var(--floodlight);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-md);
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-body);
   font-size: 0.875rem;
-  text-align: center;
+  letter-spacing: 0.01em;
   margin-bottom: var(--sp-3);
+  box-shadow: 0 0 18px rgba(255, 182, 40, 0.10);
+}
+
+.swap-banner::before {
+  content: '\21C5'; /* ⇅ */
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--scoreboard-amber);
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .swap-banner.is-visible {
-  display: block;
+  display: flex;
+}
+
+/* --- Stagger reveal — same `rowIn` keyframe used elsewhere. */
+@media (prefers-reduced-motion: no-preference) {
+  .team-players .player-row {
+    animation: rowIn 280ms ease-out both;
+    animation-delay: calc(var(--i, 0) * 18ms);
+  }
 }
 
 .players-edit-actions {
