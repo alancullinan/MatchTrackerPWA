@@ -5247,7 +5247,7 @@
         selectBtn.type = 'button';
         selectBtn.className = 'player-row-action';
         selectBtn.title = 'Select Player from Panel';
-        selectBtn.innerHTML = '<img src="icons/selectplayer.svg" alt="" class="w-5 h-5" />';
+        selectBtn.innerHTML = '<img src="icons/selectplayer.svg" alt="" class="w-6 h-6" />';
         selectBtn.dataset.teamKey = key;
         selectBtn.dataset.playerId = player.id;
         selectBtn.dataset.jerseyNumber = player.jerseyNumber;

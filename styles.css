@@ -1383,6 +1383,16 @@ body.match-view-active::before {
   opacity: 0.7;
   transition: opacity 120ms ease;
   padding: 0;
+  overflow: hidden;
+}
+
+/* Constrain the icon to the button bounds — Tailwind's `w-5/h-5` utilities
+   aren't defined in our minimal Tailwind CSS, so without this rule the
+   underlying SVG (declared as 800x800) would render at its natural size and
+   blow out the layout, painting the whole screen green. */
+.player-row .player-row-action img {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .player-row .player-row-action:hover {
