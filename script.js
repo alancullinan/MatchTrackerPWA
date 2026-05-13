@@ -557,10 +557,16 @@
     // Reset content before re-rendering.
     container.innerHTML = '';
 
+    // Update the "N PLAYERS" caption next to the section heading.
+    const countEl = document.getElementById('panel-players-count');
+    if (countEl) {
+      countEl.textContent = players.length === 1 ? '1 Player' : `${players.length} Players`;
+    }
+
     if (players.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'panel-players-empty';
-      empty.textContent = 'No players added yet. Tap the + to add one.';
+      empty.textContent = 'No players added yet. Tap + ADD to start.';
       container.appendChild(empty);
       return;
     }
@@ -568,6 +574,8 @@
     players.forEach((player, index) => {
       const row = document.createElement('div');
       row.className = 'panel-player-row';
+      // --i drives the staggered reveal animation in styles.css.
+      row.style.setProperty('--i', index);
 
       const input = document.createElement('input');
       input.type = 'text';
@@ -5503,12 +5511,14 @@
       container.setAttribute('data-swap-mode', 'on');
       banner.classList.add('is-visible');
       btn.classList.add('is-on');
-      btn.textContent = 'Cancel Swap';
+      // Text stays "Swap" in both states — the amber colour, rotated glyph,
+      // and visible banner already communicate that the mode is active.
+      // Changing the label to "Cancel Swap" read like "undo my swap" which
+      // it doesn't do.
     } else {
       container.removeAttribute('data-swap-mode');
       banner.classList.remove('is-visible');
       btn.classList.remove('is-on');
-      btn.textContent = 'Swap';
       // Clear any selection state
       container.querySelectorAll('.player-row.is-swap-selected').forEach((r) => r.classList.remove('is-swap-selected'));
       swapFirstRow = null;

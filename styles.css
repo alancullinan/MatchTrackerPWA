@@ -1637,72 +1637,231 @@ button.player-row-action:hover {
   margin-top: var(--sp-4);
 }
 
-/* ===== Panel Editor view ===== */
-#panel-players-list .panel-player-row {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  background-color: var(--pitch-700);
-  border: 1px solid var(--touchline);
-  border-radius: var(--r-md);
+/* ===== Panel Editor view =====
+   Reuses the team-sheet vocabulary from Edit Players: borderless name slot,
+   ghost delete slot, 4px primary-green left accent, drop shadow. Panel rows
+   have no jersey number (panels are nameless rosters), so the row layout is
+   a 2-column grid: name | delete. */
+
+/* Panel name field at the top — primary-green accented to echo the row stripe */
+#panel-editor-view .form-row label[for="panel-name"] {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--mist);
+  text-transform: uppercase;
   margin-bottom: var(--sp-2);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
-#panel-players-list .panel-player-row:last-child {
-  margin-bottom: 0;
+#panel-editor-view #panel-name {
+  background-color: var(--pitch-800);
+  color: var(--floodlight);
+  border: 1px solid var(--touchline);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 160ms ease;
+}
+
+#panel-editor-view #panel-name::placeholder {
+  color: var(--mist);
+}
+
+#panel-editor-view #panel-name:focus {
+  border-color: var(--scoreboard-glow);
+  box-shadow: 0 0 0 1px rgba(255, 211, 107, 0.35);
+}
+
+/* Section header — same treatment as Edit Players team header */
+#panel-editor-view .panel-players-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  border-bottom: 1px solid rgba(199, 209, 194, 0.14);
+  position: relative;
+}
+
+#panel-editor-view .panel-players-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 36px;
+  height: 2px;
+  background: var(--scoreboard-amber);
+  box-shadow: 0 0 10px rgba(255, 182, 40, 0.45);
+}
+
+#panel-editor-view .panel-players-header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.625rem;
+  letter-spacing: 0.08em;
+  color: var(--floodlight);
+  line-height: 1.0;
+}
+
+/* Add Player button — labelled ghost pill, same family as Swap toggle */
+#panel-editor-view #add-player-to-panel-btn {
+  font-family: var(--font-display) !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase;
+  padding: 7px 14px !important;
+  background-color: rgba(11, 31, 20, 0.55) !important;
+  background-image: none !important;
+  color: var(--chalk) !important;
+  border: 1px solid rgba(199, 209, 194, 0.28) !important;
+  border-radius: var(--r-pill) !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  flex-shrink: 0;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 160ms ease;
+}
+
+#panel-editor-view #add-player-to-panel-btn::before {
+  content: '+ ADD';
+  font-family: var(--font-display);
+  letter-spacing: 0.16em;
+}
+
+#panel-editor-view #add-player-to-panel-btn:hover {
+  border-color: var(--scoreboard-amber) !important;
+  color: var(--floodlight) !important;
+  box-shadow: 0 0 0 1px rgba(255, 182, 40, 0.25),
+              0 0 14px rgba(255, 182, 40, 0.18);
+}
+
+/* Drop the boxy gray border around the player list — each row is a card now */
+#panel-editor-view #panel-players-list {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* Neutralise the Tailwind space-y-2 utility on children — flex gap handles it */
+#panel-editor-view #panel-players-list > * + * {
+  margin-top: 0 !important;
+}
+
+/* Each player row — team-sheet stripe with no jersey slot */
+#panel-players-list .panel-player-row {
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  align-items: stretch;
+  padding: 0;
+  background-color: var(--pitch-800);
+  border: 1px solid var(--touchline);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--r-md);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+              0 6px 16px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  margin: 0;
+  transition: background-color 140ms ease, border-left-width 140ms ease;
+}
+
+#panel-players-list .panel-player-row:hover {
+  background-color: rgba(22, 68, 47, 0.55);
 }
 
 #panel-players-list .panel-player-row input {
-  flex: 1;
+  width: 100%;
   min-width: 0;
-  padding: 0.4rem 0.5rem;
+  padding: 13px 16px;
   background-color: transparent;
   color: var(--floodlight);
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
+  border: none;
+  border-radius: 0;
   font-family: var(--font-body);
-  font-size: 0.9375rem;
+  font-weight: 500;
+  font-size: 1rem;
+  letter-spacing: 0.005em;
+  outline: none;
+  transition: background-color 140ms ease, box-shadow 160ms ease;
+}
+
+#panel-players-list .panel-player-row input::placeholder {
+  color: var(--mist);
 }
 
 #panel-players-list .panel-player-row input:focus {
-  outline: none;
-  background-color: var(--pitch-700);
-  border-color: var(--touchline);
+  background-color: rgba(11, 31, 20, 0.45);
+  box-shadow: inset 0 -2px 0 0 var(--scoreboard-glow);
 }
 
 #panel-players-list .panel-player-row .panel-player-remove {
   flex-shrink: 0;
-  display: inline-flex;
+  align-self: stretch;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  background: transparent;
-  border: none;
+  width: 100%;
+  height: auto;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-left: 1px solid rgba(199, 209, 194, 0.10) !important;
+  border-radius: 0 !important;
   cursor: pointer;
-  opacity: 0.7;
-  padding: 0;
+  padding: 0 !important;
+  overflow: hidden;
+  transition: background-color 140ms ease;
+}
+
+#panel-players-list .panel-player-row .panel-player-remove img {
+  width: 24px;
+  height: 24px;
+  opacity: 0.85;
+  transition: opacity 140ms ease, transform 140ms ease;
 }
 
 #panel-players-list .panel-player-row .panel-player-remove:hover {
+  background-color: rgba(212, 58, 58, 0.15) !important;
+}
+
+#panel-players-list .panel-player-row .panel-player-remove:hover img {
   opacity: 1;
+}
+
+#panel-players-list .panel-player-row .panel-player-remove:active img {
+  transform: scale(0.92);
 }
 
 #panel-players-list .panel-players-empty {
   text-align: center;
   color: var(--chalk);
-  padding: var(--sp-4) var(--sp-3);
+  padding: var(--sp-5) var(--sp-3);
   font-size: 0.9375rem;
+  font-family: var(--font-body);
+  border: 1px dashed rgba(199, 209, 194, 0.20);
+  border-radius: var(--r-md);
+  background-color: rgba(11, 31, 20, 0.30);
 }
 
-/* Lift the players-list container styling — drop the boxy gray border now
-   that each row is a card on its own. */
-#panel-editor-view #panel-players-list {
-  border: none !important;
-  padding: 0 !important;
-  background: transparent;
+/* Stagger reveal on panel rows — same animation as everywhere else */
+@media (prefers-reduced-motion: no-preference) {
+  #panel-players-list .panel-player-row {
+    animation: rowIn 280ms ease-out both;
+    animation-delay: calc(var(--i, 0) * 18ms);
+  }
 }
 
 /* ===== Time/Period editor ===== */
