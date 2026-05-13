@@ -1325,7 +1325,7 @@ body.match-view-active::before {
   min-width: 2rem;
   height: 2rem;
   padding: 0 0.4rem;
-  background-color: var(--pitch-700);
+  background-color: var(--pitch-900);
   color: var(--floodlight);
   border: 1px solid var(--touchline);
   border-radius: var(--r-sm);
@@ -1336,16 +1336,19 @@ body.match-view-active::before {
 }
 
 /* Card-style player row. Sits as a self-contained card so the screen reads
-   like the rest of the app (Match list, Events list, Panel list). */
+   like the rest of the app (Match list, Events list, Panel list). Slightly
+   brighter surface + drop-shadow so rows pop against the dark body bg — at
+   pitch-800 alone the cards blended into the atmospheric body gradient. */
 .player-row {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  background-color: var(--pitch-800);
+  background-color: var(--pitch-700);
   border: 1px solid var(--touchline);
   border-radius: var(--r-md);
   margin-bottom: 0;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 2px 6px rgba(0, 0, 0, 0.35);
   transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
@@ -1404,8 +1407,10 @@ body.match-view-active::before {
 
 #players-edit-container[data-swap-mode="on"] .player-row.is-swap-selected {
   border-color: var(--scoreboard-glow);
-  background-color: var(--pitch-700);
-  box-shadow: 0 0 0 2px rgba(255, 211, 107, 0.35);
+  background-color: var(--pitch-800);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+              0 2px 6px rgba(0, 0, 0, 0.35),
+              0 0 0 2px rgba(255, 211, 107, 0.35);
 }
 
 @keyframes swap-pulse {
@@ -1454,10 +1459,11 @@ body.match-view-active::before {
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
-  background-color: var(--pitch-800);
+  background-color: var(--pitch-700);
   border: 1px solid var(--touchline);
   border-radius: var(--r-md);
   margin-bottom: var(--sp-2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 #panel-players-list .panel-player-row:last-child {
