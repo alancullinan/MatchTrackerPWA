@@ -1296,53 +1296,149 @@ body.match-view-active::before {
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-2);
 }
 
 .team-players {
-  background-color: var(--pitch-800);
-  border: 1px solid var(--touchline);
-  border-radius: var(--r-md);
-  padding: var(--sp-3);
+  background: none;
+  border: none;
+  padding: 0;
 }
 
 .team-players h3 {
   margin: 0 0 var(--sp-2) 0;
   font-size: 1.125rem;
   letter-spacing: 0.06em;
+  color: var(--floodlight);
 }
 
-.player-row {
-  display: flex;
+.team-players .player-row + .player-row {
+  margin-top: var(--sp-2);
+}
+
+/* Jersey number badge — unified across Edit Players and Score Event modal. */
+.jersey-chip {
+  display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
-  margin-bottom: var(--sp-1);
-}
-
-.player-row label {
-  width: 2.5rem;
-  text-align: right;
-  font-size: 0.875rem;
-  color: var(--mist);
-  font-family: var(--font-mono);
-  font-weight: 600;
-}
-
-.player-row input {
-  flex: 1;
-  padding: 0.5rem 0.625rem;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.4rem;
   background-color: var(--pitch-700);
   color: var(--floodlight);
   border: 1px solid var(--touchline);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+/* Card-style player row. Sits as a self-contained card so the screen reads
+   like the rest of the app (Match list, Events list, Panel list). */
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background-color: var(--pitch-800);
+  border: 1px solid var(--touchline);
+  border-radius: var(--r-md);
+  margin-bottom: 0;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.player-row input.player-row-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  background-color: transparent;
+  color: var(--floodlight);
+  border: 1px solid transparent;
   border-radius: var(--r-sm);
   font-family: var(--font-body);
   font-size: 0.9375rem;
 }
 
-.player-row input:focus {
+.player-row input.player-row-name:focus {
   outline: none;
+  background-color: var(--pitch-700);
+  border-color: var(--touchline);
+}
+
+.player-row .player-row-action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 120ms ease;
+  padding: 0;
+}
+
+.player-row .player-row-action:hover {
+  opacity: 1;
+}
+
+/* Swap mode: rows behave as tap targets, inputs become inert until a row is
+   tapped twice to commit the swap. */
+#players-edit-container[data-swap-mode="on"] .player-row {
+  cursor: pointer;
+}
+
+#players-edit-container[data-swap-mode="on"] .player-row input.player-row-name {
+  pointer-events: none;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+#players-edit-container[data-swap-mode="on"] .player-row .player-row-action {
+  display: none;
+}
+
+#players-edit-container[data-swap-mode="on"] .player-row.is-swap-selected {
   border-color: var(--scoreboard-glow);
+  background-color: var(--pitch-700);
   box-shadow: 0 0 0 2px rgba(255, 211, 107, 0.35);
+}
+
+@keyframes swap-pulse {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 211, 107, 0.55); }
+  50%  { transform: scale(1.015); box-shadow: 0 0 0 8px rgba(255, 211, 107, 0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 211, 107, 0); }
+}
+
+.player-row.is-swap-pulse {
+  animation: swap-pulse 360ms ease-out;
+}
+
+/* Swap-mode toggle button — turns amber when active. */
+#swap-players-btn.is-on {
+  background-color: var(--scoreboard-amber) !important;
+  color: var(--pitch-900) !important;
+}
+
+/* Banner shown only while swap mode is active. */
+.swap-banner {
+  display: none;
+  background-color: rgba(255, 211, 107, 0.10);
+  border: 1px solid rgba(255, 211, 107, 0.35);
+  color: var(--floodlight);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: 0.875rem;
+  text-align: center;
+  margin-bottom: var(--sp-3);
+}
+
+.swap-banner.is-visible {
+  display: block;
 }
 
 .players-edit-actions {
@@ -1350,6 +1446,73 @@ body.match-view-active::before {
   justify-content: center;
   gap: var(--sp-3);
   margin-top: var(--sp-4);
+}
+
+/* ===== Panel Editor view ===== */
+#panel-players-list .panel-player-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background-color: var(--pitch-800);
+  border: 1px solid var(--touchline);
+  border-radius: var(--r-md);
+  margin-bottom: var(--sp-2);
+}
+
+#panel-players-list .panel-player-row:last-child {
+  margin-bottom: 0;
+}
+
+#panel-players-list .panel-player-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  background-color: transparent;
+  color: var(--floodlight);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+}
+
+#panel-players-list .panel-player-row input:focus {
+  outline: none;
+  background-color: var(--pitch-700);
+  border-color: var(--touchline);
+}
+
+#panel-players-list .panel-player-row .panel-player-remove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 0;
+}
+
+#panel-players-list .panel-player-row .panel-player-remove:hover {
+  opacity: 1;
+}
+
+#panel-players-list .panel-players-empty {
+  text-align: center;
+  color: var(--chalk);
+  padding: var(--sp-4) var(--sp-3);
+  font-size: 0.9375rem;
+}
+
+/* Lift the players-list container styling — drop the boxy gray border now
+   that each row is a card on its own. */
+#panel-editor-view #panel-players-list {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent;
 }
 
 /* ===== Time/Period editor ===== */

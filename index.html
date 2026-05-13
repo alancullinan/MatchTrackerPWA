@@ -26,7 +26,7 @@
     <!-- Local Tailwind CSS for offline functionality -->
     <link rel="stylesheet" href="tailwind-minimal.css" />
     <!-- Custom fallback styles -->
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=1.4.3" />
   </head>
     <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Landscape lock overlay: prompts the user to rotate to portrait. iOS Safari ignores
@@ -875,6 +875,13 @@
           <h2 class="text-lg font-semibold">Edit Players</h2>
           <button id="save-players-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
         </div>
+        <!-- Swap toggle row: lets the user pick two players to swap names without
+             retyping. Sits on its own line so the Cancel/Title/Done bar stays clean. -->
+        <div class="flex justify-end items-center mb-2">
+          <button id="swap-players-btn" type="button" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Swap two players">Swap</button>
+        </div>
+        <!-- Instructional banner shown while swap mode is active. -->
+        <div id="swap-mode-banner" class="swap-banner">Tap two players to swap their numbers.</div>
         <!-- Container for the editable list of players.  Sections for each team will be inserted here dynamically. -->
         <div id="players-edit-container" class="players-edit-container space-y-4"></div>
       </section>
@@ -908,7 +915,7 @@
         </div>
       </section>
     </main>
-    <script src="script.js?v=1.3.6"></script>
+    <script src="script.js?v=1.4.3"></script>
     
     <!-- Service Worker Registration -->
     <script>
