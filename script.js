@@ -554,27 +554,40 @@
       players = window.tempPanelPlayers || [];
     }
     
+    // Reset content before re-rendering.
+    container.innerHTML = '';
+
     if (players.length === 0) {
-      container.innerHTML = `
-        <div class="text-center text-gray-400 py-4">
-          <p>No players added yet. Click "Add Player" to start.</p>
-        </div>
-      `;
+      const empty = document.createElement('div');
+      empty.className = 'panel-players-empty';
+      empty.textContent = 'No players added yet. Tap the + to add one.';
+      container.appendChild(empty);
       return;
     }
-    
-    container.innerHTML = players.map((player, index) => `
-      <div class="flex justify-between items-center bg-gray-600 p-2 rounded">
-        <input type="text" value="${player.name || ''}" 
-               onchange="updatePanelPlayerName(${index}, this.value)"
-               class="flex-1 mr-3 p-1 bg-gray-700 text-gray-100 border border-gray-500 rounded text-sm"
-               placeholder="Player name" />
-        <button onclick="removePanelPlayer(${index})" 
-                class="cursor-pointer hover:opacity-70 flex-shrink-0" title="Remove Player">
-          <img src="icons/delete.svg" alt="Remove Player" class="w-6 h-6" />
-        </button>
-      </div>
-    `).join('');
+
+    players.forEach((player, index) => {
+      const row = document.createElement('div');
+      row.className = 'panel-player-row';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = player.name || '';
+      input.placeholder = 'Player name';
+      input.addEventListener('change', (e) => {
+        updatePanelPlayerName(index, e.target.value);
+      });
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'panel-player-remove';
+      removeBtn.title = 'Remove Player';
+      removeBtn.innerHTML = '<img src="icons/delete.svg" alt="Remove Player" class="w-6 h-6" />';
+      removeBtn.addEventListener('click', () => removePanelPlayer(index));
+
+      row.appendChild(input);
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+    });
   }
   
   // Add a new player to the current panel being edited
@@ -4279,7 +4292,7 @@
     noneBtn.dataset.value = '';
     // Provide default styling; highlight logic will override when selected
     noneBtn.className = 'w-full text-left px-3 py-1 border border-gray-600 rounded text-sm mb-1 bg-gray-700 text-gray-100';
-    noneBtn.innerHTML = `<div class="flex items-center space-x-2"><span class="w-6 h-6 flex items-center justify-center bg-gray-600 border border-gray-500 rounded">--</span><span>None</span></div>`;
+    noneBtn.innerHTML = `<div class="flex items-center space-x-2"><span class="jersey-chip">--</span><span>None</span></div>`;
     noneBtn.addEventListener('click', () => selectPlayer(null));
     playerListEl.appendChild(noneBtn);
     // Helper to highlight selected player
@@ -4303,7 +4316,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.dataset.value = p.id;
-      btn.innerHTML = `<div class="flex items-center space-x-2"><span class="w-6 h-6 flex items-center justify-center bg-gray-600 border border-gray-500 rounded">${p.jerseyNumber}</span><span>${p.name}</span></div>`;
+      btn.innerHTML = `<div class="flex items-center space-x-2"><span class="jersey-chip">${p.jerseyNumber}</span><span>${p.name}</span></div>`;
       btn.className = 'w-full text-left px-3 py-1 border border-gray-600 rounded text-sm mb-1 bg-gray-700 text-gray-100';
       btn.addEventListener('click', () => selectPlayer(p.id));
       playerListEl.appendChild(btn);
@@ -5197,66 +5210,71 @@
     // Helper to build a section for a single team's roster.
     function buildTeamSection(team, key) {
       const sec = document.createElement('div');
-      // Section container styling for dark mode
-      sec.className = 'team-players space-y-2';
-      
-      // Team header (name only)
+      sec.className = 'team-players';
+
+      // Team name header
       const header = document.createElement('h3');
       header.textContent = team.name;
-      header.className = 'text-lg font-semibold text-gray-100 mb-2';
       sec.appendChild(header);
-      
-      // Panel selection moved to Select Player screen
-      
+
       // Sort players numerically by jersey number for consistency.
       const playersSorted = [...team.players].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
       playersSorted.forEach((player) => {
         const row = document.createElement('div');
-        // Row styling: display label, input, and select button horizontally
-        row.className = 'player-row flex items-center space-x-2';
-        
-        const label = document.createElement('label');
-        label.textContent = player.jerseyNumber;
-        label.className = 'w-10 text-gray-300';
-        
+        row.className = 'player-row';
+        row.dataset.playerId = player.id;
+        row.dataset.teamKey = key;
+        row.dataset.jerseyNumber = player.jerseyNumber;
+
+        // Jersey number badge — reuses the shared `.jersey-chip` style.
+        const chip = document.createElement('span');
+        chip.className = 'jersey-chip';
+        chip.textContent = player.jerseyNumber;
+
+        // Name input — borderless inside the card; gets a subtle background
+        // on focus so editing is still obvious.
         const input = document.createElement('input');
         input.type = 'text';
         input.value = player.name;
-        // Persist player and team identifiers in data attributes
+        input.className = 'player-row-name';
+        // Identifiers retained on the input for savePlayerChanges().
         input.dataset.playerId = player.id;
         input.dataset.teamKey = key;
         input.dataset.jerseyNumber = player.jerseyNumber;
-        // Dark mode styling for player name input
-        input.className = 'flex-1 p-2 border rounded bg-gray-700 text-gray-100 border-gray-600';
-        
-        // Add Select Player button
+
+        // Select-from-panel button (icon only, right-aligned in the card).
         const selectBtn = document.createElement('button');
         selectBtn.type = 'button';
-        selectBtn.innerHTML = '<img src="icons/selectplayer.svg" alt="Select Player" class="w-6 h-6" />';
-        selectBtn.className = 'cursor-pointer hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed';
+        selectBtn.className = 'player-row-action';
         selectBtn.title = 'Select Player from Panel';
-        // Button is always enabled - panel selection happens on the Select Player screen
+        selectBtn.innerHTML = '<img src="icons/selectplayer.svg" alt="" class="w-5 h-5" />';
         selectBtn.dataset.teamKey = key;
         selectBtn.dataset.playerId = player.id;
         selectBtn.dataset.jerseyNumber = player.jerseyNumber;
-        
         selectBtn.addEventListener('click', (e) => {
-          // Use currentTarget to get the button element instead of potentially the img inside it
+          // Don't open the panel picker while swap-mode is active — the row
+          // tap handler takes over and the action button is hidden anyway.
+          if (document.getElementById('players-edit-container').getAttribute('data-swap-mode') === 'on') {
+            e.stopPropagation();
+            return;
+          }
           const button = e.currentTarget;
-          const teamKey = button.dataset.teamKey;
-          const playerId = button.dataset.playerId;
-          const jerseyNumber = button.dataset.jerseyNumber;
-          showPlayerSelectionDropdown(teamKey, playerId, jerseyNumber, button);
+          showPlayerSelectionDropdown(button.dataset.teamKey, button.dataset.playerId, button.dataset.jerseyNumber, button);
         });
-        
-        row.appendChild(label);
+
+        // Row-level click for swap mode. In normal mode this no-ops; in swap
+        // mode the input is `pointer-events: none` so taps on the input area
+        // bubble to the row.
+        row.addEventListener('click', (e) => {
+          handlePlayerRowTapForSwap(row, e);
+        });
+
+        row.appendChild(chip);
         row.appendChild(input);
         row.appendChild(selectBtn);
         sec.appendChild(row);
       });
-      
-      // Panel selection moved to Select Player screen - no restoration needed here
-      
+
       return sec;
     }
     if (teamKey === 'team1' || teamKey === 'team2') {
@@ -5268,6 +5286,8 @@
       container.appendChild(buildTeamSection(match.team1, 'team1'));
       container.appendChild(buildTeamSection(match.team2, 'team2'));
     }
+    // Always start in normal (non-swap) mode whenever the view is shown.
+    setSwapMode(false);
     // Display the edit players view
     showView('edit-players-view');
   }
@@ -5406,6 +5426,8 @@
 
   // Save player name changes
   function savePlayerChanges() {
+    // Reset swap mode before leaving so a stale highlight doesn't linger.
+    setSwapMode(false);
     const match = findMatchById(appState.currentMatchId);
     if (!match) return;
     const inputs = document.querySelectorAll('#players-edit-container input[data-player-id]');
@@ -5433,8 +5455,96 @@
 
   // Cancel editing players without saving
   function cancelPlayerChanges() {
+    // Make sure swap mode is reset when leaving the screen
+    setSwapMode(false);
     // Simply go back to match details view; no changes have been saved
     showView('match-details-view');
+  }
+
+  // ===== Edit Players: tap-two-to-swap mode =====
+  // Holds the currently-selected first row while waiting for the second tap.
+  // Resets whenever swap mode toggles off.
+  let swapFirstRow = null;
+
+  function setSwapMode(on) {
+    const container = document.getElementById('players-edit-container');
+    const banner = document.getElementById('swap-mode-banner');
+    const btn = document.getElementById('swap-players-btn');
+    if (!container || !banner || !btn) return;
+    if (on) {
+      container.setAttribute('data-swap-mode', 'on');
+      banner.classList.add('is-visible');
+      btn.classList.add('is-on');
+      btn.textContent = 'Cancel Swap';
+    } else {
+      container.removeAttribute('data-swap-mode');
+      banner.classList.remove('is-visible');
+      btn.classList.remove('is-on');
+      btn.textContent = 'Swap';
+      // Clear any selection state
+      container.querySelectorAll('.player-row.is-swap-selected').forEach((r) => r.classList.remove('is-swap-selected'));
+      swapFirstRow = null;
+    }
+  }
+
+  function toggleSwapMode() {
+    const container = document.getElementById('players-edit-container');
+    if (!container) return;
+    const isOn = container.getAttribute('data-swap-mode') === 'on';
+    setSwapMode(!isOn);
+  }
+
+  // Called from each row's click handler. No-ops outside swap mode.
+  function handlePlayerRowTapForSwap(row, evt) {
+    const container = document.getElementById('players-edit-container');
+    if (!container || container.getAttribute('data-swap-mode') !== 'on') return;
+    // We're handling the swap interaction — stop the click from also focusing
+    // the readonly input or hitting the select-from-panel button.
+    if (evt) evt.preventDefault();
+
+    // First tap: remember this row.
+    if (!swapFirstRow) {
+      swapFirstRow = row;
+      row.classList.add('is-swap-selected');
+      return;
+    }
+
+    // Second tap on the same row: deselect.
+    if (swapFirstRow === row) {
+      row.classList.remove('is-swap-selected');
+      swapFirstRow = null;
+      return;
+    }
+
+    // Only allow swaps within the same team.
+    if (swapFirstRow.dataset.teamKey !== row.dataset.teamKey) {
+      // Treat as "switch the selection to the new row" rather than fail silently.
+      swapFirstRow.classList.remove('is-swap-selected');
+      swapFirstRow = row;
+      row.classList.add('is-swap-selected');
+      return;
+    }
+
+    // Two different rows on the same team — swap their input values.
+    const inputA = swapFirstRow.querySelector('input.player-row-name');
+    const inputB = row.querySelector('input.player-row-name');
+    if (inputA && inputB) {
+      const tmp = inputA.value;
+      inputA.value = inputB.value;
+      inputB.value = tmp;
+    }
+    // Brief pulse on both rows, then reset selection. Swap mode stays on so
+    // the user can perform several swaps in a row.
+    const rowA = swapFirstRow;
+    rowA.classList.remove('is-swap-selected');
+    row.classList.remove('is-swap-selected');
+    rowA.classList.add('is-swap-pulse');
+    row.classList.add('is-swap-pulse');
+    setTimeout(() => {
+      rowA.classList.remove('is-swap-pulse');
+      row.classList.remove('is-swap-pulse');
+    }, 400);
+    swapFirstRow = null;
   }
 
   // Update timer display and buttons according to match state
@@ -7083,7 +7193,10 @@
     if (savePlayersBtn) savePlayersBtn.addEventListener('click', savePlayerChanges);
     const cancelPlayersBtn = document.getElementById('cancel-players-btn');
     if (cancelPlayersBtn) cancelPlayersBtn.addEventListener('click', cancelPlayerChanges);
-    
+    // Swap-mode toggle
+    const swapPlayersBtn = document.getElementById('swap-players-btn');
+    if (swapPlayersBtn) swapPlayersBtn.addEventListener('click', toggleSwapMode);
+
     // Player selection back button
     const playerSelectionBackBtn = document.getElementById('player-selection-back-btn');
     if (playerSelectionBackBtn) playerSelectionBackBtn.addEventListener('click', () => {
