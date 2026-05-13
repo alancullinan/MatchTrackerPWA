@@ -24,9 +24,9 @@
     <link rel="preload" href="fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin />
     
     <!-- Local Tailwind CSS for offline functionality -->
-    <link rel="stylesheet" href="tailwind-minimal.css?v=1.4.5" />
+    <link rel="stylesheet" href="tailwind-minimal.css?v=1.4.8" />
     <!-- Custom fallback styles -->
-    <link rel="stylesheet" href="styles.css?v=1.4.5" />
+    <link rel="stylesheet" href="styles.css?v=1.4.8" />
   </head>
     <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Landscape lock overlay: prompts the user to rotate to portrait. iOS Safari ignores
@@ -875,12 +875,10 @@
           <h2 class="text-lg font-semibold">Edit Players</h2>
           <button id="save-players-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Done">Done</button>
         </div>
-        <!-- Swap toggle row: lets the user pick two players to swap names without
-             retyping. Sits on its own line so the Cancel/Title/Done bar stays clean. -->
-        <div class="flex justify-end items-center mb-2">
-          <button id="swap-players-btn" type="button" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Swap two players">Swap</button>
-        </div>
-        <!-- Instructional banner shown while swap mode is active. -->
+        <!-- Instructional banner shown while swap mode is active.
+             The Swap toggle button is rendered inline with the team name
+             inside #players-edit-container, so the header row above stays
+             clean and we don't burn another vertical row on a button. -->
         <div id="swap-mode-banner" class="swap-banner">Tap two players to swap their numbers.</div>
         <!-- Container for the editable list of players.  Sections for each team will be inserted here dynamically. -->
         <div id="players-edit-container" class="players-edit-container space-y-4"></div>
@@ -915,7 +913,7 @@
         </div>
       </section>
     </main>
-    <script src="script.js?v=1.4.5"></script>
+    <script src="script.js?v=1.4.8"></script>
     
     <!-- Service Worker Registration -->
     <script>

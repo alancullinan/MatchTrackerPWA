@@ -5212,16 +5212,44 @@
       const sec = document.createElement('div');
       sec.className = 'team-players';
 
-      // Team name header
-      const header = document.createElement('h3');
-      header.textContent = team.name;
+      // Team name header. Title block on the left (team name + small mono
+      // "N PLAYERS" caption), Swap toggle on the right. Reads like a team-sheet
+      // section header rather than a plain label.
+      const header = document.createElement('div');
+      header.className = 'team-players-header';
+
+      const titleWrap = document.createElement('div');
+      titleWrap.className = 'team-players-title';
+
+      const teamName = document.createElement('h3');
+      teamName.textContent = team.name;
+      titleWrap.appendChild(teamName);
+
+      const count = document.createElement('span');
+      count.className = 'team-players-count';
+      count.textContent = `${team.players.length} Players`;
+      titleWrap.appendChild(count);
+
+      header.appendChild(titleWrap);
+
+      const swapBtn = document.createElement('button');
+      swapBtn.id = 'swap-players-btn';
+      swapBtn.type = 'button';
+      swapBtn.className = 'primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2';
+      swapBtn.title = 'Swap two players';
+      swapBtn.textContent = 'Swap';
+      swapBtn.addEventListener('click', toggleSwapMode);
+      header.appendChild(swapBtn);
+
       sec.appendChild(header);
 
       // Sort players numerically by jersey number for consistency.
       const playersSorted = [...team.players].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
-      playersSorted.forEach((player) => {
+      playersSorted.forEach((player, idx) => {
         const row = document.createElement('div');
         row.className = 'player-row';
+        // --i drives the staggered reveal animation defined in styles.css.
+        row.style.setProperty('--i', idx);
         row.dataset.playerId = player.id;
         row.dataset.teamKey = key;
         row.dataset.jerseyNumber = player.jerseyNumber;
@@ -7193,9 +7221,8 @@
     if (savePlayersBtn) savePlayersBtn.addEventListener('click', savePlayerChanges);
     const cancelPlayersBtn = document.getElementById('cancel-players-btn');
     if (cancelPlayersBtn) cancelPlayersBtn.addEventListener('click', cancelPlayerChanges);
-    // Swap-mode toggle
-    const swapPlayersBtn = document.getElementById('swap-players-btn');
-    if (swapPlayersBtn) swapPlayersBtn.addEventListener('click', toggleSwapMode);
+    // (The Swap-mode toggle is rendered inside buildTeamSection() and gets
+    // its click handler attached there.)
 
     // Player selection back button
     const playerSelectionBackBtn = document.getElementById('player-selection-back-btn');
