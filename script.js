@@ -2037,14 +2037,14 @@
       canvas.width = 800;
       const maxScorers = Math.min(scorers.length, 10);
       const teamsHeaderEnd = 470;        // y where teams block ends
-      const scorerStartY = 540;          // first scorer row top
-      const rowHeight = 95;
+      const scorerStartY = 470;          // first scorer row top — closer to match score
+      const rowHeight = 82;              // tighter padding per row
       const footerHeight = 110;
       const extraHeight = scorers.length > maxScorers ? 40 : 0;
       const noScorersFill = scorers.length === 0 ? 100 : 0;
 
       canvas.height = Math.max(
-        900,
+        880,
         scorerStartY + (maxScorers * rowHeight) + extraHeight + footerHeight + noScorersFill
       );
 
@@ -2142,23 +2142,23 @@
 
         for (let i = 0; i < maxScorers; i++) {
           const scorer = scorers[i];
-          const mainY = currentY + rowHeight / 2 + 4;
-          const breakdownY = currentY + rowHeight / 2 + 32;
+          const mainY = currentY + rowHeight / 2 - 2;
+          const breakdownY = currentY + rowHeight / 2 + 24;
 
           // Player name (left)
           ctx.fillStyle = '#ffffff';
-          ctx.font = `500 30px ${SHARE_FONT}`;
+          ctx.font = `500 32px ${SHARE_FONT}`;
           ctx.textAlign = 'left';
           ctx.fillText(scorer.name, 70, mainY);
 
           // Score (right, bold)
           const scoreDisplay = formatScoreDisplay(scorer.total, isFootball);
           ctx.fillStyle = '#ffffff';
-          ctx.font = `bold 30px ${SHARE_FONT}`;
+          ctx.font = `bold 32px ${SHARE_FONT}`;
           ctx.textAlign = 'right';
           ctx.fillText(scoreDisplay, canvas.width - 70, mainY);
 
-          // Breakdown (frees / penalties / two-pointers) below score, muted
+          // Breakdown (frees / penalties / two-pointers) below score
           const breakdowns = [];
           if (scorer.freeBreakdown) {
             breakdowns.push(`${formatScoreDisplay(scorer.freeBreakdown, isFootball)} f`);
@@ -2170,8 +2170,8 @@
             breakdowns.push(`2p:${scorer.total.twoPointers}`);
           }
           if (breakdowns.length > 0) {
-            ctx.fillStyle = 'rgba(203,213,225,0.75)';
-            ctx.font = `20px ${SHARE_FONT}`;
+            ctx.fillStyle = '#e5e7eb';
+            ctx.font = `500 22px ${SHARE_FONT}`;
             ctx.textAlign = 'right';
             ctx.fillText(`(${breakdowns.join(', ')})`, canvas.width - 70, breakdownY);
           }
