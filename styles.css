@@ -2154,6 +2154,7 @@ button.player-row-action:hover {
   display: grid;
   grid-template-columns: 1fr 44px;
   align-items: stretch;
+  flex-shrink: 0;
   padding: 0;
   background-color: var(--pitch-800);
   border: 1px solid var(--touchline);

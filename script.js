@@ -1734,148 +1734,342 @@
   // Make sharing functions globally accessible for onclick handlers
   window.shareComparisonCard = shareComparisonCard;
   window.sharePlayerShootingCard = sharePlayerShootingCard;
-  
+
+  // ===== Shared share-card primitives =====
+  // Preload grass image once; reused across all share-card generators.
+  let _grassImage = null;
+  let _grassImageReady = false;
+  let _grassImagePromise = null;
+  function loadGrassImage() {
+    if (_grassImagePromise) return _grassImagePromise;
+    _grassImagePromise = new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => { _grassImage = img; _grassImageReady = true; resolve(); };
+      img.onerror = () => { _grassImageReady = false; resolve(); };
+      img.src = 'icons/grassbackground.jpg';
+    });
+    return _grassImagePromise;
+  }
+  // Kick off preload at module init
+  loadGrassImage();
+
+  const SHARE_FONT = '-apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+
+  function drawShareBackground(ctx, w, h) {
+    if (_grassImageReady && _grassImage) {
+      // Cover: scale image to fully cover canvas, centered
+      const ir = _grassImage.width / _grassImage.height;
+      const cr = w / h;
+      let dw, dh, dx, dy;
+      if (ir > cr) {
+        dh = h; dw = h * ir; dx = (w - dw) / 2; dy = 0;
+      } else {
+        dw = w; dh = w / ir; dx = 0; dy = (h - dh) / 2;
+      }
+      ctx.drawImage(_grassImage, dx, dy, dw, dh);
+      // Dark overlay for legibility
+      const overlay = ctx.createLinearGradient(0, 0, 0, h);
+      overlay.addColorStop(0, 'rgba(0,0,0,0.55)');
+      overlay.addColorStop(0.5, 'rgba(0,0,0,0.35)');
+      overlay.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = overlay;
+      ctx.fillRect(0, 0, w, h);
+    } else {
+      // Fallback: existing flat gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, h);
+      gradient.addColorStop(0, '#1f2937');
+      gradient.addColorStop(1, '#111827');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+    }
+  }
+
+  function getMatchTypeLabel(matchType) {
+    const map = {
+      football: 'FOOTBALL',
+      hurling: 'HURLING',
+      ladiesFootball: 'LADIES FOOTBALL',
+      camogie: 'CAMOGIE'
+    };
+    return map[matchType] || '';
+  }
+
+  // Tracked uppercase subtitle — emulates letter-spacing by drawing chars with manual advance.
+  function drawTrackedText(ctx, text, x, y, trackingPx) {
+    const chars = text.split('');
+    const widths = chars.map((c) => ctx.measureText(c).width);
+    let total = widths.reduce((s, w) => s + w, 0) + trackingPx * (chars.length - 1);
+    let cx = x - total / 2;
+    for (let i = 0; i < chars.length; i++) {
+      ctx.fillText(chars[i], cx, y);
+      cx += widths[i] + trackingPx;
+    }
+  }
+
+  function drawShareHeader(ctx, w, competition, matchType) {
+    // Competition title
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold 44px ${SHARE_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    let title = competition || 'Match Update';
+    // Ellipsis if too wide
+    const maxTitleWidth = w - 120;
+    if (ctx.measureText(title).width > maxTitleWidth) {
+      while (title.length > 1 && ctx.measureText(title + '…').width > maxTitleWidth) {
+        title = title.slice(0, -1);
+      }
+      title += '…';
+    }
+    ctx.fillText(title, w / 2, 100);
+
+    // Tracked uppercase subtitle
+    const subtitle = getMatchTypeLabel(matchType);
+    if (subtitle) {
+      ctx.fillStyle = '#d1d5db';
+      ctx.font = `600 22px ${SHARE_FONT}`;
+      ctx.textAlign = 'left';
+      drawTrackedText(ctx, subtitle, w / 2, 145, 4);
+    }
+    ctx.textAlign = 'center';
+  }
+
+  function drawPinIcon(ctx, x, y, size, color) {
+    // x,y is the top-left of the icon bounding box; size = full height
+    ctx.save();
+    ctx.fillStyle = color;
+    const w = size * 0.7;
+    const cx = x + w / 2;
+    const headR = size * 0.32;
+    const headCy = y + headR;
+    // Teardrop body (head + downward triangle)
+    ctx.beginPath();
+    ctx.arc(cx, headCy, headR, Math.PI, 0, false);
+    ctx.lineTo(cx, y + size);
+    ctx.closePath();
+    ctx.fill();
+    // Inner hole
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    ctx.arc(cx, headCy, headR * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPill(ctx, cx, cy, text, bgColor, textColor) {
+    ctx.font = `bold 26px ${SHARE_FONT}`;
+    const padX = 32;
+    const h = 64;
+    const textW = ctx.measureText(text).width;
+    const w = textW + padX * 2;
+    const x = cx - w / 2;
+    const y = cy - h / 2;
+    const r = h / 2;
+    // Shadow
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(x + r, y + h);
+    ctx.arc(x + r, y + r, r, Math.PI / 2, -Math.PI / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    // Text
+    ctx.fillStyle = textColor;
+    ctx.font = `bold 26px ${SHARE_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, cx, cy + 1);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  function formatShareDate(dateTime) {
+    if (!dateTime) return '';
+    const d = new Date(dateTime);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function drawShareFooter(ctx, w, y, venue, dateText) {
+    // Centered group: [pin] venue · date  (any element may be absent)
+    const parts = [];
+    if (venue) parts.push({ kind: 'venue', text: venue });
+    if (dateText) parts.push({ kind: 'date', text: dateText });
+    if (parts.length === 0) return;
+
+    ctx.font = `500 24px ${SHARE_FONT}`;
+    const dotSep = '  ·  ';
+    const dotW = ctx.measureText(dotSep).width;
+    const pinSize = 22;
+    const pinGap = 10;
+
+    let totalW = 0;
+    if (parts[0].kind === 'venue') totalW += pinSize + pinGap;
+    parts.forEach((p, i) => {
+      totalW += ctx.measureText(p.text).width;
+      if (i < parts.length - 1) totalW += dotW;
+    });
+
+    let cx = (w - totalW) / 2;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#d1d5db';
+
+    parts.forEach((p, i) => {
+      if (p.kind === 'venue') {
+        // pin baseline-aligned to text
+        drawPinIcon(ctx, cx, y - pinSize + 4, pinSize, '#d1d5db');
+        cx += pinSize + pinGap;
+      }
+      ctx.fillStyle = '#d1d5db';
+      ctx.font = `500 24px ${SHARE_FONT}`;
+      ctx.fillText(p.text, cx, y);
+      cx += ctx.measureText(p.text).width;
+      if (i < parts.length - 1) {
+        ctx.fillText(dotSep, cx, y);
+        cx += dotW;
+      }
+    });
+    ctx.textAlign = 'center';
+  }
+
   // Generate match share image using Canvas
   function generateMatchShareImage(match, team1Score, team2Score) {
-    return new Promise((resolve) => {
+    return loadGrassImage().then(() => new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      
-      // Set canvas size for social sharing (Instagram-style square)
-      canvas.width = 800;
-      canvas.height = 800;
-      
-      // Background gradient
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, '#1f2937'); // gray-800
-      gradient.addColorStop(1, '#111827'); // gray-900
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Competition header
-      ctx.fillStyle = '#f3f4f6'; // gray-100
-      ctx.font = 'bold 42px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(match.competition || 'Match Update', canvas.width / 2, 100);
-      
-      // Team names and scores
-      const team1Y = 300;
-      const team2Y = 400;
-      
-      // Team 1
-      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(match.team1.name, 80, team1Y);
-      
-      ctx.textAlign = 'right';
-      const scoreText1 = `${team1Score.goals}-${team1Score.points}`;
-      ctx.fillText(scoreText1, canvas.width - 150, team1Y);
-      
-      // Team 1 points total (to the right of main score)
-      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.fillText(`(${team1Score.total})`, canvas.width - 80, team1Y);
-      
-      // Team 2
-      ctx.fillStyle = '#f3f4f6'; // gray-100
-      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(match.team2.name, 80, team2Y);
-      
-      ctx.textAlign = 'right';
-      const scoreText2 = `${team2Score.goals}-${team2Score.points}`;
-      ctx.fillText(scoreText2, canvas.width - 150, team2Y);
-      
-      // Team 2 points total (to the right of main score)
-      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.fillText(`(${team2Score.total})`, canvas.width - 80, team2Y);
-      
-      // Separator line
-      ctx.strokeStyle = '#4b5563'; // gray-600
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(80, 450);
-      ctx.lineTo(canvas.width - 80, 450);
-      ctx.stroke();
-      
-      // Timer and period info
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`⏱️ ${formatTimeForSharing(match.elapsedTime)} - ${match.currentPeriod}`, canvas.width / 2, 520);
-      
-      // Venue (if available)
-      if (match.venue) {
-        ctx.fillText(`📍 ${match.venue}`, canvas.width / 2, 570);
-      }
-      
-      // App branding with custom icon
-      const brandingY = match.venue ? 650 : 620;
-      
-      // App branding - keep it simple and working
-      ctx.fillStyle = '#60a5fa'; // blue-400  
-      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Alans Match Tracker', canvas.width / 2, brandingY);
-      
-      // Convert to blob
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, 'image/png', 0.9);
-    });
+      const W = 800, H = 800;
+      canvas.width = W;
+      canvas.height = H;
+
+      drawShareBackground(ctx, W, H);
+      drawShareHeader(ctx, W, match.competition, match.matchType);
+
+      // Team rows
+      const team1Y = 340;
+      const team2Y = 500;
+      drawTeamRow(ctx, W, match.team1.name, team1Score, team1Y);
+      drawVsDivider(ctx, W, 420);
+      drawTeamRow(ctx, W, match.team2.name, team2Score, team2Y);
+
+      // Time/period pill
+      const period = (match.currentPeriod || '').toUpperCase();
+      const pillText = `${formatTimeForSharing(match.elapsedTime)}  ·  ${period}`;
+      drawPill(ctx, W / 2, 645, pillText, '#22c55e', '#ffffff');
+
+      // Footer: pin + venue · date
+      drawShareFooter(ctx, W, 740, match.venue || '', formatShareDate(match.dateTime));
+
+      canvas.toBlob((blob) => resolve(blob), 'image/png', 0.92);
+    }));
+  }
+
+  // Draw a single team row: name left, score G-PP right with muted (total) suffix.
+  function drawTeamRow(ctx, w, teamName, score, y) {
+    const rightEdge = w - 70;
+    const leftEdge = 70;
+
+    // Score `(NN)` (drawn first so we know its width to right-align)
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = `500 36px ${SHARE_FONT}`;
+    const totalText = `(${score.total})`;
+    const totalW = ctx.measureText(totalText).width;
+
+    // Main score
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold 80px ${SHARE_FONT}`;
+    ctx.textAlign = 'right';
+    const mainScore = `${score.goals}-${score.points.toString().padStart(2, '0')}`;
+    const mainScoreX = rightEdge - totalW - 16;
+    ctx.fillText(mainScore, mainScoreX, y);
+
+    // (Total) — baseline-aligned to main score
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = `500 36px ${SHARE_FONT}`;
+    ctx.textAlign = 'left';
+    ctx.fillText(totalText, mainScoreX + 16, y);
+
+    // Team name (auto-shrink if it would collide with score)
+    let nameSize = 52;
+    ctx.font = `bold ${nameSize}px ${SHARE_FONT}`;
+    const maxNameW = mainScoreX - ctx.measureText(mainScore).width - leftEdge - 30;
+    while (nameSize > 32 && ctx.measureText(teamName).width > maxNameW) {
+      nameSize -= 2;
+      ctx.font = `bold ${nameSize}px ${SHARE_FONT}`;
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.fillText(teamName, leftEdge, y);
+
+    ctx.textAlign = 'center';
+  }
+
+  function drawVsDivider(ctx, w, y) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(70, y);
+    ctx.lineTo(370, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(430, y);
+    ctx.lineTo(730, y);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = `italic 28px ${SHARE_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('vs', w / 2, y);
+    ctx.textBaseline = 'alphabetic';
   }
 
   // Generate team scorer card share image using Canvas
   function generateScorerCardImage(match, teamName, teamStats, scorers) {
-    return new Promise((resolve) => {
+    return loadGrassImage().then(() => new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      
+
       // Calculate dynamic height based on number of scorers
       canvas.width = 800;
       const maxScorers = Math.min(scorers.length, 10);
-      const headerHeight = 280; // Space for team name, score, and "Scorers" header
-      const rowHeight = 95; // Increased to accommodate breakdown text below main score
+      const headerHeight = 320;
+      const rowHeight = 95;
       const scorersHeight = maxScorers * rowHeight;
-      const footerHeight = 120; // Space for branding and bottom padding
-      const extraHeight = scorers.length > maxScorers ? 40 : 0; // Space for "and X more" text
-      
-      canvas.height = Math.max(800, headerHeight + scorersHeight + footerHeight + extraHeight);
-      
-      // Background gradient
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, '#374151'); // gray-700
-      gradient.addColorStop(1, '#1f2937'); // gray-800
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Team name header
-      ctx.fillStyle = '#f3f4f6'; // gray-100
-      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      const footerHeight = 160;
+      const extraHeight = scorers.length > maxScorers ? 40 : 0;
+
+      canvas.height = Math.max(820, headerHeight + scorersHeight + footerHeight + extraHeight);
+
+      drawShareBackground(ctx, canvas.width, canvas.height);
+
+      // Header: team name as title, match type as tracked subtitle
+      drawShareHeader(ctx, canvas.width, teamName, match.matchType);
+
+      // Team score (centered, white)
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 64px ${SHARE_FONT}`;
       ctx.textAlign = 'center';
-      ctx.fillText(teamName, canvas.width / 2, 80);
-      
-      // Team score
-      ctx.fillStyle = '#60a5fa'; // blue-400
-      ctx.font = 'bold 64px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(teamStats.score.display, canvas.width / 2, 160);
-      
-      // Score total in parentheses
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillText(`(${teamStats.score.total})`, canvas.width / 2, 200);
+      ctx.fillText(teamStats.score.display, canvas.width / 2, 230);
+
+      // Score total in parentheses, muted
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = `500 30px ${SHARE_FONT}`;
+      ctx.fillText(`(${teamStats.score.total})`, canvas.width / 2, 270);
       
       // Scorers header
       if (scorers.length > 0) {
-        ctx.fillStyle = '#10b981'; // green-500
-        ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.fillStyle = '#22c55e'; // green-500
+        ctx.font = `bold 28px ${SHARE_FONT}`;
         ctx.textAlign = 'left';
-        ctx.fillText('Scorers', 80, 280);
-        
+        ctx.fillText('Scorers', 70, 330);
+
         // Scorer list with dividing lines
-        let currentY = 340;
+        let currentY = 380;
         const rowHeight = 95; // Increased space to accommodate breakdown text below main score
         const maxScorers = Math.min(scorers.length, 10); // Limit to top 10 scorers
         
@@ -1888,10 +2082,10 @@
           const breakdownY = currentY + (rowHeight / 2) + 25; // Position breakdown below main score
           
           // Player name - bigger for mobile readability
-          ctx.fillStyle = '#f3f4f6'; // gray-100
-          ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold 28px ${SHARE_FONT}`;
           ctx.textAlign = 'left';
-          ctx.fillText(scorer.name, 80, mainScoreY);
+          ctx.fillText(scorer.name, 70, mainScoreY);
           
           // Build score display and breakdown
           const scoreDisplay = formatScoreDisplay(scorer.total, isFootball);
@@ -1909,21 +2103,21 @@
           }
           
           // Main score - positioned at the right edge
-          ctx.fillStyle = '#f3f4f6'; // gray-100
-          ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold 28px ${SHARE_FONT}`;
           ctx.textAlign = 'right';
-          ctx.fillText(scoreDisplay, canvas.width - 80, mainScoreY);
+          ctx.fillText(scoreDisplay, canvas.width - 70, mainScoreY);
           
           // Position breakdown below main score if it exists (like scorecard layout)
           if (breakdowns.length > 0) {
-            ctx.font = '22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+            ctx.font = `22px ${SHARE_FONT}`;
             ctx.textAlign = 'left';
-            
+
             // Build breakdown text piece by piece to handle coloring properly
-            let currentX = canvas.width - 80;
-            
+            let currentX = canvas.width - 70;
+
             // Start with closing parenthesis (since we're building right to left)
-            ctx.fillStyle = '#9ca3af'; // gray-400
+            ctx.fillStyle = '#cbd5e1';
             const closeParen = ')';
             const closeParenWidth = ctx.measureText(closeParen).width;
             currentX -= closeParenWidth;
@@ -1935,7 +2129,7 @@
               
               // Add comma separator if not the last item
               if (i < breakdowns.length - 1) {
-                ctx.fillStyle = '#9ca3af';
+                ctx.fillStyle = '#cbd5e1';
                 const separator = ', ';
                 const separatorWidth = ctx.measureText(separator).width;
                 currentX -= separatorWidth;
@@ -1947,7 +2141,7 @@
                 const count = breakdown.split(':')[1];
                 
                 // Draw count in gray
-                ctx.fillStyle = '#9ca3af';
+                ctx.fillStyle = '#cbd5e1';
                 const countWidth = ctx.measureText(count).width;
                 currentX -= countWidth;
                 ctx.fillText(count, currentX, breakdownY);
@@ -1960,7 +2154,7 @@
                 ctx.fillText(twoPointerText, currentX, breakdownY);
               } else {
                 // Draw regular breakdown in gray
-                ctx.fillStyle = '#9ca3af';
+                ctx.fillStyle = '#cbd5e1';
                 const breakdownWidth = ctx.measureText(breakdown).width;
                 currentX -= breakdownWidth;
                 ctx.fillText(breakdown, currentX, breakdownY);
@@ -1968,7 +2162,7 @@
             }
             
             // Draw opening parenthesis (since we're building right to left, this comes last)
-            ctx.fillStyle = '#9ca3af';
+            ctx.fillStyle = '#cbd5e1';
             const openParen = '(';
             const openParenWidth = ctx.measureText(openParen).width;
             currentX -= openParenWidth;
@@ -1977,12 +2171,11 @@
           
           // Add dividing line between entries (except for last entry)
           if (i < maxScorers - 1) {
-            ctx.strokeStyle = '#9ca3af'; // gray-400
+            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            // Position divider at the bottom of the row
-            ctx.moveTo(80, currentY + rowHeight);
-            ctx.lineTo(canvas.width - 80, currentY + rowHeight);
+            ctx.moveTo(70, currentY + rowHeight);
+            ctx.lineTo(canvas.width - 70, currentY + rowHeight);
             ctx.stroke();
           }
           
@@ -1992,236 +2185,200 @@
         
         // Show "and X more" if there are additional scorers
         if (scorers.length > maxScorers) {
-          ctx.fillStyle = '#9ca3af'; // gray-400
-          ctx.font = '20px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          ctx.fillStyle = '#cbd5e1';
+          ctx.font = `20px ${SHARE_FONT}`;
           ctx.textAlign = 'center';
-          ctx.fillText(`...and ${scorers.length - maxScorers} more`, canvas.width / 2, currentY);
+          ctx.fillText(`...and ${scorers.length - maxScorers} more`, canvas.width / 2, currentY + 10);
         }
       } else {
         // No scorers message
-        ctx.fillStyle = '#9ca3af'; // gray-400
-        ctx.font = '24px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = `24px ${SHARE_FONT}`;
         ctx.textAlign = 'center';
-        ctx.fillText('No scorers yet', canvas.width / 2, 320);
+        ctx.fillText('No scorers yet', canvas.width / 2, 380);
       }
-      
-      // App branding - position relative to bottom of canvas
-      ctx.fillStyle = '#60a5fa'; // blue-400  
-      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Alans Match Tracker', canvas.width / 2, canvas.height - 40);
-      
-      // Convert to blob
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, 'image/png', 0.9);
-    });
+
+      // Footer: venue · date
+      drawShareFooter(ctx, canvas.width, canvas.height - 50, match.venue || '', formatShareDate(match.dateTime));
+
+      canvas.toBlob((blob) => resolve(blob), 'image/png', 0.92);
+    }));
   }
 
   // Generate team comparison card share image using Canvas
   function generateComparisonCardImage(match, comparisonStats) {
-    return new Promise((resolve) => {
+    return loadGrassImage().then(() => new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      
-      // Set canvas size for social sharing
       canvas.width = 800;
-      canvas.height = 600;
-      
-      // Background gradient
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, '#374151'); // gray-700
-      gradient.addColorStop(1, '#1f2937'); // gray-800
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Header
-      ctx.fillStyle = '#f3f4f6'; // gray-100
-      ctx.font = 'bold 40px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+      canvas.height = 700;
+
+      drawShareBackground(ctx, canvas.width, canvas.height);
+      drawShareHeader(ctx, canvas.width, match.competition || 'Shooting Accuracy', match.matchType);
+
+      // Subheading
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 32px ${SHARE_FONT}`;
       ctx.textAlign = 'center';
-      ctx.fillText('Team Shooting Accuracy', canvas.width / 2, 80);
-      
-      // Match info
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillText(`${match.team1.name} vs ${match.team2.name}`, canvas.width / 2, 130);
-      
-      // Team comparison section
+      ctx.fillText('Shooting Accuracy', canvas.width / 2, 230);
+
+      // Team comparison
       const team1X = canvas.width * 0.25;
       const team2X = canvas.width * 0.75;
-      const statsY = 220;
-      
-      // Team 1
-      ctx.fillStyle = '#f3f4f6'; // gray-100
-      ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(comparisonStats.team1.name, team1X, statsY);
-      
-      // Team 1 accuracy with color coding
-      const team1Color = comparisonStats.team1.accuracy >= 70 ? '#22c55e' : 
-                         comparisonStats.team1.accuracy >= 50 ? '#eab308' : '#ef4444';
-      ctx.fillStyle = team1Color;
-      ctx.font = 'bold 64px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillText(`${comparisonStats.team1.accuracy}%`, team1X, statsY + 80);
-      
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.font = '24px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillText(`${comparisonStats.team1.successful}/${comparisonStats.team1.total} shots`, team1X, statsY + 120);
-      
-      // Team 2
-      ctx.fillStyle = '#f3f4f6'; // gray-100
-      ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillText(comparisonStats.team2.name, team2X, statsY);
-      
-      // Team 2 accuracy with color coding
-      const team2Color = comparisonStats.team2.accuracy >= 70 ? '#22c55e' : 
-                         comparisonStats.team2.accuracy >= 50 ? '#eab308' : '#ef4444';
-      ctx.fillStyle = team2Color;
-      ctx.font = 'bold 64px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillText(`${comparisonStats.team2.accuracy}%`, team2X, statsY + 80);
-      
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.font = '24px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillText(`${comparisonStats.team2.successful}/${comparisonStats.team2.total} shots`, team2X, statsY + 120);
-      
-      // Center divider line
-      ctx.strokeStyle = '#6b7280'; // gray-500
-      ctx.lineWidth = 2;
+      const statsY = 340;
+
+      const drawTeam = (x, stats) => {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold 30px ${SHARE_FONT}`;
+        ctx.textAlign = 'center';
+        // Auto-shrink long team names
+        let nameSize = 30;
+        const maxW = canvas.width / 2 - 60;
+        while (nameSize > 20 && ctx.measureText(stats.name).width > maxW) {
+          nameSize -= 2;
+          ctx.font = `bold ${nameSize}px ${SHARE_FONT}`;
+        }
+        ctx.fillText(stats.name, x, statsY);
+
+        const color = stats.accuracy >= 70 ? '#22c55e' :
+                      stats.accuracy >= 50 ? '#eab308' : '#ef4444';
+        ctx.fillStyle = color;
+        ctx.font = `bold 72px ${SHARE_FONT}`;
+        ctx.fillText(`${stats.accuracy}%`, x, statsY + 90);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = `500 24px ${SHARE_FONT}`;
+        ctx.fillText(`${stats.successful}/${stats.total} shots`, x, statsY + 130);
+      };
+
+      drawTeam(team1X, comparisonStats.team1);
+      drawTeam(team2X, comparisonStats.team2);
+
+      // Center divider
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(canvas.width / 2, statsY - 30);
       ctx.lineTo(canvas.width / 2, statsY + 140);
       ctx.stroke();
-      
-      // App branding
-      ctx.fillStyle = '#60a5fa'; // blue-400
-      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Alans Match Tracker', canvas.width / 2, canvas.height - 40);
-      
-      // Convert to blob
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, 'image/png', 0.9);
-    });
+
+      // Footer
+      drawShareFooter(ctx, canvas.width, canvas.height - 40, match.venue || '', formatShareDate(match.dateTime));
+
+      canvas.toBlob((blob) => resolve(blob), 'image/png', 0.92);
+    }));
   }
 
   // Generate team player shooting card share image using Canvas
   function generatePlayerShootingCardImage(match, teamName, teamStats, playerStats) {
-    return new Promise((resolve) => {
+    return loadGrassImage().then(() => new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      
-      // Calculate dynamic height based on number of shooting players
+
       canvas.width = 800;
       const maxPlayers = Math.min(playerStats.length, 10);
-      const headerHeight = 280;
+      const headerHeight = 360;
       const rowHeight = 90;
       const playersHeight = maxPlayers * rowHeight;
-      const footerHeight = 120;
+      const footerHeight = 160;
       const extraHeight = playerStats.length > maxPlayers ? 40 : 0;
-      
-      canvas.height = Math.max(600, headerHeight + playersHeight + footerHeight + extraHeight);
-      
-      // Background gradient
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, '#374151'); // gray-700
-      gradient.addColorStop(1, '#1f2937'); // gray-800
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Team name header
-      ctx.fillStyle = '#f3f4f6'; // gray-100
-      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${teamName} Shooting`, canvas.width / 2, 80);
-      
+
+      canvas.height = Math.max(720, headerHeight + playersHeight + footerHeight + extraHeight);
+
+      drawShareBackground(ctx, canvas.width, canvas.height);
+      drawShareHeader(ctx, canvas.width, teamName, match.matchType);
+
       // Team accuracy
-      ctx.fillStyle = '#60a5fa'; // blue-400
-      ctx.font = 'bold 56px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillText(`${teamStats.accuracy}%`, canvas.width / 2, 160);
-      
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.font = '28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.fillText(`${teamStats.successful}/${teamStats.total} shots`, canvas.width / 2, 200);
-      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 64px ${SHARE_FONT}`;
+      ctx.textAlign = 'center';
+      ctx.fillText(`${teamStats.accuracy}%`, canvas.width / 2, 230);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = `500 26px ${SHARE_FONT}`;
+      ctx.fillText(`${teamStats.successful}/${teamStats.total} shots`, canvas.width / 2, 270);
+
       // Players section
       if (playerStats.length > 0) {
-        ctx.fillStyle = '#22c55e'; // green-500
-        ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.fillStyle = '#22c55e';
+        ctx.font = `bold 28px ${SHARE_FONT}`;
         ctx.textAlign = 'left';
-        ctx.fillText('Player Shooting', 60, 260);
-        
+        ctx.fillText('Player Shooting', 70, 330);
+
         const displayPlayers = playerStats.slice(0, maxPlayers);
         displayPlayers.forEach((player, index) => {
-          const y = 320 + (index * rowHeight);
-          
-          // Player name
-          ctx.fillStyle = '#f3f4f6'; // gray-100
-          ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          const top = 360 + (index * rowHeight);
+          const mainY = top + rowHeight / 2 + 4;
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold 26px ${SHARE_FONT}`;
           ctx.textAlign = 'left';
           const playerName = player.name || `Player ${player.jerseyNumber}`;
-          ctx.fillText(playerName, 60, y);
-          
-          // Shooting stats
-          ctx.fillStyle = '#f3f4f6'; // gray-100
+          ctx.fillText(playerName, 70, mainY);
+
+          ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'right';
-          ctx.fillText(`${player.accuracy}% (${player.successfulShots}/${player.totalShots})`, canvas.width - 60, y);
-          
-          // Shot breakdown - separate success and misses like UI format
+          ctx.fillText(`${player.accuracy}% (${player.successfulShots}/${player.totalShots})`, canvas.width - 70, mainY);
+
+          // Shot breakdown
           const successParts = [];
           if (player.breakdown.goals > 0) successParts.push(`${player.breakdown.goals}G`);
           if (player.breakdown.points > 0) successParts.push(`${player.breakdown.points}P`);
           if (player.breakdown.twoPointers > 0) successParts.push(`${player.breakdown.twoPointers}×2P`);
-          
+
           const missParts = [];
           if (player.breakdown.wide > 0) missParts.push(`${player.breakdown.wide}W`);
           if (player.breakdown.saved > 0) missParts.push(`${player.breakdown.saved}S`);
           if (player.breakdown.droppedShort > 0) missParts.push(`${player.breakdown.droppedShort}DS`);
           if (player.breakdown.offPost > 0) missParts.push(`${player.breakdown.offPost}OP`);
-          
+
           const successText = successParts.length > 0 ? successParts.join(' ') : '';
           const missText = missParts.length > 0 ? `(${missParts.join(' ')})` : '';
           const breakdownText = `${successText} ${missText}`.trim();
-          
+
           if (breakdownText) {
-            ctx.fillStyle = '#9ca3af'; // gray-400
-            ctx.font = '20px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-            ctx.fillText(breakdownText, canvas.width - 60, y + 25);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = `20px ${SHARE_FONT}`;
+            ctx.fillText(breakdownText, canvas.width - 70, mainY + 26);
+          }
+
+          // Divider
+          if (index < displayPlayers.length - 1) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(70, top + rowHeight);
+            ctx.lineTo(canvas.width - 70, top + rowHeight);
+            ctx.stroke();
           }
         });
-        
+
         if (playerStats.length > maxPlayers) {
-          const remainingY = 320 + (maxPlayers * rowHeight);
-          ctx.fillStyle = '#9ca3af'; // gray-400
-          ctx.font = '24px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+          const remainingY = 360 + (maxPlayers * rowHeight) + 30;
+          ctx.fillStyle = '#cbd5e1';
+          ctx.font = `20px ${SHARE_FONT}`;
           ctx.textAlign = 'center';
           ctx.fillText(`... and ${playerStats.length - maxPlayers} more players`, canvas.width / 2, remainingY);
         }
       } else {
-        ctx.fillStyle = '#9ca3af'; // gray-400
-        ctx.font = '32px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = `28px ${SHARE_FONT}`;
         ctx.textAlign = 'center';
-        ctx.fillText('No shots taken yet', canvas.width / 2, 320);
+        ctx.fillText('No shots taken yet', canvas.width / 2, 400);
       }
-      
-      // Legend - split into two lines for better readability
-      ctx.fillStyle = '#9ca3af'; // gray-400
-      ctx.font = '20px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
+
+      // Legend
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = `18px ${SHARE_FONT}`;
       ctx.textAlign = 'center';
-      ctx.fillText('Success: G=Goals, P=Points, 2P=Two-Pointers', canvas.width / 2, canvas.height - 100);
-      ctx.fillText('Misses: W=Wide, S=Saved, DS=Dropped Short, OP=Off Post', canvas.width / 2, canvas.height - 75);
-      
-      // App branding
-      ctx.fillStyle = '#60a5fa'; // blue-400
-      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Alans Match Tracker', canvas.width / 2, canvas.height - 40);
-      
-      // Convert to blob
-      canvas.toBlob((blob) => {
-        resolve(blob);
-      }, 'image/png', 0.9);
-    });
+      ctx.fillText('Success: G=Goals, P=Points, 2P=Two-Pointers', canvas.width / 2, canvas.height - 90);
+      ctx.fillText('Misses: W=Wide, S=Saved, DS=Dropped Short, OP=Off Post', canvas.width / 2, canvas.height - 65);
+
+      // Footer
+      drawShareFooter(ctx, canvas.width, canvas.height - 30, match.venue || '', formatShareDate(match.dateTime));
+
+      canvas.toBlob((blob) => resolve(blob), 'image/png', 0.92);
+    }));
   }
 
   // Generate share image for individual event
