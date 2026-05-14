@@ -1309,16 +1309,22 @@ body.match-view-active::before {
   border-bottom: 1px solid var(--touchline) !important;
 }
 
-/* Event meta info banner inside modals */
+/* Event meta info banner inside modals — same accent vocabulary as the
+   swap-mode banner (amber left rule + soft amber wash) so all
+   instructional/contextual banners across the app read as one element. */
 [id$="-event-meta"],
 #event-type-meta {
-  background-color: var(--pitch-700) !important;
-  border: 1px solid var(--touchline) !important;
+  background: linear-gradient(180deg,
+              rgba(255, 182, 40, 0.10) 0%,
+              rgba(255, 182, 40, 0.04) 100%) !important;
+  border: 1px solid rgba(255, 182, 40, 0.35) !important;
   border-left: 3px solid var(--scoreboard-amber) !important;
-  color: var(--chalk) !important;
+  color: var(--floodlight) !important;
   border-radius: var(--r-sm) !important;
-  font-family: var(--font-body);
-  padding: var(--sp-3) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.875rem !important;
+  padding: 10px 14px !important;
+  margin-bottom: var(--sp-3) !important;
 }
 
 /* Event-type selection cards in event-type-modal */
@@ -1350,35 +1356,92 @@ body.match-view-active::before {
   border-left: 4px solid var(--primary) !important;
 }
 
-/* Foul/kickout/card type buttons — chip-like */
+/* Foul / Card / Kick-out type chips — same vocabulary as Score Type and
+   Shot Type chips in the Score Event modal so all picker chips look alike. */
 .foul-type-option,
 .card-type-option,
 .kickout-outcome-option {
-  background-color: var(--pitch-700) !important;
-  color: var(--floodlight) !important;
+  background-color: var(--pitch-800) !important;
+  background-image: none !important;
+  color: var(--chalk) !important;
   border: 1px solid var(--touchline) !important;
   border-radius: var(--r-sm) !important;
-  font-family: var(--font-body);
-  transition: background-color 120ms ease, border-color 120ms ease;
+  padding: 9px 12px !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  letter-spacing: 0.01em !important;
+  text-transform: none !important;
+  text-align: left !important;
+  margin-bottom: 4px !important;
+  transition: background-color 140ms ease, border-color 160ms ease,
+              color 140ms ease, box-shadow 160ms ease;
 }
 
 .foul-type-option:hover,
 .card-type-option:hover,
 .kickout-outcome-option:hover {
-  background-color: var(--touchline) !important;
+  background-color: rgba(22, 68, 47, 0.55) !important;
+  border-color: rgba(199, 209, 194, 0.30) !important;
+  color: var(--floodlight) !important;
 }
 
-/* Selected state for these option chips uses bg-blue-600 from existing JS — repurpose */
+/* Selected state for these option chips — amber, matching the rest of the
+   app's selection language. Replaces the previous vivid-green-pill treatment
+   so foul/card/kickout pickers look like every other selectable option. */
 .foul-type-option.bg-blue-600,
 .card-type-option.bg-blue-600,
 .kickout-outcome-option.bg-blue-600 {
-  background-color: var(--primary) !important;
-  color: var(--pitch-900) !important;
-  border-color: var(--primary) !important;
-  font-weight: 600;
+  background-color: rgba(255, 182, 40, 0.10) !important;
+  color: var(--floodlight) !important;
+  border-color: var(--scoreboard-amber) !important;
+  box-shadow: 0 0 0 1px rgba(255, 182, 40, 0.30),
+              0 0 12px rgba(255, 182, 40, 0.18);
 }
 
-/* Player-list rows inside modals */
+/* Mini-captions inside foul / kickout / substitution modals. Same vocabulary
+   as the Score Event modal so every event modal reads as one system. */
+#foul-event-modal .text-sm.font-medium.text-gray-300,
+#kickout-event-modal .text-sm.font-medium.text-gray-300,
+#substitution-event-modal .text-sm.font-medium.text-gray-300,
+#note-event-modal label,
+#foul-event-modal label,
+#kickout-event-modal label,
+#substitution-event-modal label {
+  font-family: var(--font-mono) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.18em !important;
+  color: var(--mist) !important;
+  text-transform: uppercase !important;
+  margin-bottom: var(--sp-2) !important;
+}
+
+/* Textareas/inputs inside event modals — themed surface, focus glow. */
+#note-event-modal textarea,
+#foul-event-modal textarea,
+#kickout-event-modal textarea,
+#substitution-event-modal textarea {
+  background-color: var(--pitch-900) !important;
+  color: var(--floodlight) !important;
+  border: 1px solid var(--touchline) !important;
+  border-radius: var(--r-sm) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.9375rem !important;
+  padding: 10px 12px !important;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 160ms ease;
+}
+
+#note-event-modal textarea:focus,
+#foul-event-modal textarea:focus,
+#kickout-event-modal textarea:focus,
+#substitution-event-modal textarea:focus {
+  border-color: var(--scoreboard-glow) !important;
+  box-shadow: 0 0 0 1px rgba(255, 211, 107, 0.35);
+}
+
+/* Player-list containers inside modals — soft inset surface */
 #score-player-list,
 #foul-player-list,
 #kickout-player-list,
@@ -1386,8 +1449,140 @@ body.match-view-active::before {
 #substitution-player-on-list {
   background-color: var(--pitch-900) !important;
   border: 1px solid var(--touchline) !important;
-  border-radius: var(--r-sm) !important;
+  border-radius: var(--r-md) !important;
+  padding: var(--sp-2) !important;
 }
+
+/* Player option buttons inside the modal lists — compact card-row variant.
+   Smaller padding + smaller jersey chip so more players fit on screen. */
+#score-player-list > button,
+#foul-player-list > button,
+#kickout-player-list > button,
+#substitution-player-off-list > button,
+#substitution-player-on-list > button {
+  background-color: var(--pitch-800) !important;
+  background-image: none !important;
+  color: var(--floodlight) !important;
+  border: 1px solid var(--touchline) !important;
+  border-left: 3px solid var(--primary) !important;
+  border-radius: var(--r-md) !important;
+  padding: 6px 10px !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  margin-bottom: 4px !important;
+  transition: background-color 140ms ease, border-left-width 140ms ease;
+}
+
+#score-player-list > button:last-child,
+#foul-player-list > button:last-child,
+#kickout-player-list > button:last-child,
+#substitution-player-off-list > button:last-child,
+#substitution-player-on-list > button:last-child {
+  margin-bottom: 0 !important;
+}
+
+#score-player-list > button:hover,
+#foul-player-list > button:hover,
+#kickout-player-list > button:hover,
+#substitution-player-off-list > button:hover,
+#substitution-player-on-list > button:hover {
+  background-color: rgba(22, 68, 47, 0.55) !important;
+}
+
+/* Selected state — JS toggles bg-blue-600 + text-white; repurpose to amber. */
+#score-player-list > button.bg-blue-600,
+#foul-player-list > button.bg-blue-600,
+#kickout-player-list > button.bg-blue-600,
+#substitution-player-off-list > button.bg-blue-600,
+#substitution-player-on-list > button.bg-blue-600 {
+  background-color: rgba(255, 182, 40, 0.14) !important;
+  border-left-color: var(--scoreboard-amber) !important;
+  border-left-width: 4px !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 182, 40, 0.30);
+}
+
+/* ===== Score Event modal — unified picker system =====
+   Three pickers (Score Type, Shot Type, Player) share ONE selection language
+   (amber-on) but use TWO densities: compact chips for secondary qualifiers,
+   full card-rows for the primary player pick. */
+
+/* Captions: mono uppercase mini-caption, same vocabulary as "30 PLAYERS" /
+   "FILLING JERSEY". Replaces the inconsistent text-sm/font-medium Tailwind
+   utilities the JS render uses. */
+#score-event-modal #score-player-header,
+#score-event-modal .text-sm.font-medium.text-gray-300,
+#score-event-modal label[for="score-notes"] {
+  font-family: var(--font-mono) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.18em !important;
+  color: var(--mist) !important;
+  text-transform: uppercase !important;
+  margin-bottom: var(--sp-2) !important;
+}
+
+/* Score Type / Shot Type chips — compact pitch-800 chip, sentence-case body
+   font, stays the SAME shape and casing in default + active states. The
+   active state only changes border + wash + text brightness. */
+#score-type-list button {
+  display: block !important;
+  width: 100% !important;
+  background-color: var(--pitch-800) !important;
+  background-image: none !important;
+  color: var(--chalk) !important;
+  border: 1px solid var(--touchline) !important;
+  border-radius: var(--r-sm) !important;
+  padding: 9px 12px !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  letter-spacing: 0.01em !important;
+  text-transform: none !important;
+  text-align: left !important;
+  margin-bottom: 4px !important;
+  transition: background-color 140ms ease, border-color 160ms ease,
+              color 140ms ease, box-shadow 160ms ease;
+}
+
+#score-type-list button:hover {
+  background-color: rgba(22, 68, 47, 0.55) !important;
+  border-color: rgba(199, 209, 194, 0.30) !important;
+  color: var(--floodlight) !important;
+}
+
+/* Active chip — amber border + soft inner wash. Wins against the global
+   `.bg-blue-600 !important` alias to --primary that lives in
+   tailwind-minimal.css (and is what was making selected chips render as
+   vivid green pills). */
+#score-type-list button.bg-blue-600 {
+  background-color: rgba(255, 182, 40, 0.10) !important;
+  border-color: var(--scoreboard-amber) !important;
+  color: var(--floodlight) !important;
+  box-shadow: 0 0 0 1px rgba(255, 182, 40, 0.30),
+              0 0 12px rgba(255, 182, 40, 0.18);
+}
+
+/* Notes textarea — same themed surface as the panel-name input. */
+#score-event-modal #score-notes {
+  background-color: var(--pitch-900) !important;
+  color: var(--floodlight) !important;
+  border: 1px solid var(--touchline) !important;
+  border-radius: var(--r-sm) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.9375rem !important;
+  padding: 10px 12px !important;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 160ms ease;
+}
+
+#score-event-modal #score-notes:focus {
+  border-color: var(--scoreboard-glow) !important;
+  box-shadow: 0 0 0 1px rgba(255, 211, 107, 0.35);
+}
+
+/* Foul/kickout/card option buttons already get themed below but use r-sm —
+   bump them to r-md for visual consistency with the player option cards. */
 
 /* ===== Events list rows ===== */
 #events-list,
@@ -1602,11 +1797,30 @@ body.match-view-active::before {
   margin-top: var(--sp-2);
 }
 
-/* --- Jersey number: scoreboard digit, no chip box. */
+/* --- Jersey badge: the small chip used in score / foul / kick-out / sub
+   modals when listing players. Compact badge so it doesn't dominate. */
 .jersey-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  background-color: var(--pitch-900);
+  color: var(--floodlight);
+  border: 1px solid var(--touchline);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inside an Edit Players row the chip is rendered as the team-sheet's
+   scoreboard digit instead — full-cell, no box, amber + glow. */
+.player-row .jersey-chip {
   width: 100%;
   min-width: 0;
   height: auto;
@@ -1616,12 +1830,8 @@ body.match-view-active::before {
   border: none;
   border-right: 1px solid rgba(199, 209, 194, 0.10);
   border-radius: 0;
-  font-family: var(--font-mono);
-  font-weight: 700;
   font-size: 1.375rem;
-  line-height: 1;
   letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
   text-shadow: 0 0 12px rgba(255, 182, 40, 0.30);
 }
 
