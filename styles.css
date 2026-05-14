@@ -1133,16 +1133,174 @@ body.match-view-active::before {
   }
 }
 
-/* Player selection view's modal-style overlay (uses `.fixed.inset-0` w/o id$=-modal) */
+/* ===== Player Selection view — themed pick-list, team-sheet vocabulary ===== */
 #player-selection-view .fixed.inset-0 > div {
   background-color: var(--pitch-800) !important;
   border: 1px solid var(--touchline) !important;
   border-radius: var(--r-lg) !important;
   box-shadow: var(--sh-card);
 }
-#player-selection-view .fixed.inset-0 .sticky.top-0 {
+
+/* Sticky header: chalk-tinted bottom divider so the amber halfway-stripe
+   below it reads as the accent layer, not the only line. */
+#player-selection-view .fixed.inset-0 .sticky.top-0,
+#player-selection-view .sticky.top-0 {
   background-color: var(--pitch-800) !important;
-  border-bottom: 1px solid var(--touchline) !important;
+  border-bottom: 1px solid rgba(199, 209, 194, 0.14) !important;
+  position: relative;
+}
+
+/* Amber halfway-stripe under the header — same accent used on Edit Players
+   and Panel Editor section headers. */
+#player-selection-view .sticky.top-0::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  bottom: -1px;
+  width: 36px;
+  height: 2px;
+  background: var(--scoreboard-amber);
+  box-shadow: 0 0 10px rgba(255, 182, 40, 0.45);
+  pointer-events: none;
+}
+
+#player-selection-view h3 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--floodlight);
+}
+
+/* "FILLING JERSEY [5]" — mono uppercase caption with a glowing scoreboard
+   digit for the number being filled. */
+#player-selection-jersey-info {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--mist);
+  text-transform: uppercase;
+  margin-bottom: var(--sp-3) !important;
+}
+
+.player-selection-jersey-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 8px;
+  color: var(--scoreboard-amber);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.375rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px rgba(255, 182, 40, 0.30);
+  text-transform: none;
+}
+
+/* Panel dropdown — themed select with a custom chevron. */
+#player-selection-panel-dropdown {
+  background-color: var(--pitch-900) !important;
+  color: var(--floodlight) !important;
+  border: 1px solid var(--touchline) !important;
+  border-radius: var(--r-sm) !important;
+  padding: 10px 36px 10px 12px !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  font-size: 0.9375rem !important;
+  width: 100% !important;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='none' stroke='%23F4F1E6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5l5 5 5-5'/></svg>") !important;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 8px;
+  transition: border-color 140ms ease, box-shadow 160ms ease;
+}
+
+#player-selection-panel-dropdown:focus {
+  border-color: var(--scoreboard-glow) !important;
+  box-shadow: 0 0 0 1px rgba(255, 211, 107, 0.35);
+}
+
+/* Scroll area — slightly tighter padding so cards have room to breathe. */
+#player-selection-view .flex-1.overflow-y-auto {
+  padding: var(--sp-3) var(--sp-4) var(--sp-4) var(--sp-4) !important;
+}
+
+/* List wrapper — flex column with gap, override Tailwind space-y-3 */
+#player-selection-list-page {
+  display: flex !important;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+#player-selection-list-page > * + * {
+  margin-top: 0 !important;
+}
+
+/* Player option rows — team-sheet stripe, no jersey slot. Whole row is the
+   tap target (selects the name into the chosen jersey slot). */
+#player-selection-list-page button {
+  display: flex !important;
+  align-items: center;
+  width: 100%;
+  padding: 14px 16px !important;
+  background-color: var(--pitch-800) !important;
+  background-image: none !important;
+  color: var(--floodlight) !important;
+  border: 1px solid var(--touchline) !important;
+  border-left: 3px solid var(--primary) !important;
+  border-radius: var(--r-md) !important;
+  text-align: left !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  font-size: 1rem !important;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+              0 4px 12px rgba(0, 0, 0, 0.30) !important;
+  transition: transform 140ms ease, background-color 140ms ease, border-left-width 140ms ease;
+}
+
+#player-selection-list-page button:hover {
+  background-color: rgba(22, 68, 47, 0.55) !important;
+}
+
+#player-selection-list-page button:active {
+  border-left-width: 5px !important;
+  transform: scale(0.995);
+}
+
+/* Empty / placeholder text */
+#player-selection-list-page p {
+  text-align: center !important;
+  color: var(--chalk) !important;
+  padding: var(--sp-5) var(--sp-3) !important;
+  font-size: 0.9375rem !important;
+  font-family: var(--font-body) !important;
+  border: 1px dashed rgba(199, 209, 194, 0.20) !important;
+  border-radius: var(--r-md) !important;
+  background-color: rgba(11, 31, 20, 0.30) !important;
+  margin: 0 !important;
+}
+
+/* Stagger reveal */
+@media (prefers-reduced-motion: no-preference) {
+  #player-selection-list-page button {
+    animation: rowIn 280ms ease-out both;
+    animation-delay: calc(var(--i, 0) * 18ms);
+  }
 }
 
 /* Stats modal sticky header */
