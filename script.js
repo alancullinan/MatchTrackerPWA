@@ -2133,15 +2133,7 @@
       ctx.fillText('vs', canvas.width / 2, teamScoreY - 12);
       ctx.textBaseline = 'alphabetic';
 
-      // ===== Darker band behind scorers for legibility =====
-      const bandTop = teamsHeaderEnd;
-      const bandBottom = canvas.height - footerHeight + 20;
-      const bandGrad = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
-      bandGrad.addColorStop(0, 'rgba(0,0,0,0.55)');
-      bandGrad.addColorStop(0.5, 'rgba(0,0,0,0.45)');
-      bandGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
-      ctx.fillStyle = bandGrad;
-      ctx.fillRect(0, bandTop, canvas.width, bandBottom - bandTop);
+      // (No darker band — the existing background overlay carries through uniformly.)
 
       // ===== Scorer rows =====
       if (scorers.length > 0) {
