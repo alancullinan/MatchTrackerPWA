@@ -319,7 +319,11 @@ main {
 .secondary-btn:active { transform: scale(0.96); }
 
 /* Override blue Tailwind buttons so they pick up the pitch palette without rewriting markup */
-button.bg-blue-600,
+/* Primary CTA pill styling: ONLY fires on buttons that are explicitly
+   `.primary-btn` (Cancel / Done / etc.). Previously this selector also
+   caught any button with `bg-blue-600` — which is how the JS toggles the
+   "selected" state on chips and player rows — so every selected chip
+   inherited the pill shape + Bebas Neue uppercase. */
 button.bg-blue-600.primary-btn {
   background-color: var(--primary) !important;
   color: var(--pitch-900) !important;
@@ -329,11 +333,11 @@ button.bg-blue-600.primary-btn {
   border-radius: var(--r-pill) !important;
   font-weight: 700;
 }
-button.bg-blue-600:hover,
-button.hover\:bg-blue-700:hover {
+button.bg-blue-600.primary-btn:hover,
+button.hover\:bg-blue-700.primary-btn:hover {
   background-color: var(--primary-press) !important;
 }
-button.bg-blue-600:active { transform: scale(0.96); }
+button.bg-blue-600.primary-btn:active { transform: scale(0.96); }
 
 /* Green/red secondary action variants in modals */
 button.bg-green-600 { background-color: var(--primary) !important; color: var(--pitch-900) !important; border-radius: var(--r-pill) !important; }
