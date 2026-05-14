@@ -1156,6 +1156,9 @@ body.match-view-active::before {
   border: 1px solid var(--touchline) !important;
   border-radius: var(--r-lg) !important;
   box-shadow: var(--sh-card);
+  /* Clip the sticky header + scrollable list to the rounded panel so the top
+     corners read as round (the sticky child's own bg was painting over them). */
+  overflow: hidden;
 }
 
 /* Sticky header: chalk-tinted bottom divider so the amber halfway-stripe
