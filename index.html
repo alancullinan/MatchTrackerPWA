@@ -24,9 +24,9 @@
     <link rel="preload" href="fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin />
     
     <!-- Local Tailwind CSS for offline functionality -->
-    <link rel="stylesheet" href="tailwind-minimal.css?v=1.5.2" />
+    <link rel="stylesheet" href="tailwind-minimal.css?v=1.5.3" />
     <!-- Custom fallback styles -->
-    <link rel="stylesheet" href="styles.css?v=1.5.2" />
+    <link rel="stylesheet" href="styles.css?v=1.5.3" />
   </head>
     <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Landscape lock overlay: prompts the user to rotate to portrait. iOS Safari ignores
@@ -556,47 +556,17 @@
               <!-- Foul Type Section -->
               <div class="space-y-1">
                 <div class="text-sm font-medium text-gray-300 mb-2">Foul Type</div>
-                <button id="foul-type-free" class="foul-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-foul-type="free">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-blue-500 flex items-center justify-center text-xs font-bold">F</div>
-                    <span>Free</span>
-                  </div>
-                </button>
-                <button id="foul-type-penalty" class="foul-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-foul-type="penalty">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-orange-500 flex items-center justify-center text-xs font-bold">P</div>
-                    <span>Penalty</span>
-                  </div>
-                </button>
+                <button id="foul-type-free" class="foul-type-option w-full bg-gray-700 text-gray-100 border border-gray-600 text-left" data-foul-type="free">Free</button>
+                <button id="foul-type-penalty" class="foul-type-option w-full bg-gray-700 text-gray-100 border border-gray-600 text-left" data-foul-type="penalty">Penalty</button>
               </div>
               
               <!-- Card Section -->
               <div class="space-y-1">
                 <div class="text-sm font-medium text-gray-300 mb-2">Card</div>
-                <button id="card-type-none" class="card-type-option w-full p-2 bg-blue-600 text-white border border-blue-600 rounded text-left" data-card-type="none">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-gray-500"></div>
-                    <span>None</span>
-                  </div>
-                </button>
-                <button id="card-type-yellow" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="yellow">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-yellow-400"></div>
-                    <span>Yellow Card</span>
-                  </div>
-                </button>
-                <button id="card-type-red" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="red">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-red-500"></div>
-                    <span>Red Card</span>
-                  </div>
-                </button>
-                <button id="card-type-black" class="card-type-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-card-type="black">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-gray-900 border border-gray-600"></div>
-                    <span>Black Card</span>
-                  </div>
-                </button>
+                <button id="card-type-none" class="card-type-option w-full bg-blue-600 text-white border border-blue-600 text-left" data-card-type="none">None</button>
+                <button id="card-type-yellow" class="card-type-option w-full bg-gray-700 text-gray-100 border border-gray-600 text-left" data-card-type="yellow">Yellow Card</button>
+                <button id="card-type-red" class="card-type-option w-full bg-gray-700 text-gray-100 border border-gray-600 text-left" data-card-type="red">Red Card</button>
+                <button id="card-type-black" class="card-type-option w-full bg-gray-700 text-gray-100 border border-gray-600 text-left" data-card-type="black">Black Card</button>
               </div>
             </div>
             
@@ -638,18 +608,8 @@
             <div class="flex-1 space-y-2">
               <div class="space-y-1">
                 <div class="text-sm font-medium text-gray-300 mb-2">Outcome</div>
-                <button id="kickout-outcome-won" class="kickout-outcome-option w-full p-2 bg-blue-600 text-white border border-blue-600 rounded text-left" data-kickout-outcome="won">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-green-500 flex items-center justify-center text-xs font-bold">✓</div>
-                    <span>Won Own Kickout</span>
-                  </div>
-                </button>
-                <button id="kickout-outcome-lost" class="kickout-outcome-option w-full p-2 bg-gray-700 text-gray-100 border border-gray-600 rounded text-left" data-kickout-outcome="lost">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-4 h-4 bg-red-500 flex items-center justify-center text-xs font-bold">✗</div>
-                    <span>Lost Own Kickout</span>
-                  </div>
-                </button>
+                <button id="kickout-outcome-won" class="kickout-outcome-option w-full bg-blue-600 text-white border border-blue-600 text-left" data-kickout-outcome="won">Won Own Kickout</button>
+                <button id="kickout-outcome-lost" class="kickout-outcome-option w-full bg-gray-700 text-gray-100 border border-gray-600 text-left" data-kickout-outcome="lost">Lost Own Kickout</button>
               </div>
             </div>
             
@@ -913,7 +873,7 @@
         </div>
       </section>
     </main>
-    <script src="script.js?v=1.5.2"></script>
+    <script src="script.js?v=1.5.3"></script>
     
     <!-- Service Worker Registration -->
     <script>
