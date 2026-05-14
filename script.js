@@ -5344,8 +5344,9 @@
     const panelDropdown = document.getElementById('player-selection-panel-dropdown');
     const playerList = document.getElementById('player-selection-list-page');
     
-    // Set jersey info
-    jerseyInfo.textContent = `Selecting player for Jersey #${jerseyNumber}`;
+    // Set jersey info — formatted so the number renders as a glowing
+    // scoreboard digit alongside an uppercase mono caption.
+    jerseyInfo.innerHTML = `Filling jersey <span class="player-selection-jersey-num">${jerseyNumber}</span>`;
     
     // Get saved panel selection first
     const panelKey = `${appState.currentMatchId}-${appState.playerSelectionContext.teamKey}`;
@@ -5420,21 +5421,22 @@
     // Add players to list
     panel.players
       .filter(player => player.name.trim() !== '') // Only show players with names
-      .forEach(player => {
+      .forEach((player, idx) => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'w-full text-left px-8 py-6 text-xl text-gray-100 bg-gray-700 hover:bg-gray-600 rounded border border-gray-600 transition-colors mb-4';
+        // --i drives the staggered reveal animation defined in styles.css.
+        button.style.setProperty('--i', idx);
         button.textContent = player.name;
-        
+
         button.addEventListener('click', () => {
-          selectPlayerForJersey(appState.playerSelectionContext.teamKey, 
-                              appState.playerSelectionContext.playerId, 
-                              appState.playerSelectionContext.jerseyNumber, 
+          selectPlayerForJersey(appState.playerSelectionContext.teamKey,
+                              appState.playerSelectionContext.playerId,
+                              appState.playerSelectionContext.jerseyNumber,
                               player.name);
           // Return to edit players view
           showView('edit-players-view');
         });
-        
+
         playerList.appendChild(button);
       });
   }
