@@ -2034,63 +2034,139 @@
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
 
-      // Calculate dynamic height based on number of scorers
       canvas.width = 800;
       const maxScorers = Math.min(scorers.length, 10);
-      const headerHeight = 320;
+      const teamsHeaderEnd = 470;        // y where teams block ends
+      const scorerStartY = 540;          // first scorer row top
       const rowHeight = 95;
-      const scorersHeight = maxScorers * rowHeight;
-      const footerHeight = 160;
+      const footerHeight = 110;
       const extraHeight = scorers.length > maxScorers ? 40 : 0;
+      const noScorersFill = scorers.length === 0 ? 100 : 0;
 
-      canvas.height = Math.max(820, headerHeight + scorersHeight + footerHeight + extraHeight);
+      canvas.height = Math.max(
+        900,
+        scorerStartY + (maxScorers * rowHeight) + extraHeight + footerHeight + noScorersFill
+      );
 
       drawShareBackground(ctx, canvas.width, canvas.height);
 
-      // Header: team name as title, match type as tracked subtitle
-      drawShareHeader(ctx, canvas.width, teamName, match.matchType);
-
-      // Team score (centered, white)
+      // ===== Header =====
+      // Competition title
       ctx.fillStyle = '#ffffff';
-      ctx.font = `bold 64px ${SHARE_FONT}`;
+      ctx.font = `bold 44px ${SHARE_FONT}`;
       ctx.textAlign = 'center';
-      ctx.fillText(teamStats.score.display, canvas.width / 2, 230);
+      let title = match.competition || 'Match Update';
+      const maxTitleWidth = canvas.width - 120;
+      if (ctx.measureText(title).width > maxTitleWidth) {
+        while (title.length > 1 && ctx.measureText(title + '…').width > maxTitleWidth) {
+          title = title.slice(0, -1);
+        }
+        title += '…';
+      }
+      ctx.fillText(title, canvas.width / 2, 100);
 
-      // Score total in parentheses, muted
+      // Subtitle: "{team}  -  SCORERS" (tracked, muted) — team name keeps its original case
+      ctx.fillStyle = '#d1d5db';
+      ctx.font = `600 22px ${SHARE_FONT}`;
+      drawTrackedText(ctx, `${teamName}  -  SCORERS`, canvas.width / 2, 150, 4);
+
+      // ===== Teams block (featured vs opponent) =====
+      const isTeam1Featured = match.team1.name === teamName;
+      const featuredKey = isTeam1Featured ? 'team1' : 'team2';
+      const opponentKey = isTeam1Featured ? 'team2' : 'team1';
+      const opponentName = match[opponentKey].name;
+      const featuredScore = computeTeamScore(match, featuredKey);
+      const opponentScore = computeTeamScore(match, opponentKey);
+
+      const featuredX = canvas.width * 0.28;
+      const opponentX = canvas.width * 0.72;
+      const teamNameY = 260;
+      const teamScoreY = 340;
+      const teamTotalY = 395;
+
+      // Featured team name
+      ctx.fillStyle = '#ffffff';
+      let fNameSize = 34;
+      ctx.font = `bold ${fNameSize}px ${SHARE_FONT}`;
+      while (fNameSize > 22 && ctx.measureText(teamName).width > 320) {
+        fNameSize -= 2;
+        ctx.font = `bold ${fNameSize}px ${SHARE_FONT}`;
+      }
+      ctx.fillText(teamName, featuredX, teamNameY);
+
+      // Featured team score
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 72px ${SHARE_FONT}`;
+      const fScoreText = `${featuredScore.goals}-${featuredScore.points.toString().padStart(2, '0')}`;
+      ctx.fillText(fScoreText, featuredX, teamScoreY);
+
+      // Featured (total)
       ctx.fillStyle = '#cbd5e1';
-      ctx.font = `500 30px ${SHARE_FONT}`;
-      ctx.fillText(`(${teamStats.score.total})`, canvas.width / 2, 270);
-      
-      // Scorers header
-      if (scorers.length > 0) {
-        ctx.fillStyle = '#22c55e'; // green-500
-        ctx.font = `bold 28px ${SHARE_FONT}`;
-        ctx.textAlign = 'left';
-        ctx.fillText('Scorers', 70, 330);
+      ctx.font = `500 26px ${SHARE_FONT}`;
+      ctx.fillText(`(${featuredScore.total})`, featuredX, teamTotalY);
 
-        // Scorer list with dividing lines
-        let currentY = 380;
-        const rowHeight = 95; // Increased space to accommodate breakdown text below main score
-        const maxScorers = Math.min(scorers.length, 10); // Limit to top 10 scorers
-        
+      // Opponent team name (muted)
+      ctx.fillStyle = 'rgba(229,231,235,0.55)';
+      let oNameSize = 34;
+      ctx.font = `500 ${oNameSize}px ${SHARE_FONT}`;
+      while (oNameSize > 22 && ctx.measureText(opponentName).width > 320) {
+        oNameSize -= 2;
+        ctx.font = `500 ${oNameSize}px ${SHARE_FONT}`;
+      }
+      ctx.fillText(opponentName, opponentX, teamNameY);
+
+      // Opponent team score (muted)
+      ctx.fillStyle = 'rgba(229,231,235,0.55)';
+      ctx.font = `bold 72px ${SHARE_FONT}`;
+      const oScoreText = `${opponentScore.goals}-${opponentScore.points.toString().padStart(2, '0')}`;
+      ctx.fillText(oScoreText, opponentX, teamScoreY);
+
+      // Opponent (total)
+      ctx.fillStyle = 'rgba(203,213,225,0.55)';
+      ctx.font = `500 26px ${SHARE_FONT}`;
+      ctx.fillText(`(${opponentScore.total})`, opponentX, teamTotalY);
+
+      // "vs" centered between the team scores
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.font = `26px ${SHARE_FONT}`;
+      ctx.textBaseline = 'middle';
+      ctx.fillText('vs', canvas.width / 2, teamScoreY - 12);
+      ctx.textBaseline = 'alphabetic';
+
+      // ===== Darker band behind scorers for legibility =====
+      const bandTop = teamsHeaderEnd;
+      const bandBottom = canvas.height - footerHeight + 20;
+      const bandGrad = ctx.createLinearGradient(0, bandTop, 0, bandBottom);
+      bandGrad.addColorStop(0, 'rgba(0,0,0,0.55)');
+      bandGrad.addColorStop(0.5, 'rgba(0,0,0,0.45)');
+      bandGrad.addColorStop(1, 'rgba(0,0,0,0.55)');
+      ctx.fillStyle = bandGrad;
+      ctx.fillRect(0, bandTop, canvas.width, bandBottom - bandTop);
+
+      // ===== Scorer rows =====
+      if (scorers.length > 0) {
+        const isFootball = match.matchType === 'football' || match.matchType === 'ladiesFootball';
+        let currentY = scorerStartY;
+
         for (let i = 0; i < maxScorers; i++) {
           const scorer = scorers[i];
-          const isFootball = match.matchType === 'football' || match.matchType === 'ladiesFootball';
-          
-          // Calculate text positions within the row - main score higher up to make room for breakdown below
-          const mainScoreY = currentY + (rowHeight / 2) + 5; // Position main score with more space from divider above
-          const breakdownY = currentY + (rowHeight / 2) + 25; // Position breakdown below main score
-          
-          // Player name - bigger for mobile readability
+          const mainY = currentY + rowHeight / 2 + 4;
+          const breakdownY = currentY + rowHeight / 2 + 32;
+
+          // Player name (left)
           ctx.fillStyle = '#ffffff';
-          ctx.font = `bold 28px ${SHARE_FONT}`;
+          ctx.font = `500 30px ${SHARE_FONT}`;
           ctx.textAlign = 'left';
-          ctx.fillText(scorer.name, 70, mainScoreY);
-          
-          // Build score display and breakdown
+          ctx.fillText(scorer.name, 70, mainY);
+
+          // Score (right, bold)
           const scoreDisplay = formatScoreDisplay(scorer.total, isFootball);
-          
-          // Breakdown (frees/penalties/two-pointers) 
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold 30px ${SHARE_FONT}`;
+          ctx.textAlign = 'right';
+          ctx.fillText(scoreDisplay, canvas.width - 70, mainY);
+
+          // Breakdown (frees / penalties / two-pointers) below score, muted
           const breakdowns = [];
           if (scorer.freeBreakdown) {
             breakdowns.push(`${formatScoreDisplay(scorer.freeBreakdown, isFootball)} f`);
@@ -2101,105 +2177,50 @@
           if (isFootball && scorer.total.twoPointers > 0) {
             breakdowns.push(`2p:${scorer.total.twoPointers}`);
           }
-          
-          // Main score - positioned at the right edge
-          ctx.fillStyle = '#ffffff';
-          ctx.font = `bold 28px ${SHARE_FONT}`;
-          ctx.textAlign = 'right';
-          ctx.fillText(scoreDisplay, canvas.width - 70, mainScoreY);
-          
-          // Position breakdown below main score if it exists (like scorecard layout)
           if (breakdowns.length > 0) {
-            ctx.font = `22px ${SHARE_FONT}`;
-            ctx.textAlign = 'left';
-
-            // Build breakdown text piece by piece to handle coloring properly
-            let currentX = canvas.width - 70;
-
-            // Start with closing parenthesis (since we're building right to left)
-            ctx.fillStyle = '#cbd5e1';
-            const closeParen = ')';
-            const closeParenWidth = ctx.measureText(closeParen).width;
-            currentX -= closeParenWidth;
-            ctx.fillText(closeParen, currentX, breakdownY);
-            
-            // Draw breakdown items from right to left
-            for (let i = breakdowns.length - 1; i >= 0; i--) {
-              const breakdown = breakdowns[i];
-              
-              // Add comma separator if not the last item
-              if (i < breakdowns.length - 1) {
-                ctx.fillStyle = '#cbd5e1';
-                const separator = ', ';
-                const separatorWidth = ctx.measureText(separator).width;
-                currentX -= separatorWidth;
-                ctx.fillText(separator, currentX, breakdownY);
-              }
-              
-              if (breakdown.startsWith('2p:')) {
-                // Handle two-pointer breakdown with orange "2p:" and gray count
-                const count = breakdown.split(':')[1];
-                
-                // Draw count in gray
-                ctx.fillStyle = '#cbd5e1';
-                const countWidth = ctx.measureText(count).width;
-                currentX -= countWidth;
-                ctx.fillText(count, currentX, breakdownY);
-                
-                // Draw "2p:" in orange
-                ctx.fillStyle = '#f97316'; // orange-500
-                const twoPointerText = '2p:';
-                const twoPointerWidth = ctx.measureText(twoPointerText).width;
-                currentX -= twoPointerWidth;
-                ctx.fillText(twoPointerText, currentX, breakdownY);
-              } else {
-                // Draw regular breakdown in gray
-                ctx.fillStyle = '#cbd5e1';
-                const breakdownWidth = ctx.measureText(breakdown).width;
-                currentX -= breakdownWidth;
-                ctx.fillText(breakdown, currentX, breakdownY);
-              }
-            }
-            
-            // Draw opening parenthesis (since we're building right to left, this comes last)
-            ctx.fillStyle = '#cbd5e1';
-            const openParen = '(';
-            const openParenWidth = ctx.measureText(openParen).width;
-            currentX -= openParenWidth;
-            ctx.fillText(openParen, currentX, breakdownY);
+            ctx.fillStyle = 'rgba(203,213,225,0.75)';
+            ctx.font = `20px ${SHARE_FONT}`;
+            ctx.textAlign = 'right';
+            ctx.fillText(`(${breakdowns.join(', ')})`, canvas.width - 70, breakdownY);
           }
-          
-          // Add dividing line between entries (except for last entry)
+
+          // Hairline divider
           if (i < maxScorers - 1) {
-            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(70, currentY + rowHeight);
             ctx.lineTo(canvas.width - 70, currentY + rowHeight);
             ctx.stroke();
           }
-          
-          // Move to next row with more space
+
           currentY += rowHeight;
         }
-        
-        // Show "and X more" if there are additional scorers
+
         if (scorers.length > maxScorers) {
-          ctx.fillStyle = '#cbd5e1';
+          ctx.fillStyle = 'rgba(203,213,225,0.8)';
           ctx.font = `20px ${SHARE_FONT}`;
           ctx.textAlign = 'center';
-          ctx.fillText(`...and ${scorers.length - maxScorers} more`, canvas.width / 2, currentY + 10);
+          ctx.fillText(`…and ${scorers.length - maxScorers} more`, canvas.width / 2, currentY + 10);
         }
       } else {
-        // No scorers message
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = `24px ${SHARE_FONT}`;
+        ctx.fillStyle = 'rgba(203,213,225,0.85)';
+        ctx.font = `26px ${SHARE_FONT}`;
         ctx.textAlign = 'center';
-        ctx.fillText('No scorers yet', canvas.width / 2, 380);
+        ctx.fillText('No scorers yet', canvas.width / 2, scorerStartY + 60);
       }
 
-      // Footer: venue · date
-      drawShareFooter(ctx, canvas.width, canvas.height - 50, match.venue || '', formatShareDate(match.dateTime));
+      // ===== Footer (no pin, to match mockup) =====
+      const dateText = formatShareDate(match.dateTime);
+      const venueText = match.venue || '';
+      const footerY = canvas.height - 50;
+      ctx.fillStyle = '#d1d5db';
+      ctx.font = `500 24px ${SHARE_FONT}`;
+      ctx.textAlign = 'center';
+      let footerText = '';
+      if (venueText && dateText) footerText = `${venueText}  ·  ${dateText}`;
+      else footerText = venueText || dateText;
+      if (footerText) ctx.fillText(footerText, canvas.width / 2, footerY);
 
       canvas.toBlob((blob) => resolve(blob), 'image/png', 0.92);
     }));
