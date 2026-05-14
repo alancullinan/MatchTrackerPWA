@@ -1125,16 +1125,13 @@ body.match-view-active::before {
   gap: var(--sp-2);
 }
 
-/* Modal header icons — unified treatment so foul/kickout/sub/note all read
-   as the same family. The Score modal's icon is rendered as inline SVG by JS
-   with semantic colour (goal=green, point=white, 2pt=amber) — those keep
-   their meaning and are unaffected by this rule (it targets <img> only). */
+/* Modal header icons — share the same icon family as the Add Event chooser
+   (foulevent / kickoutevent / subevent / noteevent / missevent), each of
+   which is a self-contained circular badge with its own pitch-700 backdrop
+   and white stroke. Size them up so the circular frame reads cleanly. */
 .fixed.inset-0[id$="-modal"] h3 img {
-  width: 20px !important;
-  height: 20px !important;
-  opacity: 0.88;
-  filter: brightness(0) saturate(100%) invert(98%) sepia(7%) saturate(247%)
-          hue-rotate(343deg) brightness(102%) contrast(91%);
+  width: 28px !important;
+  height: 28px !important;
   flex-shrink: 0;
 }
 

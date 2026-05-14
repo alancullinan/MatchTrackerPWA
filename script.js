@@ -906,7 +906,7 @@
       
       // Score calculation
       let totalScore = goals * 3 + points;
-      if (match.matchType === 'football' || match.matchType === 'ladies_football') {
+      if (match.matchType === 'football' || match.matchType === 'ladiesFootball') {
         totalScore += twoPointers * 2;
       }
       
@@ -925,7 +925,7 @@
           points,
           twoPointers,
           total: totalScore,
-          display: match.matchType === 'football' || match.matchType === 'ladies_football' 
+          display: match.matchType === 'football' || match.matchType === 'ladiesFootball' 
             ? `${goals}-${(points + twoPointers * 2).toString().padStart(2, '0')}` 
             : `${goals}-${points.toString().padStart(2, '0')}`
         },
@@ -1153,7 +1153,7 @@
     }
     
     const teamNames = Object.keys(stats.teams);
-    const isFootball = stats.match.matchType === 'football' || stats.match.matchType === 'ladies_football';
+    const isFootball = stats.match.matchType === 'football' || stats.match.matchType === 'ladiesFootball';
     console.log('Rendering scorers cards for teams:', teamNames, 'isFootball:', isFootball);
     
     container.innerHTML = `
@@ -1605,7 +1605,7 @@
       return;
     }
     
-    const isFootball = stats.match.matchType === 'football' || stats.match.matchType === 'ladies_football';
+    const isFootball = stats.match.matchType === 'football' || stats.match.matchType === 'ladiesFootball';
     const scorers = calculatePlayerScorers(match, teamName, isFootball);
     console.log('Scorers calculated:', scorers);
     
@@ -1881,7 +1881,7 @@
         
         for (let i = 0; i < maxScorers; i++) {
           const scorer = scorers[i];
-          const isFootball = match.matchType === 'football' || match.matchType === 'ladies_football';
+          const isFootball = match.matchType === 'football' || match.matchType === 'ladiesFootball';
           
           // Calculate text positions within the row - main score higher up to make room for breakdown below
           const mainScoreY = currentY + (rowHeight / 2) + 5; // Position main score with more space from divider above
@@ -4059,7 +4059,9 @@
       let labelText;
       if (isMissEvent) {
         const missIcon = document.createElement('img');
-        missIcon.src = 'icons/miss.svg';
+        // Use the same Miss glyph as the event-type chooser so the icon
+        // identity is consistent between picking the event type and editing it.
+        missIcon.src = 'icons/missevent.svg';
         missIcon.alt = 'Miss';
         missIcon.classList.add('w-6', 'h-6');
         titleEl.appendChild(missIcon);
@@ -4201,7 +4203,7 @@
       // For scoring events: optionally show a Point / 2-Pointer toggle for
       // football & ladies football (the orange flag was removed from the
       // scoreboard; the choice now lives here).
-      const supportsTwoPointer = match.matchType === 'football' || match.matchType === 'ladies_football';
+      const supportsTwoPointer = match.matchType === 'football' || match.matchType === 'ladiesFootball';
       const isPointScoring = outcome === ShotOutcome.POINT || outcome === ShotOutcome.TWO_POINTER;
       if (supportsTwoPointer && isPointScoring) {
         const scoreTypeHeader = document.createElement('div');
