@@ -1,4 +1,4 @@
-const CACHE_NAME = 'match-tracker-v1.5.3';
+const CACHE_NAME = 'match-tracker-v1.5.5';
 const urlsToCache = [
   '/',
   '/index.html',
