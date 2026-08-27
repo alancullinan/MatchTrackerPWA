@@ -15,7 +15,7 @@ Since this is a vanilla JavaScript PWA with no build system:
   - `npx live-server` (if live-server is installed)
   - `php -S localhost:8000` (PHP)
 - **Testing PWA Features**: Must use HTTPS or localhost for service worker functionality
-- **Service Worker Updates**: When modifying cached files, increment the cache version in `sw.js` (currently v1.2.4)
+- **Service Worker Updates**: When modifying cached files, increment the cache version in `sw.js` (currently v1.7.0)
 - **Icon Generation**: Use `create-icons.html` for creating and testing new SVG icons
 - **Deployment Context**: App is scoped to `/MatchTrackerPWA/` path (defined in manifest.json)
 
@@ -28,7 +28,7 @@ This is a vanilla JavaScript single-page application with no external dependenci
 - **script.js** - All JavaScript logic in IIFE pattern (~6300+ lines)
 - **styles.css** - Mobile-first CSS with Tailwind-like utilities and custom components
 - **tailwind-minimal.css** - Local Tailwind CSS subset for offline functionality
-- **sw.js** - Service worker for PWA caching (cache version: v1.2.4)
+- **sw.js** - Service worker for PWA caching (cache version: v1.7.0)
 - **manifest.json** - PWA manifest with app shortcuts and icons
 
 ### View Architecture
@@ -69,7 +69,8 @@ Home View
 - **Event Chronological Sorting**: Events always display in correct chronological order (by period + time), even after time/period edits
 - **Event Sharing**: Share individual events as 800x800px images for social media
 - **Player Management**: Auto-generated player rosters (1-30 for each team)
-- **Player Panels**: Create reusable player rosters that can be assigned to teams across multiple matches
+- **Player Panels**: Create reusable 30-slot player rosters that can be assigned to teams across multiple matches
+- **Panel Import**: Import an entire panel into a match team in one action from the Edit Players screen. Only offered before throw-in (`MatchPeriod.NOT_STARTED`); the button is hidden once the match starts, since relabelling players would rewrite the names shown against already-recorded events. Overwrites all 30 names in place — player `id`s are never regenerated, so events keep resolving correctly
 - **Match Statistics**: View detailed shooting accuracy, scorers breakdown, and team statistics
 - **Data Management**: Export all matches to JSON file and import backups
 - **Data Persistence**: Dual storage strategy with localStorage primary and IndexedDB fallback
@@ -137,7 +138,10 @@ Matches are stored in localStorage with this structure:
 ### Player Panel Data
 Player panels are stored separately and can be reused across matches:
 - Panel metadata (id, name, creation timestamp)
-- Players array (jersey number, name, position)
+- Players array of **exactly 30 fixed slots** (`PANEL_SIZE`), mirroring a match roster: `{id, name, jerseyNumber}` where `jerseyNumber` is 1-30
+- The slot **is** the jersey number, so duplicate numbers are impossible and a panel imports into a team 1:1
+- Empty slots are meaningful and are preserved on save (names are never filtered out, and the list is never sorted alphabetically)
+- `normalizePanel()` migrates legacy panels (which stored only `{id, name}`) into 30 slots, filling 1..N in stored order. It is idempotent and runs from `loadAppState()`, `DataManager.importData()`, and `showPanelEditor()`
 - Panels are stored in `playerPanels` key in localStorage
 
 ### Storage Architecture
@@ -197,7 +201,7 @@ Events are stored as objects with this structure:
 
 ### Player Management System
 - **Auto-generation**: 30 players per team (jerseyNumber 1-30)
-- **Naming convention**: "Player 1", "Player 2", etc. (editable)
+- **Naming convention**: `No.1`, `No.2`, etc. (editable). This exact `No.N` string is a load-bearing sentinel — many render paths compare a player's name against it to decide whether to show a name alongside the jersey number, so resets must write it verbatim
 - **Event tracking**: Each player accumulates statistics from events
 - **Substitution support**: Players can be substituted during matches
 - **Player Panels**: Reusable rosters that can be created once and assigned to teams across multiple matches
@@ -248,7 +252,7 @@ Events are stored as objects with this structure:
 ### Development Workflow
 - Test changes by opening `index.html` in browser (no build step required)
 - For PWA features, use localhost or HTTPS (service worker requirement)
-- When modifying cached files, increment cache version in `sw.js` (currently v1.2.4)
+- When modifying cached files, increment cache version in `sw.js` (currently v1.7.0)
 - All changes take effect immediately - no compilation or build process
 
 ### Code Integration Patterns

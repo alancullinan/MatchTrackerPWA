@@ -1293,6 +1293,12 @@ body.match-view-active::before {
   transition: transform 140ms ease, background-color 140ms ease, border-left-width 140ms ease;
 }
 
+/* Jersey chip inside a player option — keeps the boxed chip treatment rather
+   than the full-cell scoreboard digit used in the editable team-sheet rows. */
+#player-selection-list-page button .player-selection-chip {
+  margin-right: var(--sp-3);
+}
+
 #player-selection-list-page button:hover {
   background-color: rgba(22, 68, 47, 0.55) !important;
 }
@@ -1723,6 +1729,55 @@ body.match-view-active::before {
   text-transform: uppercase;
 }
 
+/* Right-hand action cluster: Import (pre-throw-in only) beside Swap. */
+.team-players-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+/* --- Import button: same ghost pill as Swap, but an action rather than a
+   mode toggle, so it has no active state and uses a download glyph. */
+.panel-import-btn {
+  font-family: var(--font-display) !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase;
+  padding: 7px 14px !important;
+  background-color: rgba(11, 31, 20, 0.55) !important;
+  background-image: none !important;
+  color: var(--chalk) !important;
+  border: 1px solid rgba(199, 209, 194, 0.28) !important;
+  border-radius: var(--r-pill) !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  transition: background-color 140ms ease, border-color 140ms ease,
+              color 140ms ease, box-shadow 160ms ease;
+}
+
+.panel-import-btn::before {
+  content: '\2193'; /* ↓ */
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--mist);
+}
+
+.panel-import-btn:hover {
+  border-color: var(--scoreboard-amber) !important;
+  color: var(--floodlight) !important;
+  box-shadow: 0 0 0 1px rgba(255, 182, 40, 0.25),
+              0 0 14px rgba(255, 182, 40, 0.18);
+}
+
+.panel-import-btn:active {
+  transform: scale(0.97);
+}
+
 /* Short amber stripe under the header — pitch halfway-line reference. */
 .team-players-header::after {
   content: '';
@@ -1838,9 +1893,10 @@ body.match-view-active::before {
   font-variant-numeric: tabular-nums;
 }
 
-/* Inside an Edit Players row the chip is rendered as the team-sheet's
-   scoreboard digit instead — full-cell, no box, amber + glow. */
-.player-row .jersey-chip {
+/* Inside an Edit Players or Panel Editor row the chip is rendered as the
+   team-sheet's scoreboard digit instead — full-cell, no box, amber + glow. */
+.player-row .jersey-chip,
+.panel-player-row .jersey-chip {
   width: 100%;
   min-width: 0;
   height: auto;
@@ -1959,6 +2015,37 @@ button.player-row-action:hover {
   text-shadow: 0 0 16px rgba(255, 211, 107, 0.55);
 }
 
+/* --- Swap mode in the Panel Editor. Same vocabulary; panel rows have no
+   action column to collapse, so the grid is left alone. */
+#panel-players-list[data-swap-mode="on"] .panel-player-row {
+  cursor: pointer;
+  border-left-color: rgba(199, 209, 194, 0.30);
+}
+
+#panel-players-list[data-swap-mode="on"] .panel-player-row input.panel-player-name {
+  pointer-events: none;
+}
+
+#panel-players-list[data-swap-mode="on"] .panel-player-row input.panel-player-name:focus {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+#panel-players-list[data-swap-mode="on"] .panel-player-row.is-swap-selected {
+  border-left-color: var(--scoreboard-amber);
+  border-left-width: 4px;
+  background-color: rgba(255, 182, 40, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset,
+              0 6px 16px rgba(0, 0, 0, 0.35),
+              0 0 0 1px rgba(255, 182, 40, 0.45),
+              0 0 22px rgba(255, 182, 40, 0.18);
+}
+
+#panel-players-list[data-swap-mode="on"] .panel-player-row.is-swap-selected .jersey-chip {
+  color: var(--scoreboard-glow);
+  text-shadow: 0 0 16px rgba(255, 211, 107, 0.55);
+}
+
 /* --- Commit pulse: ripple of amber outwards from both rows when a swap fires. */
 @keyframes swap-pulse {
   0%   { box-shadow: 0 1px 0 rgba(255,255,255,.04) inset,
@@ -1972,7 +2059,8 @@ button.player-row-action:hover {
                      0 0 0 0 rgba(255, 182, 40, 0); }
 }
 
-.player-row.is-swap-pulse {
+.player-row.is-swap-pulse,
+.panel-player-row.is-swap-pulse {
   animation: swap-pulse 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -2097,8 +2185,8 @@ button.player-row-action:hover {
   line-height: 1.0;
 }
 
-/* Add Player button — labelled ghost pill, same family as Swap toggle */
-#panel-editor-view #add-player-to-panel-btn {
+/* Panel Swap toggle — labelled ghost pill, same family as the Edit Players Swap */
+#panel-editor-view #swap-panel-players-btn {
   font-family: var(--font-display) !important;
   font-size: 0.8125rem !important;
   letter-spacing: 0.16em !important;
@@ -2121,17 +2209,31 @@ button.player-row-action:hover {
   transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 160ms ease;
 }
 
-#panel-editor-view #add-player-to-panel-btn::before {
-  content: '+ ADD';
-  font-family: var(--font-display);
-  letter-spacing: 0.16em;
+#panel-editor-view #swap-panel-players-btn::before {
+  content: '⇅';
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 160ms ease;
 }
 
-#panel-editor-view #add-player-to-panel-btn:hover {
+#panel-editor-view #swap-panel-players-btn:hover {
   border-color: var(--scoreboard-amber) !important;
   color: var(--floodlight) !important;
   box-shadow: 0 0 0 1px rgba(255, 182, 40, 0.25),
               0 0 14px rgba(255, 182, 40, 0.18);
+}
+
+/* Active swap mode — amber pill, matching the Edit Players toggle. */
+#panel-editor-view #swap-panel-players-btn.is-on {
+  background-color: rgba(255, 182, 40, 0.16) !important;
+  border-color: var(--scoreboard-amber) !important;
+  color: var(--scoreboard-amber) !important;
+  box-shadow: 0 0 0 1px rgba(255, 182, 40, 0.35),
+              0 0 18px rgba(255, 182, 40, 0.22);
+}
+
+#panel-editor-view #swap-panel-players-btn.is-on::before {
+  transform: rotate(180deg);
 }
 
 /* Drop the boxy gray border around the player list — each row is a card now */
@@ -2149,10 +2251,10 @@ button.player-row-action:hover {
   margin-top: 0 !important;
 }
 
-/* Each player row — team-sheet stripe with no jersey slot */
+/* Each player row — team-sheet stripe with a fixed jersey slot */
 #panel-players-list .panel-player-row {
   display: grid;
-  grid-template-columns: 1fr 44px;
+  grid-template-columns: 56px 1fr;
   align-items: stretch;
   flex-shrink: 0;
   padding: 0;
@@ -2194,55 +2296,6 @@ button.player-row-action:hover {
 #panel-players-list .panel-player-row input:focus {
   background-color: rgba(11, 31, 20, 0.45);
   box-shadow: inset 0 -2px 0 0 var(--scoreboard-glow);
-}
-
-#panel-players-list .panel-player-row .panel-player-remove {
-  flex-shrink: 0;
-  align-self: stretch;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: auto;
-  background-color: transparent !important;
-  background-image: none !important;
-  border: none !important;
-  border-left: 1px solid rgba(199, 209, 194, 0.10) !important;
-  border-radius: 0 !important;
-  cursor: pointer;
-  padding: 0 !important;
-  overflow: hidden;
-  transition: background-color 140ms ease;
-}
-
-#panel-players-list .panel-player-row .panel-player-remove img {
-  width: 24px;
-  height: 24px;
-  opacity: 0.85;
-  transition: opacity 140ms ease, transform 140ms ease;
-}
-
-#panel-players-list .panel-player-row .panel-player-remove:hover {
-  background-color: rgba(212, 58, 58, 0.15) !important;
-}
-
-#panel-players-list .panel-player-row .panel-player-remove:hover img {
-  opacity: 1;
-}
-
-#panel-players-list .panel-player-row .panel-player-remove:active img {
-  transform: scale(0.92);
-}
-
-#panel-players-list .panel-players-empty {
-  text-align: center;
-  color: var(--chalk);
-  padding: var(--sp-5) var(--sp-3);
-  font-size: 0.9375rem;
-  font-family: var(--font-body);
-  border: 1px dashed rgba(199, 209, 194, 0.20);
-  border-radius: var(--r-md);
-  background-color: rgba(11, 31, 20, 0.30);
 }
 
 /* Stagger reveal on panel rows — same animation as everywhere else */

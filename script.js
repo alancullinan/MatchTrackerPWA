@@ -346,7 +346,9 @@
           // Merge with existing panels (avoid duplicates by ID)
           const existingPanelIds = new Set(appState.playerPanels.map(p => p.id));
           const newPanels = importData.playerPanels.filter(p => !existingPanelIds.has(p.id));
-          
+
+          // Backups may predate jersey numbers; migrate before they enter state.
+          newPanels.forEach(normalizePanel);
           appState.playerPanels.push(...newPanels);
           newPanelsCount = newPanels.length;
         }
@@ -484,7 +486,9 @@
       // Players count line (same as teams line in match cards)
       const playersEl = document.createElement('div');
       playersEl.className = 'text-gray-400 text-sm';
-      playersEl.textContent = `${panel.players.length} players`;
+      // Slots are fixed at PANEL_SIZE, so count the ones actually filled.
+      const filled = countPanelPlayers(panel);
+      playersEl.textContent = `${filled} ${filled === 1 ? 'player' : 'players'}`;
       card.appendChild(playersEl);
 
       // Add delete button using exact same method as match cards
@@ -515,11 +519,15 @@
     if (isEditing) {
       const panel = appState.playerPanels.find(p => p.id === panelId);
       if (!panel) return;
-      
+
+      // Migrate before snapshotting, otherwise Cancel would restore the
+      // pre-migration array and undo the numbering.
+      normalizePanel(panel);
+
       title.textContent = 'Edit Panel';
       nameInput.value = panel.name;
       appState.editingPanelId = panelId;
-      
+
       // Create backup of original panel state for cancel functionality
       appState.originalPanelState = {
         name: panel.name,
@@ -530,124 +538,81 @@
       nameInput.value = '';
       appState.editingPanelId = null;
       appState.originalPanelState = null;
-      // Initialize empty players list for new panel
-      window.tempPanelPlayers = [];
+      // A new panel starts as a full sheet of empty numbered slots.
+      window.tempPanelPlayers = Array.from({ length: PANEL_SIZE }, (_, i) => ({
+        id: generateId(),
+        name: '',
+        jerseyNumber: i + 1
+      }));
     }
     
     renderPanelPlayersList();
     // nameInput.focus(); // Removed to prevent keyboard popup on mobile
   }
   
-  // Render the list of players in the panel editor
+  // Update the "N / 30 PLAYERS" caption above the panel slot list.
+  function updatePanelPlayersCount(players) {
+    const countEl = document.getElementById('panel-players-count');
+    if (!countEl) return;
+    const filled = players.filter(p => p && (p.name || '').trim() !== '').length;
+    countEl.textContent = `${filled} / ${PANEL_SIZE} Players`;
+  }
+
+  // Render the panel editor as a fixed team-sheet: one row per jersey, always
+  // all PANEL_SIZE of them. Mirrors the Edit Players row vocabulary.
   function renderPanelPlayersList() {
     const container = document.getElementById('panel-players-list');
     if (!container) return;
-    
+
     const panelId = appState.editingPanelId;
     let players = [];
-    
+
     if (panelId) {
       const panel = appState.playerPanels.find(p => p.id === panelId);
-      players = panel ? panel.players : [];
+      if (panel) {
+        normalizePanel(panel);
+        players = panel.players;
+      }
     } else {
       // For new panels, use temporary players
       players = window.tempPanelPlayers || [];
     }
-    
+
     // Reset content before re-rendering.
     container.innerHTML = '';
 
-    // Update the "N PLAYERS" caption next to the section heading.
-    const countEl = document.getElementById('panel-players-count');
-    if (countEl) {
-      countEl.textContent = players.length === 1 ? '1 Player' : `${players.length} Players`;
-    }
-
-    if (players.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'panel-players-empty';
-      empty.textContent = 'No players added yet. Tap + ADD to start.';
-      container.appendChild(empty);
-      return;
-    }
+    updatePanelPlayersCount(players);
 
     players.forEach((player, index) => {
       const row = document.createElement('div');
       row.className = 'panel-player-row';
       // --i drives the staggered reveal animation in styles.css.
       row.style.setProperty('--i', index);
+      row.dataset.slotIndex = index;
+
+      // Jersey number badge — same scoreboard digit as the Edit Players rows.
+      const chip = document.createElement('span');
+      chip.className = 'jersey-chip';
+      chip.textContent = player.jerseyNumber;
 
       const input = document.createElement('input');
       input.type = 'text';
+      input.className = 'panel-player-name';
       input.value = player.name || '';
-      input.placeholder = 'Player name';
+      input.placeholder = 'Empty';
+      input.dataset.slotIndex = index;
       input.addEventListener('change', (e) => {
         updatePanelPlayerName(index, e.target.value);
+        updatePanelPlayersCount(players);
       });
 
-      const removeBtn = document.createElement('button');
-      removeBtn.type = 'button';
-      removeBtn.className = 'panel-player-remove';
-      removeBtn.title = 'Remove Player';
-      removeBtn.innerHTML = '<img src="icons/delete.svg" alt="Remove Player" class="w-6 h-6" />';
-      removeBtn.addEventListener('click', () => removePanelPlayer(index));
+      // Tapping a row while swap mode is on selects it instead of editing.
+      row.addEventListener('click', (e) => handleSwapRowTap(container, row, e));
 
+      row.appendChild(chip);
       row.appendChild(input);
-      row.appendChild(removeBtn);
       container.appendChild(row);
     });
-  }
-  
-  // Add a new player to the current panel being edited
-  function addPlayerToPanel() {
-    const panelId = appState.editingPanelId;
-    let panel;
-    
-    if (panelId) {
-      panel = appState.playerPanels.find(p => p.id === panelId);
-      if (!panel) return;
-    } else {
-      // If not editing an existing panel, create a temporary structure
-      if (!window.tempPanelPlayers) window.tempPanelPlayers = [];
-      window.tempPanelPlayers.push({ id: generateId(), name: '' });
-      renderPanelPlayersList();
-      // Focus on the newly added player input (last one in temp list)
-      setTimeout(() => {
-        const inputs = document.querySelectorAll('#panel-players-list input[type="text"]');
-        if (inputs.length > 0) {
-          inputs[inputs.length - 1].focus();
-        }
-      }, 50);
-      return;
-    }
-    
-    panel.players.push({ id: generateId(), name: '' });
-    renderPanelPlayersList();
-    // Focus on the newly added player input (last one in the list)
-    setTimeout(() => {
-      const inputs = document.querySelectorAll('#panel-players-list input[type="text"]');
-      if (inputs.length > 0) {
-        inputs[inputs.length - 1].focus();
-      }
-    }, 50);
-  }
-  
-  // Remove a player from the current panel being edited
-  function removePanelPlayer(index) {
-    const panelId = appState.editingPanelId;
-    
-    if (panelId) {
-      const panel = appState.playerPanels.find(p => p.id === panelId);
-      if (!panel) return;
-      
-      panel.players.splice(index, 1);
-    } else {
-      if (window.tempPanelPlayers) {
-        window.tempPanelPlayers.splice(index, 1);
-      }
-    }
-    
-    renderPanelPlayersList();
   }
   
   // Update a player's name in the current panel being edited
@@ -668,45 +633,49 @@
   
   // Save the current panel being edited
   function savePanelEditor() {
+    // Leave swap mode before navigating away so no stale highlight lingers.
+    setSwapMode(false, 'panel-players-list');
+
     const nameInput = document.getElementById('panel-name');
     const panelName = nameInput.value.trim();
-    
+
     if (!panelName) {
       alert('Please enter a panel name.');
       // nameInput.focus(); // Removed to prevent keyboard popup on mobile
       return;
     }
-    
+
     const panelId = appState.editingPanelId;
-    
+
+    // Names round-trip verbatim into match rosters, so trim them here.
+    const trimNames = (players) => {
+      players.forEach(p => { p.name = (p.name || '').trim(); });
+      return players;
+    };
+
     if (panelId) {
-      // Editing existing panel
+      // Editing existing panel. Slots are fixed, so keep every one of them —
+      // empty slots are meaningful and order is jersey order, never alphabetical.
       const panel = appState.playerPanels.find(p => p.id === panelId);
       if (!panel) return;
-      
+
       panel.name = panelName;
-      // Sort players alphabetically by name (case-insensitive)
-      panel.players = panel.players
-        .filter(p => p.name.trim() !== '') // Remove empty names
-        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+      trimNames(panel.players);
+      normalizePanel(panel);
     } else {
       // Creating new panel
-      const players = window.tempPanelPlayers || [];
-      const sortedPlayers = players
-        .filter(p => p.name.trim() !== '') // Remove empty names
-        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())); // Sort alphabetically
-      
       const newPanel = {
         id: generateId(),
         name: panelName,
-        players: sortedPlayers,
+        players: trimNames(window.tempPanelPlayers || []),
         createdDate: new Date().toISOString()
       };
-      
+      normalizePanel(newPanel);
+
       appState.playerPanels.push(newPanel);
       window.tempPanelPlayers = null;
     }
-    
+
     appState.editingPanelId = null;
     saveAppState();
     showPlayerPanelsView();
@@ -714,8 +683,10 @@
   
   // Cancel panel editing
   function cancelPanelEditor() {
+    // Leave swap mode before navigating away so no stale highlight lingers.
+    setSwapMode(false, 'panel-players-list');
     const panelId = appState.editingPanelId;
-    
+
     if (panelId && appState.originalPanelState) {
       // Restore original panel state for existing panels
       const panel = appState.playerPanels.find(p => p.id === panelId);
@@ -750,8 +721,6 @@
   // Make panel functions globally accessible
   window.showPanelEditor = showPanelEditor;
   window.deletePanelWithConfirm = deletePanelWithConfirm;
-  window.addPlayerToPanel = addPlayerToPanel;
-  window.removePanelPlayer = removePanelPlayer;
   window.updatePanelPlayerName = updatePanelPlayerName;
 
   /* Data Management UI Functions */
@@ -3046,6 +3015,84 @@
     return players;
   }
 
+  // A panel is a fixed team-sheet: exactly PANEL_SIZE slots, jerseys 1..PANEL_SIZE.
+  // The slot *is* the jersey number, so duplicates are impossible by construction
+  // and importing a panel into a team is a straight 1:1 copy.
+  const PANEL_SIZE = 30;
+
+  // Tracks panels we've already warned about overflowing, so the alert in
+  // normalizePanel() fires once per session rather than on every re-render.
+  const overflowWarnedPanels = new Set();
+
+  // Coerce a stored panel's players array into exactly PANEL_SIZE numbered slots.
+  // Idempotent: safe to run repeatedly on an already-normalized panel.
+  function normalizePanel(panel) {
+    if (!panel || typeof panel !== 'object') return panel;
+    const existing = Array.isArray(panel.players) ? panel.players : [];
+    const slots = new Array(PANEL_SIZE).fill(null);
+    // Legacy panels predate jersey numbers entirely; they fill 1..N in stored order.
+    const hasNumbers = existing.some(p => p && Number.isInteger(p.jerseyNumber));
+
+    if (hasNumbers) {
+      // First pass: honour every valid, unclaimed jersey number.
+      existing.forEach((p) => {
+        if (!p) return;
+        const n = p.jerseyNumber;
+        if (Number.isInteger(n) && n >= 1 && n <= PANEL_SIZE && !slots[n - 1]) {
+          slots[n - 1] = { id: p.id || generateId(), name: p.name || '', jerseyNumber: n };
+        }
+      });
+      // Second pass: anything left over (missing, out-of-range or duplicate
+      // number) drops into the first free slot rather than being discarded.
+      existing.forEach((p) => {
+        if (!p || !(p.name || '').trim()) return;
+        const n = p.jerseyNumber;
+        const alreadyPlaced =
+          Number.isInteger(n) && n >= 1 && n <= PANEL_SIZE &&
+          slots[n - 1] && slots[n - 1].id === p.id;
+        if (alreadyPlaced) return;
+        const free = slots.findIndex(s => s === null);
+        if (free >= 0) {
+          slots[free] = { id: p.id || generateId(), name: p.name, jerseyNumber: free + 1 };
+        }
+      });
+    } else {
+      existing.slice(0, PANEL_SIZE).forEach((p, i) => {
+        slots[i] = { id: (p && p.id) || generateId(), name: (p && p.name) || '', jerseyNumber: i + 1 };
+      });
+    }
+
+    // A panel holding more real names than there are slots can't be represented.
+    // Say so out loud rather than dropping names silently.
+    const named = existing.filter(p => p && (p.name || '').trim());
+    const kept = new Set(slots.filter(Boolean).map(s => s.id));
+    const dropped = named.filter(p => !kept.has(p.id)).map(p => p.name.trim());
+    if (dropped.length && !overflowWarnedPanels.has(panel.id)) {
+      overflowWarnedPanels.add(panel.id);
+      console.warn(`Panel "${panel.name}" exceeds ${PANEL_SIZE} players; dropped:`, dropped);
+      alert(
+        `The panel "${panel.name}" holds more than ${PANEL_SIZE} players.\n\n` +
+        `A panel is limited to ${PANEL_SIZE} jerseys, so these names could not be kept:\n` +
+        dropped.join(', ')
+      );
+    }
+
+    panel.players = slots.map((s, i) => s || { id: generateId(), name: '', jerseyNumber: i + 1 });
+    return panel;
+  }
+
+  // Normalize every stored panel in memory. Deliberately does not save — the
+  // migrated shape is persisted by the next ordinary saveAppState().
+  function normalizeAllPanels() {
+    if (Array.isArray(appState.playerPanels)) appState.playerPanels.forEach(normalizePanel);
+  }
+
+  // Count the slots in a panel that actually hold a name.
+  function countPanelPlayers(panel) {
+    if (!panel || !Array.isArray(panel.players)) return 0;
+    return panel.players.filter(p => p && (p.name || '').trim() !== '').length;
+  }
+
   // Load matches using enhanced storage system
   async function loadAppState() {
     try {
@@ -3072,6 +3119,8 @@
       console.warn('Failed to load player panels from storage', err);
       appState.playerPanels = [];
     }
+    // Migrate legacy panels (name-only lists) into fixed 30-slot team sheets.
+    normalizeAllPanels();
     
     // Load last selected panels
     try {
@@ -5412,14 +5461,35 @@
 
       header.appendChild(titleWrap);
 
+      // Right-hand actions: Import (before throw-in only) and the Swap toggle.
+      const actions = document.createElement('div');
+      actions.className = 'team-players-actions';
+
+      // Importing rewrites the whole roster, so it's offered only before the
+      // match starts — relabelling players mid-match would rewrite the names
+      // shown against events already recorded.
+      if (match.currentPeriod === MatchPeriod.NOT_STARTED && appState.playerPanels.length > 0) {
+        const importBtn = document.createElement('button');
+        // Class, not id: both teams render into the same container.
+        importBtn.className = 'primary-btn panel-import-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2';
+        importBtn.type = 'button';
+        importBtn.dataset.teamKey = key;
+        importBtn.title = 'Import a panel into this team';
+        importBtn.textContent = 'Import';
+        importBtn.addEventListener('click', () => showPanelImportPicker(key));
+        actions.appendChild(importBtn);
+      }
+
       const swapBtn = document.createElement('button');
       swapBtn.id = 'swap-players-btn';
       swapBtn.type = 'button';
       swapBtn.className = 'primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2';
       swapBtn.title = 'Swap two players';
       swapBtn.textContent = 'Swap';
-      swapBtn.addEventListener('click', toggleSwapMode);
-      header.appendChild(swapBtn);
+      // Wrapped so the click event isn't passed as the container id.
+      swapBtn.addEventListener('click', () => toggleSwapMode('players-edit-container'));
+      actions.appendChild(swapBtn);
+      header.appendChild(actions);
 
       sec.appendChild(header);
 
@@ -5474,7 +5544,7 @@
         // mode the input is `pointer-events: none` so taps on the input area
         // bubble to the row.
         row.addEventListener('click', (e) => {
-          handlePlayerRowTapForSwap(row, e);
+          handleSwapRowTap(document.getElementById('players-edit-container'), row, e);
         });
 
         row.appendChild(chip);
@@ -5519,6 +5589,9 @@
     // Set jersey info — formatted so the number renders as a glowing
     // scoreboard digit alongside an uppercase mono caption.
     jerseyInfo.innerHTML = `Filling jersey <span class="player-selection-jersey-num">${jerseyNumber}</span>`;
+
+    // The bulk-import picker reuses this view and hides the dropdown; restore it.
+    panelDropdown.style.display = '';
     
     // Get saved panel selection first
     const panelKey = `${appState.currentMatchId}-${appState.playerSelectionContext.teamKey}`;
@@ -5598,7 +5671,17 @@
         button.type = 'button';
         // --i drives the staggered reveal animation defined in styles.css.
         button.style.setProperty('--i', idx);
-        button.textContent = player.name;
+
+        // Show the panel jersey so it's clear which number a name comes from —
+        // the list is in jersey order now that panels are numbered sheets.
+        const chip = document.createElement('span');
+        chip.className = 'jersey-chip player-selection-chip';
+        chip.textContent = player.jerseyNumber;
+        button.appendChild(chip);
+
+        const nameEl = document.createElement('span');
+        nameEl.textContent = player.name;
+        button.appendChild(nameEl);
 
         button.addEventListener('click', () => {
           selectPlayerForJersey(appState.playerSelectionContext.teamKey,
@@ -5628,6 +5711,110 @@
       const event = new Event('change', { bubbles: true });
       input.dispatchEvent(event);
     }
+  }
+
+  // Copy an entire panel into one team's roster on the Edit Players screen.
+  //
+  // Writes to the DOM inputs only — never to appState. That is deliberate:
+  //  - Cancel stays honest, since nothing is committed until Done.
+  //  - savePlayerChanges() then assigns only `.name` on the existing player
+  //    objects, so ids and jersey numbers survive and recorded events keep
+  //    resolving to the right player.
+  function importPanelIntoTeam(teamKey, panelId) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    // Import is only offered before throw-in; re-check in case the screen is stale.
+    if (match.currentPeriod !== MatchPeriod.NOT_STARTED) return;
+
+    const panel = appState.playerPanels.find(p => p.id === panelId);
+    if (!panel) return;
+    normalizePanel(panel);
+
+    // A live swap selection would point at rows we're about to overwrite.
+    setSwapMode(false, 'players-edit-container');
+
+    const byNumber = new Map(panel.players.map(p => [p.jerseyNumber, p]));
+    // Scoping by team is essential — both teams render in the same container.
+    const inputs = document.querySelectorAll(
+      `#players-edit-container input.player-row-name[data-team-key="${teamKey}"]`
+    );
+    inputs.forEach((input) => {
+      const n = parseInt(input.dataset.jerseyNumber, 10);
+      const slot = byNumber.get(n);
+      const name = slot && slot.name.trim();
+      // Empty panel slots reset the jersey to its placeholder. `No.N` is the
+      // sentinel the rest of the app tests against to decide whether to show a
+      // name alongside the number, so it must be exactly this string.
+      input.value = name ? name : `No.${n}`;
+    });
+
+    appState.lastSelectedPanels[`${appState.currentMatchId}-${teamKey}`] = panelId;
+    saveAppState();
+  }
+
+  // Panel picker for a bulk import. Reuses the Player Selection view rather
+  // than introducing another screen.
+  function showPanelImportPicker(teamKey) {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    if (!appState.playerPanels.length) {
+      alert('No player panels yet. Create one from the home screen first.');
+      return;
+    }
+
+    const team = match[teamKey];
+    const listEl = document.getElementById('player-selection-list-page');
+    const infoEl = document.getElementById('player-selection-jersey-info');
+    const dropdownEl = document.getElementById('player-selection-panel-dropdown');
+    if (!listEl) return;
+
+    if (infoEl) infoEl.textContent = `Import a panel into ${team.name}`;
+    // The panel dropdown is for picking a player within a panel; here the list
+    // itself is the panel picker, so hide it.
+    if (dropdownEl) dropdownEl.style.display = 'none';
+
+    listEl.innerHTML = '';
+    appState.playerPanels.forEach((panel, idx) => {
+      normalizePanel(panel);
+      const filled = countPanelPlayers(panel);
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      // --i drives the staggered reveal animation, as in the player list.
+      button.style.setProperty('--i', idx);
+      button.textContent = `${panel.name}  ·  ${filled} ${filled === 1 ? 'player' : 'players'}`;
+
+      button.addEventListener('click', () => {
+        if (confirmPanelImport(panel, team, teamKey, filled)) {
+          importPanelIntoTeam(teamKey, panel.id);
+          showView('edit-players-view');
+        }
+      });
+
+      listEl.appendChild(button);
+    });
+
+    showView('player-selection-view');
+  }
+
+  // Warn before an import that would discard names the user typed. A roster
+  // still on its `No.N` defaults has nothing to lose, so don't nag there.
+  function confirmPanelImport(panel, team, teamKey, filled) {
+    const inputs = document.querySelectorAll(
+      `#players-edit-container input.player-row-name[data-team-key="${teamKey}"]`
+    );
+    const isPristine = Array.from(inputs).every((input) => {
+      const v = input.value.trim();
+      return v === '' || v === `No.${input.dataset.jerseyNumber}`;
+    });
+    if (isPristine) return true;
+
+    const emptySlots = PANEL_SIZE - filled;
+    return confirm(
+      `Import "${panel.name}" into ${team.name}?\n\n` +
+      `This replaces all ${PANEL_SIZE} names.` +
+      (emptySlots ? ` ${emptySlots} jersey${emptySlots === 1 ? '' : 's'} will reset to the No.N default.` : '')
+    );
   }
 
   // Make player panel functions globally accessible
@@ -5671,15 +5858,43 @@
     showView('match-details-view');
   }
 
-  // ===== Edit Players: tap-two-to-swap mode =====
+  // ===== Tap-two-to-swap mode =====
+  // Shared by the Edit Players screen and the Panel Editor. Each screen supplies
+  // its own container/banner/button plus the row and input selectors to use.
   // Holds the currently-selected first row while waiting for the second tap.
   // Resets whenever swap mode toggles off.
   let swapFirstRow = null;
 
-  function setSwapMode(on) {
-    const container = document.getElementById('players-edit-container');
-    const banner = document.getElementById('swap-mode-banner');
-    const btn = document.getElementById('swap-players-btn');
+  const SWAP_TARGETS = {
+    'players-edit-container': {
+      banner: 'swap-mode-banner',
+      button: 'swap-players-btn',
+      row: '.player-row',
+      input: 'input.player-row-name',
+      // Edit Players reads the DOM on Done, so no commit event is needed.
+      commitOnSwap: false
+    },
+    'panel-players-list': {
+      banner: 'panel-swap-mode-banner',
+      button: 'swap-panel-players-btn',
+      row: '.panel-player-row',
+      input: 'input.panel-player-name',
+      // The panel editor saves per-input on `change`, so a swap must announce
+      // itself or it would be visible but never persisted.
+      commitOnSwap: true
+    }
+  };
+
+  function getSwapConfig(container) {
+    return (container && SWAP_TARGETS[container.id]) || null;
+  }
+
+  function setSwapMode(on, containerId = 'players-edit-container') {
+    const container = document.getElementById(containerId);
+    const cfg = getSwapConfig(container);
+    if (!cfg) return;
+    const banner = document.getElementById(cfg.banner);
+    const btn = document.getElementById(cfg.button);
     if (!container || !banner || !btn) return;
     if (on) {
       container.setAttribute('data-swap-mode', 'on');
@@ -5694,21 +5909,26 @@
       banner.classList.remove('is-visible');
       btn.classList.remove('is-on');
       // Clear any selection state
-      container.querySelectorAll('.player-row.is-swap-selected').forEach((r) => r.classList.remove('is-swap-selected'));
+      container.querySelectorAll(`${cfg.row}.is-swap-selected`).forEach((r) => r.classList.remove('is-swap-selected'));
       swapFirstRow = null;
     }
   }
 
-  function toggleSwapMode() {
-    const container = document.getElementById('players-edit-container');
+  function toggleSwapMode(containerId = 'players-edit-container') {
+    const container = document.getElementById(containerId);
     if (!container) return;
     const isOn = container.getAttribute('data-swap-mode') === 'on';
-    setSwapMode(!isOn);
+    setSwapMode(!isOn, containerId);
+  }
+
+  function togglePanelSwapMode() {
+    toggleSwapMode('panel-players-list');
   }
 
   // Called from each row's click handler. No-ops outside swap mode.
-  function handlePlayerRowTapForSwap(row, evt) {
-    const container = document.getElementById('players-edit-container');
+  function handleSwapRowTap(container, row, evt) {
+    const cfg = getSwapConfig(container);
+    if (!cfg) return;
     if (!container || container.getAttribute('data-swap-mode') !== 'on') return;
     // We're handling the swap interaction — stop the click from also focusing
     // the readonly input or hitting the select-from-panel button.
@@ -5728,7 +5948,8 @@
       return;
     }
 
-    // Only allow swaps within the same team.
+    // Only allow swaps within the same team. Panel rows carry no team key, so
+    // this compares undefined to undefined and correctly permits the swap.
     if (swapFirstRow.dataset.teamKey !== row.dataset.teamKey) {
       // Treat as "switch the selection to the new row" rather than fail silently.
       swapFirstRow.classList.remove('is-swap-selected');
@@ -5738,12 +5959,17 @@
     }
 
     // Two different rows on the same team — swap their input values.
-    const inputA = swapFirstRow.querySelector('input.player-row-name');
-    const inputB = row.querySelector('input.player-row-name');
+    const inputA = swapFirstRow.querySelector(cfg.input);
+    const inputB = row.querySelector(cfg.input);
     if (inputA && inputB) {
       const tmp = inputA.value;
       inputA.value = inputB.value;
       inputB.value = tmp;
+      // Screens that commit per-input need to hear about the change.
+      if (cfg.commitOnSwap) {
+        inputA.dispatchEvent(new Event('change', { bubbles: true }));
+        inputB.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     }
     // Brief pulse on both rows, then reset selection. Swap mode stays on so
     // the user can perform several swaps in a row.
@@ -7314,7 +7540,7 @@
     document.getElementById('add-panel-btn').addEventListener('click', () => showPanelEditor());
     document.getElementById('save-panel-btn').addEventListener('click', savePanelEditor);
     document.getElementById('cancel-panel-edit-btn').addEventListener('click', cancelPanelEditor);
-    document.getElementById('add-player-to-panel-btn').addEventListener('click', addPlayerToPanel);
+    document.getElementById('swap-panel-players-btn').addEventListener('click', togglePanelSwapMode);
     document.getElementById('export-data-btn').addEventListener('click', exportData);
     document.getElementById('select-import-file-btn').addEventListener('click', () => {
       document.getElementById('import-file-input').click();
