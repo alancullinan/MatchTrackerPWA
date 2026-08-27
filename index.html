@@ -816,8 +816,10 @@
               <h3>Players</h3>
               <span id="panel-players-count" class="team-players-count"></span>
             </div>
-            <button id="add-player-to-panel-btn" type="button" title="Add Player"></button>
+            <button type="button" id="swap-panel-players-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Swap two players">Swap</button>
           </div>
+          <!-- Shown only while swap mode is active; same banner as Edit Players. -->
+          <div id="panel-swap-mode-banner" class="swap-banner">Tap two players to swap their numbers.</div>
           <!-- Scrollable player list -->
           <div id="panel-players-list"
                style="max-height: calc(100vh - 280px); overflow-y: auto; -webkit-overflow-scrolling: touch;">
