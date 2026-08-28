@@ -39,6 +39,10 @@
         --mist: #8A998E;
         --scoreboard-amber: #FFB628;
         --danger: #D43A3A;
+        /* Flag colours, matching the scoring buttons in the tracker */
+        --flag-goal: #1FA85B;
+        --flag-point: #F4F1E6;
+        --flag-2pt: #FF8A1F;
         --font-display: 'Bebas Neue', system-ui, sans-serif;
         --font-body: 'Manrope', system-ui, sans-serif;
         --font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -175,6 +179,46 @@
         font-variant-numeric: tabular-nums;
       }
 
+      /* --- Last score --- */
+      .last-score {
+        text-align: center;
+        padding: 14px 4px 0;
+      }
+      .ls-outcome {
+        display: inline-block;
+        font-family: var(--font-display);
+        font-size: 0.8125rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        padding: 2px 10px;
+        border-radius: 999px;
+        margin-bottom: 6px;
+      }
+      .ls-outcome.goal  { background: var(--flag-goal); color: #04170D; }
+      .ls-outcome.point { background: var(--flag-point); color: #0B1F14; }
+      .ls-outcome.two   { background: var(--flag-2pt); color: #1A0A00; }
+      .ls-team {
+        font-family: var(--font-display);
+        font-size: 1.0625rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--floodlight);
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+      }
+      .ls-detail {
+        font-size: 0.8125rem;
+        color: var(--chalk);
+        margin-top: 2px;
+        overflow-wrap: anywhere;
+      }
+      .ls-when {
+        font-size: 0.7rem;
+        color: var(--mist);
+        margin-top: 2px;
+        font-variant-numeric: tabular-nums;
+      }
+
       /* --- Live badge + footer --- */
       .status { text-align: center; padding: 14px 0 4px; min-height: 28px; }
       .live-badge {
@@ -285,6 +329,36 @@
           if (el) el.textContent = formatTime(currentSeconds(current));
         }
 
+        // Most recent score. Renders nothing before the first score, and for
+        // broadcasts started on an older version that carry no lastScore data.
+        function lastScoreBlock(data) {
+          var text = data.lastScoreText || '';
+          if (!text) return '';
+
+          var outcomeClass = data.lastScoreOutcome === 'goal' ? 'goal'
+            : (data.lastScoreOutcome === 'twoPointer' ? 'two' : 'point');
+          var label = data.lastScoreOutcome === 'goal' ? 'Goal'
+            : (data.lastScoreOutcome === 'twoPointer' ? '2 Pointer' : 'Point');
+
+          // The outcome leads lastScoreText and is shown in the chip, so drop
+          // it from the detail line rather than repeating it.
+          var detail = text.split(' · ').slice(1).join(' · ');
+
+          var when = [];
+          if (data.lastScoreMinute || data.lastScoreMinute === 0) {
+            when.push(data.lastScoreMinute + ' min');
+          }
+          if (data.lastScorePeriod) when.push(data.lastScorePeriod);
+
+          return '<div class="last-score">' +
+            '<div class="ls-outcome ' + outcomeClass + '">' + escapeHtml(label) + '</div>' +
+            (data.lastScoreTeam
+              ? '<div class="ls-team">' + escapeHtml(data.lastScoreTeam) + '</div>' : '') +
+            (detail ? '<div class="ls-detail">' + escapeHtml(detail) + '</div>' : '') +
+            (when.length ? '<div class="ls-when">' + escapeHtml(when.join(' · ')) + '</div>' : '') +
+          '</div>';
+        }
+
         // Score in GAA form: goals-points, points zero-padded (1-08).
         function teamCard(name, goals, points, total) {
           goals = goals || 0;
@@ -324,6 +398,7 @@
               teamCard(data.team1Name, data.team1Goals, data.team1Points, data.team1Score) +
               teamCard(data.team2Name, data.team2Goals, data.team2Points, data.team2Score) +
             '</div>' +
+            lastScoreBlock(data) +
             '<div class="status">' +
               (running ? '<span class="live-badge"><span class="dot"></span>Live</span>' : '') +
             '</div>';

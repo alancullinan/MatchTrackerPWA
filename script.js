@@ -2707,11 +2707,73 @@
     return base + 'live.html?id=' + match.shareId;
   }
 
-  // Build the payload written to the cloud. Deliberately minimal - no player
-  // names, no event list.
+  // Most recent scoring shot, formatted for the live page. Scores only -
+  // cards, fouls, kickouts, subs and notes are deliberately not broadcast.
+  //
+  // Uses sortEventsByTime rather than the last element of match.events: event
+  // times are editable, so insertion order can diverge from chronological
+  // order, and the events list sorts the same way.
+  function getLastScoreForBroadcast(match) {
+    const empty = { text: '', team: '', outcome: '', minute: 0, period: '' };
+    if (!match || !Array.isArray(match.events) || match.events.length === 0) return empty;
+
+    const scoringOutcomes = [ShotOutcome.GOAL, ShotOutcome.POINT, ShotOutcome.TWO_POINTER];
+    const sorted = sortEventsByTime(match.events, true);
+    const ev = sorted.find((e) =>
+      e && e.type === EventType.SHOT && scoringOutcomes.indexOf(e.shotOutcome) !== -1);
+    if (!ev) return empty;
+
+    // The app renders 'twoPointer' as "2 Pointer", not the generic
+    // de-camelCased "Two Pointer".
+    const outcomeLabels = { goal: 'Goal', point: 'Point', twoPointer: '2 Pointer' };
+    // Keyed on the values ShotType actually stores. The in-app maps key on
+    // '45m65m', which is never written, so a 45 shows there as "Forty Five".
+    const shotTypeLabels = {
+      fromPlay: 'From Play', free: 'Free', penalty: 'Penalty',
+      fortyFive: '45m/65m', sixtyFive: '45m/65m',
+      sideline: 'Sideline', mark: 'Mark'
+    };
+
+    const player = ev.player1Id
+      ? (match.team1.players.find((p) => p.id === ev.player1Id) ||
+         match.team2.players.find((p) => p.id === ev.player1Id) || null)
+      : null;
+
+    // Name alone reads better for spectators; the jersey number is only a
+    // fallback for players still on their default "No.N" label.
+    let scorer = '';
+    if (player) {
+      const defaultName = `No.${player.jerseyNumber}`;
+      scorer = (player.name && player.name !== defaultName)
+        ? player.name
+        : `#${player.jerseyNumber}`;
+    }
+
+    const parts = [outcomeLabels[ev.shotOutcome] || ''];
+    if (ev.shotType && shotTypeLabels[ev.shotType]) parts.push(shotTypeLabels[ev.shotType]);
+    if (scorer) parts.push(scorer);
+
+    const team = ev.teamId
+      ? (ev.teamId === match.team1.id ? match.team1 : match.team2)
+      : null;
+
+    return {
+      text: parts.filter(Boolean).join(' · '),
+      team: team ? (team.name || '') : '',
+      outcome: ev.shotOutcome || '',
+      minute: Math.floor((ev.timeElapsed || 0) / 60),
+      period: ev.period || ''
+    };
+  }
+
+  // Build the payload written to the cloud. Carries the score, clock state and
+  // the most recent score including the scorer's name - no full event list.
   function buildLivePayload(match) {
     const team1Score = computeTeamScore(match, 'team1');
     const team2Score = computeTeamScore(match, 'team2');
+    // Always written, even when empty: RTDB drops undefined keys, so omitting
+    // these would leave stale values from an earlier push in place.
+    const lastScore = getLastScoreForBroadcast(match);
     return {
       team1Name: match.team1.name || 'Team 1',
       team2Name: match.team2.name || 'Team 2',
@@ -2728,6 +2790,11 @@
       periodStartTimestamp: match.periodStartTimestamp || null,
       isPaused: match.isPaused !== false,
       matchType: match.matchType || 'football',
+      lastScoreText: lastScore.text,
+      lastScoreTeam: lastScore.team,
+      lastScoreOutcome: lastScore.outcome,
+      lastScoreMinute: lastScore.minute,
+      lastScorePeriod: lastScore.period,
       lastUpdated: firebase.database.ServerValue.TIMESTAMP
     };
   }
