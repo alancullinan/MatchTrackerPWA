@@ -1,4 +1,4 @@
-const CACHE_NAME = 'match-tracker-v1.7.0';
+const CACHE_NAME = 'match-tracker-v1.8.0';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -13,6 +13,7 @@ const urlsToCache = [
   // Icons
   '/icons/back-grey-blue.svg',
   '/icons/back.svg',
+  '/icons/broadcast.svg',
   '/icons/burger.svg',
   '/icons/card.svg',
   '/icons/delete.svg',

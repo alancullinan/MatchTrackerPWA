@@ -2437,3 +2437,26 @@ button.player-row-action:hover {
     justify-content: flex-end;
   }
 }
+
+/* ===== Live score sharing ===== */
+/* Dot on the toolbar button showing a broadcast is currently active. */
+.live-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--r-pill);
+  background-color: var(--danger);
+  border: 2px solid var(--pitch-900);
+  animation: live-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes live-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation: none; }
+}

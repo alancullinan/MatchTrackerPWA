@@ -174,6 +174,11 @@
             <img src="icons/back.svg" alt="Back" class="w-8 h-8" />
           </button>
           <div class="flex items-center">
+            <!-- Live score sharing button -->
+            <button id="live-share-btn" class="cursor-pointer mr-3 relative" title="Share Live Score">
+              <img src="icons/broadcast.svg" alt="Live Score" class="w-8 h-8" />
+              <span id="live-share-indicator" class="live-dot" style="display:none;"></span>
+            </button>
             <!-- Share button -->
             <button id="share-match-btn" class="cursor-pointer mr-3" title="Share Match">
               <img src="icons/share.svg" alt="Share" class="w-8 h-8" />
@@ -695,6 +700,45 @@
         </div>
       </div>
 
+      <!-- Live Score Sharing Modal -->
+      <div id="live-share-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-md">
+          <div class="flex justify-between items-center mb-4">
+            <button id="live-share-close" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2" title="Close">Close</button>
+            <h3 class="text-lg font-bold">Live Score</h3>
+            <span class="w-16"></span>
+          </div>
+
+          <!-- Off state -->
+          <div id="live-share-off">
+            <p class="text-sm text-gray-300 mb-2">
+              Share a link so anyone can follow this match's score live.
+            </p>
+            <p class="text-xs text-gray-400 mb-4">
+              The link shows team names, competition, venue, score and the clock.
+              No player names or event details are shared. Anyone with the link can view it,
+              so only send it to people you're happy to share with.
+            </p>
+            <button id="live-share-start" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 w-full">Start Sharing</button>
+          </div>
+
+          <!-- On state -->
+          <div id="live-share-on" style="display:none;">
+            <p class="text-sm text-gray-300 mb-2">This match is being shared live.</p>
+            <div class="p-2 bg-gray-700 border border-gray-600 rounded mb-3">
+              <code id="live-share-url" class="text-xs break-all text-blue-300"></code>
+            </div>
+            <div class="flex space-x-2 mb-3">
+              <button id="live-share-copy" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 flex-1">Copy Link</button>
+              <button id="live-share-send" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 flex-1" style="display:none;">Share Link</button>
+            </div>
+            <button id="live-share-stop" class="primary-btn bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 w-full">Stop Sharing</button>
+          </div>
+
+          <p id="live-share-status" class="text-xs text-gray-400 mt-3" style="display:none;"></p>
+        </div>
+      </div>
+
       <!-- Data Management Modal -->
       <div id="data-management-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
         <div class="bg-gray-800 text-gray-100 p-4 border border-gray-700 w-11/12 max-w-md">
@@ -875,7 +919,25 @@
         </div>
       </section>
     </main>
-    <script src="script.js?v=1.6.1"></script>
+
+    <!-- Firebase (compat builds - the modular SDK needs a bundler, which this project has none) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <script>
+      // Public client identifier, not a secret - access is controlled by the
+      // Realtime Database rules. NOTE: live.html carries a copy of this; change both.
+      var firebaseConfig = {
+        apiKey: "AIzaSyDKKeJUUWoeD1zlA49qxTX33i4Mw3Xyebg",
+        authDomain: "matchtrackerlivescore.firebaseapp.com",
+        databaseURL: "https://matchtrackerlivescore-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "matchtrackerlivescore",
+        storageBucket: "matchtrackerlivescore.firebasestorage.app",
+        messagingSenderId: "706999361844",
+        appId: "1:706999361844:web:64d7552117ec919105c561"
+      };
+    </script>
+
+    <script src="script.js?v=1.8.0"></script>
     
     <!-- Service Worker Registration -->
     <script>
