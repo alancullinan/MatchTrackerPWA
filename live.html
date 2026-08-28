@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B1F14" />
+    <title>Live Score</title>
+    <style>
+      /* Self-hosted fonts, mirroring styles.css so the viewer matches the
+         tracker without pulling in the full app stylesheet. */
+      @font-face {
+        font-family: 'Bebas Neue';
+        font-style: normal; font-weight: 400; font-display: swap;
+        src: url('fonts/bebas-neue.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Manrope';
+        font-style: normal; font-weight: 400; font-display: swap;
+        src: url('fonts/manrope.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Manrope';
+        font-style: normal; font-weight: 600; font-display: swap;
+        src: url('fonts/manrope.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        font-style: normal; font-weight: 700; font-display: swap;
+        src: url('fonts/jetbrains-mono.woff2') format('woff2');
+      }
+
+      /* Design tokens lifted from styles.css */
+      :root {
+        --pitch-900: #0B1F14;
+        --pitch-800: #103024;
+        --touchline: #1F5A3E;
+        --floodlight: #F4F1E6;
+        --chalk: #C7D1C2;
+        --mist: #8A998E;
+        --scoreboard-amber: #FFB628;
+        --danger: #D43A3A;
+        --font-display: 'Bebas Neue', system-ui, sans-serif;
+        --font-body: 'Manrope', system-ui, sans-serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+        --r-md: 12px;
+        --r-lg: 18px;
+        --sh-board: 0 0 0 1px rgba(233,242,229,.12) inset, 0 12px 36px rgba(0,0,0,.55);
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        background:
+          radial-gradient(ellipse at 50% 0%, rgba(31, 90, 62, 0.22) 0%, transparent 60%),
+          linear-gradient(180deg, var(--pitch-900) 0%, #081A11 100%);
+        background-attachment: fixed;
+        color: var(--floodlight);
+        font-family: var(--font-body);
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
+      }
+
+      .wrap {
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        /* Centre the block on tall phones instead of stranding it at the top,
+           but fall back to top-aligned when content is taller than the screen. */
+        justify-content: center;
+      }
+
+      /* --- Header: competition + venue --- */
+      .header { text-align: center; padding: 4px 0 10px; }
+      .competition {
+        font-family: var(--font-display);
+        font-size: 1.25rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--floodlight);
+        line-height: 1.1;
+      }
+      .venue {
+        font-size: 0.75rem;
+        color: var(--mist);
+        margin-top: 2px;
+      }
+
+      /* --- Scoreboard panel: period + clock --- */
+      .scoreboard {
+        background: linear-gradient(180deg, rgba(11,31,20,.55) 0%, rgba(11,31,20,.78) 100%);
+        border: 1px solid rgba(199,209,194,.16);
+        border-radius: var(--r-md);
+        box-shadow: 0 6px 16px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04) inset;
+        backdrop-filter: blur(6px) saturate(1.05);
+        padding: 6px 12px 8px;
+        text-align: center;
+        margin-bottom: 14px;
+      }
+      .period {
+        font-family: var(--font-display);
+        font-size: 0.8125rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--scoreboard-amber);
+        text-shadow: 0 0 8px rgba(255,182,40,.35);
+      }
+      .time {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 3rem;
+        line-height: 1.05;
+        color: var(--floodlight);
+        text-shadow: 0 0 14px rgba(244,241,230,.30);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+      }
+      .time.is-running { animation: timerPulse 1.6s ease-in-out infinite; }
+      @keyframes timerPulse {
+        0%, 100% { text-shadow: 0 0 14px rgba(244,241,230,.30); }
+        50%      { text-shadow: 0 0 20px rgba(244,241,230,.55), 0 0 32px rgba(244,241,230,.15); }
+      }
+
+      /* --- Team cards, stacked like the tracker --- */
+      .cards { position: relative; display: flex; flex-direction: column; gap: 12px; }
+      /* Halfway line between the two cards */
+      .cards::after {
+        content: '';
+        position: absolute;
+        left: 12%; right: 12%;
+        top: 50%;
+        height: 1px;
+        border-top: 1px dashed rgba(233,242,229,.18);
+        pointer-events: none;
+      }
+
+      .card {
+        background: linear-gradient(180deg, rgba(11,31,20,.78) 0%, rgba(17,43,29,.88) 100%);
+        border: 1px solid var(--touchline);
+        border-radius: var(--r-lg);
+        box-shadow: var(--sh-board);
+        backdrop-filter: blur(6px) saturate(1.05);
+        padding: 16px;
+        text-align: center;
+      }
+      .team-name {
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 400;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--floodlight);
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+      }
+      .score {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 2.75rem;
+        line-height: 1;
+        color: var(--floodlight);
+        font-variant-numeric: tabular-nums;
+        text-shadow: 0 0 18px rgba(244,241,230,.22);
+        margin-top: 8px;
+      }
+      .total {
+        font-size: 0.9rem;
+        color: var(--chalk);
+        margin-top: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* --- Live badge + footer --- */
+      .status { text-align: center; padding: 14px 0 4px; min-height: 28px; }
+      .live-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--chalk);
+      }
+      .live-badge .dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--danger);
+        animation: pulse 2s ease-in-out infinite;
+      }
+      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+      @media (prefers-reduced-motion: reduce) {
+        .live-badge .dot, .time.is-running { animation: none; }
+      }
+
+      .message {
+        text-align: center;
+        color: var(--chalk);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        padding: 1rem;
+        margin: 0 auto;
+        max-width: 30ch;
+        overflow-wrap: anywhere;
+      }
+
+      /* Short/landscape phones: keep everything on one screen */
+      @media (max-height: 620px) {
+        .time { font-size: 2.25rem; }
+        .score { font-size: 2.25rem; }
+        .team-name { font-size: 1.25rem; }
+        .card { padding: 12px; }
+        .cards { gap: 10px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap" id="content">
+      <div class="message">Loading…</div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <script>
+      // Public client identifier, not a secret - access is controlled by the
+      // Realtime Database rules. NOTE: index.html carries a copy of this; change both.
+      var firebaseConfig = {
+        apiKey: "AIzaSyDKKeJUUWoeD1zlA49qxTX33i4Mw3Xyebg",
+        authDomain: "matchtrackerlivescore.firebaseapp.com",
+        databaseURL: "https://matchtrackerlivescore-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "matchtrackerlivescore",
+        storageBucket: "matchtrackerlivescore.firebasestorage.app",
+        messagingSenderId: "706999361844",
+        appId: "1:706999361844:web:64d7552117ec919105c561"
+      };
+
+      (function () {
+        var content = document.getElementById('content');
+        var shareId = new URLSearchParams(window.location.search).get('id');
+        var current = null;
+        var ticker = null;
+
+        // MatchPeriod in script.js stores display strings directly ('1st Half'),
+        // so the period needs no translation - it is shown as sent.
+        var NOT_STARTED = 'Not Started';
+        var PLAYING = ['1st Half', '2nd Half', 'Extra Time 1st Half', 'Extra Time 2nd Half'];
+
+        function showMessage(text) {
+          if (ticker) { clearInterval(ticker); ticker = null; }
+          content.innerHTML = '<div class="message">' + escapeHtml(text) + '</div>';
+        }
+
+        function escapeHtml(str) {
+          return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function formatTime(seconds) {
+          if (!isFinite(seconds) || seconds < 0) seconds = 0;
+          var m = Math.floor(seconds / 60);
+          var s = Math.floor(seconds % 60);
+          return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        // Recompute the clock locally from the timestamp anchor, the same way
+        // startTimerInterval() does in the app. The broadcaster only sends this
+        // anchor when it changes, so we never depend on a per-second push.
+        function currentSeconds(data) {
+          if (!data) return 0;
+          if (data.isPaused || !data.periodStartTimestamp) {
+            return data.elapsedTime || 0;
+          }
+          return Math.floor((Date.now() - data.periodStartTimestamp) / 1000);
+        }
+
+        function renderClock() {
+          if (!current) return;
+          var el = document.getElementById('time');
+          if (el) el.textContent = formatTime(currentSeconds(current));
+        }
+
+        // Score in GAA form: goals-points, points zero-padded (1-08).
+        function teamCard(name, goals, points, total) {
+          goals = goals || 0;
+          points = points || 0;
+          return '<div class="card">' +
+            '<div class="team-name">' + escapeHtml(name || 'Team') + '</div>' +
+            '<div class="score">' + goals + '-' + (points < 10 ? '0' : '') + points + '</div>' +
+            '<div class="total">(' + (total || 0) + ')</div>' +
+          '</div>';
+        }
+
+        function render(data) {
+          current = data;
+
+          var isPlaying = PLAYING.indexOf(data.currentPeriod) !== -1;
+          var running = isPlaying && !data.isPaused;
+          var showClock = data.currentPeriod !== NOT_STARTED;
+
+          var header = '';
+          if (data.competition || data.venue) {
+            header = '<div class="header">' +
+              (data.competition ? '<div class="competition">' + escapeHtml(data.competition) + '</div>' : '') +
+              (data.venue ? '<div class="venue">' + escapeHtml(data.venue) + '</div>' : '') +
+            '</div>';
+          }
+
+          content.innerHTML =
+            header +
+            '<div class="scoreboard">' +
+              '<div class="period">' + escapeHtml(data.currentPeriod || '') + '</div>' +
+              (showClock
+                ? '<div class="time' + (running ? ' is-running' : '') + '" id="time">' +
+                    formatTime(currentSeconds(data)) + '</div>'
+                : '') +
+            '</div>' +
+            '<div class="cards">' +
+              teamCard(data.team1Name, data.team1Goals, data.team1Points, data.team1Score) +
+              teamCard(data.team2Name, data.team2Goals, data.team2Points, data.team2Score) +
+            '</div>' +
+            '<div class="status">' +
+              (running ? '<span class="live-badge"><span class="dot"></span>Live</span>' : '') +
+            '</div>';
+
+          // Only tick while a period is actually running.
+          if (ticker) { clearInterval(ticker); ticker = null; }
+          if (running) ticker = setInterval(renderClock, 1000);
+        }
+
+        if (!shareId) {
+          showMessage('No match specified. Check the link you were sent.');
+          return;
+        }
+
+        if (typeof firebase === 'undefined') {
+          showMessage('Could not connect. Check your internet connection and refresh.');
+          return;
+        }
+
+        try {
+          firebase.initializeApp(firebaseConfig);
+          firebase.database().ref('liveMatches/' + shareId).on(
+            'value',
+            function (snapshot) {
+              var data = snapshot.val();
+              if (!data) {
+                showMessage('This match is not being shared, or sharing has ended.');
+                return;
+              }
+              render(data);
+            },
+            function (err) {
+              console.warn('Live score subscription failed', err);
+              showMessage('Could not load the score. Please refresh to try again.');
+            }
+          );
+        } catch (err) {
+          console.warn('Firebase init failed', err);
+          showMessage('Could not connect. Please refresh to try again.');
+        }
+
+        // The anchor-based clock drifts while a phone sleeps; recompute on wake.
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) renderClock();
+        });
+      })();
+    </script>
+  </body>
+</html>

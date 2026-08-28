@@ -2656,6 +2656,260 @@
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Live score sharing (Firebase Realtime Database)
+  //
+  // Broadcasting mirrors a small snapshot of the match to the cloud so anyone
+  // with the share link can follow the score on live.html.  The clock is NOT
+  // pushed every second: we send periodStartTimestamp and isPaused only when
+  // they change, and the viewer recomputes the running time locally the same
+  // way startTimerInterval() does.  That keeps a full match to a handful of
+  // writes instead of several thousand.
+  // ---------------------------------------------------------------------------
+
+  const LIVE_SHARE_PATH = 'liveMatches';
+  let firebaseDb = null;
+
+  // Lazily initialise Firebase. Returns null if the SDK never loaded (offline,
+  // blocked CDN) so every caller degrades quietly instead of throwing.
+  function getFirebaseDb() {
+    if (firebaseDb) return firebaseDb;
+    if (typeof firebase === 'undefined' || typeof firebaseConfig === 'undefined') return null;
+    try {
+      if (!firebase.apps || !firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      firebaseDb = firebase.database();
+      return firebaseDb;
+    } catch (err) {
+      console.warn('Firebase init failed', err);
+      return null;
+    }
+  }
+
+  // URL-safe random token. Share IDs must be unguessable: the database rules
+  // allow unauthenticated writes, so the ID is what protects a broadcast.
+  function generateShareId() {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const bytes = new Uint8Array(20);
+    crypto.getRandomValues(bytes);
+    let out = '';
+    for (let i = 0; i < bytes.length; i++) {
+      out += alphabet[bytes[i] % alphabet.length];
+    }
+    return out;
+  }
+
+  // Full viewer URL for a broadcast match.
+  function getLiveShareUrl(match) {
+    if (!match || !match.shareId) return '';
+    const base = window.location.href.split(/[?#]/)[0].replace(/[^/]*$/, '');
+    return base + 'live.html?id=' + match.shareId;
+  }
+
+  // Build the payload written to the cloud. Deliberately minimal - no player
+  // names, no event list.
+  function buildLivePayload(match) {
+    const team1Score = computeTeamScore(match, 'team1');
+    const team2Score = computeTeamScore(match, 'team2');
+    return {
+      team1Name: match.team1.name || 'Team 1',
+      team2Name: match.team2.name || 'Team 2',
+      competition: match.competition || '',
+      venue: match.venue || '',
+      team1Score: team1Score.total,
+      team2Score: team2Score.total,
+      team1Goals: team1Score.goals,
+      team1Points: team1Score.points,
+      team2Goals: team2Score.goals,
+      team2Points: team2Score.points,
+      currentPeriod: match.currentPeriod,
+      elapsedTime: match.elapsedTime || 0,
+      periodStartTimestamp: match.periodStartTimestamp || null,
+      isPaused: match.isPaused !== false,
+      matchType: match.matchType || 'football',
+      lastUpdated: firebase.database.ServerValue.TIMESTAMP
+    };
+  }
+
+  // Push a snapshot. No-op unless this match is broadcasting. Never allowed to
+  // interrupt match tracking, so all failures are swallowed with a warning.
+  function pushLiveUpdate(match) {
+    if (!match || !match.isBroadcasting || !match.shareId) return;
+    const db = getFirebaseDb();
+    if (!db) return;
+    try {
+      db.ref(LIVE_SHARE_PATH + '/' + match.shareId)
+        .set(buildLivePayload(match))
+        .catch((err) => console.warn('Live score update failed', err));
+    } catch (err) {
+      console.warn('Live score update failed', err);
+    }
+  }
+
+  // Begin broadcasting. Returns true on success.
+  async function startBroadcast(match) {
+    const db = getFirebaseDb();
+    if (!db) return false;
+    if (!match.shareId) match.shareId = generateShareId();
+    match.isBroadcasting = true;
+    try {
+      await db.ref(LIVE_SHARE_PATH + '/' + match.shareId).set(buildLivePayload(match));
+      await saveAppState();
+      return true;
+    } catch (err) {
+      console.warn('Failed to start live sharing', err);
+      match.isBroadcasting = false;
+      return false;
+    }
+  }
+
+  // Stop broadcasting and remove the public record.
+  async function stopBroadcast(match) {
+    const db = getFirebaseDb();
+    const shareId = match.shareId;
+    match.isBroadcasting = false;
+    await saveAppState();
+    if (!db || !shareId) return;
+    try {
+      await db.ref(LIVE_SHARE_PATH + '/' + shareId).remove();
+    } catch (err) {
+      console.warn('Failed to remove live score record', err);
+    }
+  }
+
+  // Realtime DB has no TTL, so clear out broadcasts left running on old
+  // matches to stop orphaned public records accumulating. Best effort only.
+  function cleanupStaleBroadcasts() {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    let changed = false;
+    appState.matches.forEach((match) => {
+      if (!match.isBroadcasting || !match.shareId) return;
+      const matchTime = match.dateTime ? new Date(match.dateTime).getTime() : 0;
+      if (matchTime && matchTime > cutoff) return;
+      match.isBroadcasting = false;
+      changed = true;
+      const db = getFirebaseDb();
+      if (db) {
+        try {
+          db.ref(LIVE_SHARE_PATH + '/' + match.shareId).remove()
+            .catch((err) => console.warn('Stale broadcast cleanup failed', err));
+        } catch (err) {
+          console.warn('Stale broadcast cleanup failed', err);
+        }
+      }
+    });
+    if (changed) saveAppState();
+  }
+
+  // Live share modal ---------------------------------------------------------
+
+  function openLiveShareModal() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    const modal = document.getElementById('live-share-modal');
+    if (!modal) return;
+    renderLiveShareModal(match);
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeLiveShareModal() {
+    const modal = document.getElementById('live-share-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    setLiveShareStatus('');
+  }
+
+  function setLiveShareStatus(text) {
+    const el = document.getElementById('live-share-status');
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.display = text ? 'block' : 'none';
+  }
+
+  function renderLiveShareModal(match) {
+    const offState = document.getElementById('live-share-off');
+    const onState = document.getElementById('live-share-on');
+    const urlEl = document.getElementById('live-share-url');
+    const sendBtn = document.getElementById('live-share-send');
+    if (!offState || !onState) return;
+
+    if (match.isBroadcasting) {
+      offState.style.display = 'none';
+      onState.style.display = 'block';
+      if (urlEl) urlEl.textContent = getLiveShareUrl(match);
+      if (sendBtn) sendBtn.style.display = navigator.share ? 'block' : 'none';
+    } else {
+      offState.style.display = 'block';
+      onState.style.display = 'none';
+    }
+    updateLiveShareIndicator(match);
+  }
+
+  // Small dot on the toolbar button so an active broadcast is visible without
+  // opening the modal.
+  function updateLiveShareIndicator(match) {
+    const dot = document.getElementById('live-share-indicator');
+    if (!dot) return;
+    dot.style.display = match && match.isBroadcasting ? 'block' : 'none';
+  }
+
+  async function handleStartBroadcast() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    if (typeof firebase === 'undefined') {
+      setLiveShareStatus('Live sharing needs an internet connection. Please try again when online.');
+      return;
+    }
+    setLiveShareStatus('Starting…');
+    const ok = await startBroadcast(match);
+    if (ok) {
+      setLiveShareStatus('');
+      renderLiveShareModal(match);
+    } else {
+      setLiveShareStatus('Could not start sharing. Check your connection and try again.');
+    }
+  }
+
+  async function handleStopBroadcast() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    setLiveShareStatus('Stopping…');
+    await stopBroadcast(match);
+    setLiveShareStatus('');
+    renderLiveShareModal(match);
+  }
+
+  async function handleCopyLiveLink() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    const url = getLiveShareUrl(match);
+    try {
+      await navigator.clipboard.writeText(url);
+      setLiveShareStatus('Link copied.');
+    } catch (err) {
+      setLiveShareStatus('Could not copy automatically - select the link above to copy it.');
+    }
+  }
+
+  async function handleSendLiveLink() {
+    const match = findMatchById(appState.currentMatchId);
+    if (!match) return;
+    const url = getLiveShareUrl(match);
+    if (!navigator.share) return;
+    try {
+      await navigator.share({
+        title: match.team1.name + ' v ' + match.team2.name,
+        text: 'Follow the live score',
+        url: url
+      });
+    } catch (err) {
+      // User dismissed the share sheet - nothing to report.
+    }
+  }
+
   // Share individual event as image
   async function shareIndividualEvent(eventId) {
     const match = findMatchById(appState.currentMatchId);
@@ -3776,6 +4030,8 @@
     updateTimerControls(match);
     // Ensure event buttons are enabled/disabled appropriately for the current period
     updateEventButtons(match);
+    // Show the broadcast dot if this match is already being shared
+    updateLiveShareIndicator(match);
     // Render event form fields for default type
     const eventTypeSelect = document.getElementById('event-type');
     eventTypeSelect.value = EventType.SHOT;
@@ -3845,6 +4101,9 @@
     // Show or hide the two‑pointer buttons based on the match type.  A two‑pointer is only available
     // in football (men's) matches.  Ladies football, hurling and camogie do not use two pointers.
     updateTwoPointerButtons(match);
+
+    // Mirror the new score to the cloud if this match is being shared.
+    pushLiveUpdate(match);
   }
 
   /**
@@ -6160,6 +6419,7 @@
     startTimerInterval(match);
     updateTimerControls(match);
     saveAppState();
+    pushLiveUpdate(match);
   }
 
   // Pause the match timer
@@ -6172,6 +6432,9 @@
     stopTimer();
     updateTimerControls(match);
     saveAppState();
+    // Timer state changed but the score did not, so updateScoreboard() never
+    // runs here - push directly or the viewer's clock keeps ticking.
+    pushLiveUpdate(match);
   }
 
   // Resume the match timer
@@ -6183,6 +6446,7 @@
     startTimerInterval(match);
     updateTimerControls(match);
     saveAppState();
+    pushLiveUpdate(match);
   }
 
   // End current period and move to next (Half Time / Full Time / Extra time / Match Over)
@@ -7555,7 +7819,21 @@
     
     // Share match button
     document.getElementById('share-match-btn').addEventListener('click', shareBasicMatchInfo);
-    
+
+    // Live score sharing
+    const liveShareBtn = document.getElementById('live-share-btn');
+    if (liveShareBtn) liveShareBtn.addEventListener('click', openLiveShareModal);
+    const liveShareClose = document.getElementById('live-share-close');
+    if (liveShareClose) liveShareClose.addEventListener('click', closeLiveShareModal);
+    const liveShareStart = document.getElementById('live-share-start');
+    if (liveShareStart) liveShareStart.addEventListener('click', handleStartBroadcast);
+    const liveShareStop = document.getElementById('live-share-stop');
+    if (liveShareStop) liveShareStop.addEventListener('click', handleStopBroadcast);
+    const liveShareCopy = document.getElementById('live-share-copy');
+    if (liveShareCopy) liveShareCopy.addEventListener('click', handleCopyLiveLink);
+    const liveShareSend = document.getElementById('live-share-send');
+    if (liveShareSend) liveShareSend.addEventListener('click', handleSendLiveLink);
+
     // Add match button
     document.getElementById('add-match-btn').addEventListener('click', showAddMatchForm);
 
@@ -7992,6 +8270,8 @@
   // Initialise application
   async function init() {
     await loadAppState();
+    // Clear broadcasts left running on old matches (Realtime DB has no TTL).
+    cleanupStaleBroadcasts();
     renderMatchList(); // Prepare match list data even though we don't show it initially
     initEventListeners();
     // Best-effort orientation lock for installed PWAs (Android/Chrome). iOS
