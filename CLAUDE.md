@@ -15,9 +15,9 @@ Since this is a vanilla JavaScript PWA with no build system:
   - `npx live-server` (if live-server is installed)
   - `php -S localhost:8000` (PHP)
 - **Testing PWA Features**: Must use HTTPS or localhost for service worker functionality
-- **Service Worker Updates**: When modifying cached files, increment the cache version in `sw.js` (currently v1.7.0)
+- **Service Worker Updates**: When modifying cached files, increment `CACHE_NAME` in `sw.js` (currently v2.0.0) **and** bump the matching `?v=` query strings on `script.js`, `styles.css` and `tailwind-minimal.css` in `index.html`. Both are required: `caches.match()` keys on the full URL including the query string, so an unchanged `?v=` serves the old file from cache no matter what the cache version says
 - **Icon Generation**: Use `create-icons.html` for creating and testing new SVG icons
-- **Deployment Context**: App is scoped to `/MatchTrackerPWA/` path (defined in manifest.json)
+- **Deployment Context**: Served from the root of `matchtracker.club` via GitHub Pages (custom domain set by the `CNAME` file at the repo root; `start_url` and `scope` in manifest.json are `/`). Deploys on push to `main` — no build step. The service worker registers `/sw.js` and precaches root-absolute paths, which only resolve correctly at a domain root; do not move the app back to a subpath without making those paths relative
 
 ## Architecture
 
