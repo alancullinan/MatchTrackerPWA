@@ -1,4 +1,4 @@
-const CACHE_NAME = 'match-tracker-v2.1.0';
+const CACHE_NAME = 'match-tracker-v2.2.0';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -100,7 +100,10 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    caches.match(event.request)
+    // ignoreSearch: the HTML requests script.js/styles.css with a ?v= cache-buster,
+    // but the precache list stores them bare. Without this the precached copies never
+    // match and every version bump sends them back to the network on launch.
+    caches.match(event.request, { ignoreSearch: true })
       .then(response => {
         // Return cached version or fetch from network
         if (response) {
