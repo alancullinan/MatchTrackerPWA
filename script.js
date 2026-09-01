@@ -8334,11 +8334,26 @@
     });
   }
 
+  // The splash is held for at least this long so it reads as a deliberate launch
+  // screen rather than a flicker. Startup is now fast enough (~350ms) that without
+  // this the splash would be gone before it could be seen.
+  const SPLASH_MIN_MS = 900;
+  const splashShownAt = Date.now();
+
   // Dismiss the launch splash added in index.html. Idempotent: the failsafes below
   // mean this can fire more than once, and whichever call lands first wins.
-  function hideAppSplash() {
+  // `immediate` skips the minimum-display hold - used by the failsafe paths, which
+  // must never be delayed by a cosmetic timer.
+  function hideAppSplash(immediate) {
     const splash = document.getElementById('app-splash');
     if (!splash || splash.classList.contains('is-hidden')) return;
+
+    const remaining = SPLASH_MIN_MS - (Date.now() - splashShownAt);
+    if (!immediate && remaining > 0) {
+      setTimeout(() => hideAppSplash(true), remaining);
+      return;
+    }
+
     splash.classList.add('is-hidden');
     splash.addEventListener('transitionend', () => splash.remove(), { once: true });
   }
@@ -8369,6 +8384,9 @@
 
   // Failsafes: if init() throws, the splash is opaque and would otherwise trap the
   // user on a blank screen. Never let that happen regardless of what init() does.
-  window.addEventListener('load', hideAppSplash);
-  setTimeout(hideAppSplash, 3000);
+  // `load` honours the minimum-display hold (it fires right after a fast init, so
+  // dismissing immediately here would defeat the hold entirely); the 3s backstop
+  // does not, since by then something has clearly gone wrong.
+  window.addEventListener('load', () => hideAppSplash());
+  setTimeout(() => hideAppSplash(true), 3000);
 })();
