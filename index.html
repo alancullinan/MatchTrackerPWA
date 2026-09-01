@@ -132,9 +132,9 @@
     </style>
 
     <!-- Local Tailwind CSS for offline functionality -->
-    <link rel="stylesheet" href="tailwind-minimal.css?v=2.1.5" />
+    <link rel="stylesheet" href="tailwind-minimal.css?v=2.1.6" />
     <!-- Custom fallback styles -->
-    <link rel="stylesheet" href="styles.css?v=2.1.5" />
+    <link rel="stylesheet" href="styles.css?v=2.1.6" />
   </head>
     <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Launch splash: covers the gap between first paint and init() finishing.
@@ -1056,10 +1056,13 @@
       };
     </script>
 
-    <script defer src="script.js?v=2.1.5"></script>
+    <script defer src="script.js?v=2.1.6"></script>
     
     <!-- Service Worker Registration -->
     <script>
+      // Shared guard: only ever auto-reload once per page, whichever path triggers.
+      var reloading = false;
+
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
@@ -1075,7 +1078,6 @@
 
               // When a new worker takes over, the page is still running the old
               // assets. Reload once so the fresh HTML and its new ?v= URLs are used.
-              let reloading = false;
               navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (reloading) return;
                 reloading = true;
@@ -1094,6 +1096,33 @@
           navigator.serviceWorker.getRegistration()
             .then(reg => reg && reg.update())
             .catch(() => {});
+        });
+
+        // Relaunching an installed iOS PWA usually RESUMES the existing page from
+        // the back/forward cache rather than loading it fresh: DOMContentLoaded does
+        // not fire again, so init() never re-runs and the splash is never shown
+        // again. That is why the new splash appeared once, on the first genuine cold
+        // load, and not on any relaunch afterwards.
+        //
+        // On a bfcache restore, reload if a newer worker has since been deployed, so
+        // a relaunch behaves like a real launch. Guarded so a resume with nothing
+        // new stays instant.
+        window.addEventListener('pageshow', (event) => {
+          if (!event.persisted) return;
+          navigator.serviceWorker.getRegistration()
+            .then(reg => {
+              if (!reg) return;
+              return reg.update().then(() => {
+                // installing/waiting means the server has a newer worker than the
+                // one that rendered this page - take it rather than show stale UI.
+                if (reloading) return;
+                if (reg.installing || reg.waiting) {
+                  reloading = true;
+                  window.location.reload();
+                }
+              });
+            })
+            .catch(() => { /* offline: keep showing the resumed page */ });
         });
       }
     </script>
