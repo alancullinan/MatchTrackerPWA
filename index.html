@@ -71,9 +71,9 @@
     </style>
 
     <!-- Local Tailwind CSS for offline functionality -->
-    <link rel="stylesheet" href="tailwind-minimal.css?v=2.1.3" />
+    <link rel="stylesheet" href="tailwind-minimal.css?v=2.1.4" />
     <!-- Custom fallback styles -->
-    <link rel="stylesheet" href="styles.css?v=2.1.3" />
+    <link rel="stylesheet" href="styles.css?v=2.1.4" />
   </head>
     <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Launch splash: covers the gap between first paint and init() finishing.
@@ -990,7 +990,7 @@
       };
     </script>
 
-    <script defer src="script.js?v=2.1.3"></script>
+    <script defer src="script.js?v=2.1.4"></script>
     
     <!-- Service Worker Registration -->
     <script>
@@ -999,10 +999,35 @@
           navigator.serviceWorker.register('/sw.js')
             .then(registration => {
               console.log('SW registered: ', registration);
+
+              // Explicitly check for a new worker on every launch. Installed iOS
+              // PWAs keep their own storage container separate from Safari and are
+              // unreliable about re-fetching sw.js on their own, so without this an
+              // installed app can sit on an old worker indefinitely while Safari
+              // already shows the current version.
+              registration.update().catch(() => { /* offline; nothing to do */ });
+
+              // When a new worker takes over, the page is still running the old
+              // assets. Reload once so the fresh HTML and its new ?v= URLs are used.
+              let reloading = false;
+              navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (reloading) return;
+                reloading = true;
+                window.location.reload();
+              });
             })
             .catch(registrationError => {
               console.log('SW registration failed: ', registrationError);
             });
+        });
+
+        // Also check when the app is brought back to the foreground - how an
+        // installed PWA is normally "launched" after the first time.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState !== 'visible') return;
+          navigator.serviceWorker.getRegistration()
+            .then(reg => reg && reg.update())
+            .catch(() => {});
         });
       }
     </script>
