@@ -45,28 +45,42 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        /* Nudge the icon slightly above true centre - dead-centre reads as low,
+           which is why native launch screens sit their logo a little high. */
+        padding-bottom: 8vh;
+        box-sizing: border-box;
         background-color: #0B1F14;
         opacity: 1;
         transition: opacity 200ms ease-out;
       }
       #app-splash.is-hidden { opacity: 0; }
       #app-splash img {
-        width: 96px;
-        height: 96px;
+        /* Sized relative to the viewport so it looks right on both phones and
+           tablets, with bounds so it never gets silly at either extreme. */
+        width: 38vmin;
+        height: 38vmin;
+        max-width: 280px;
+        max-height: 280px;
+        min-width: 128px;
+        min-height: 128px;
+        /* The icon is a full-bleed square with opaque corners, so it reads as a hard
+           square against the background without this. ~22% matches the squircle iOS
+           and Android apply to home screen icons. */
+        border-radius: 22%;
       }
     </style>
 
     <!-- Local Tailwind CSS for offline functionality -->
-    <link rel="stylesheet" href="tailwind-minimal.css?v=2.1.2" />
+    <link rel="stylesheet" href="tailwind-minimal.css?v=2.1.3" />
     <!-- Custom fallback styles -->
-    <link rel="stylesheet" href="styles.css?v=2.1.2" />
+    <link rel="stylesheet" href="styles.css?v=2.1.3" />
   </head>
     <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Launch splash: covers the gap between first paint and init() finishing.
          Dismissed by hideAppSplash() in script.js, which also has failsafes so a
          thrown error in init() can never leave this overlay stranded on screen. -->
     <div id="app-splash" aria-hidden="true">
-      <img src="icons/icon-192x192.png" alt="" />
+      <img src="icons/icon-512x512.png" alt="" />
     </div>
     <!-- Landscape lock overlay: prompts the user to rotate to portrait. iOS Safari ignores
          the manifest orientation hint, so we enforce portrait-only via CSS media query. -->
@@ -976,7 +990,7 @@
       };
     </script>
 
-    <script defer src="script.js?v=2.1.2"></script>
+    <script defer src="script.js?v=2.1.3"></script>
     
     <!-- Service Worker Registration -->
     <script>
