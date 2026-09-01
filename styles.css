@@ -588,7 +588,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* ===== Match list + Player Panels: sticky header + search, scrollable list ===== */
 #player-panels-view {
-  display: flex;
+  /* No `display` here: showView() sets it inline when this view is shown. Declaring
+     it would override the pre-paint hiding rule in index.html and let this view
+     flash on screen before JS runs. */
   flex-direction: column;
   max-height: calc(100vh - env(safe-area-inset-top, 0px) - 44px);
   overflow: hidden;
@@ -607,7 +609,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 #match-list-view {
-  display: flex;
+  /* No `display` here - see the note on #player-panels-view above. */
   flex-direction: column;
   /* Fill the viewport minus main's top/bottom padding and view margin */
   max-height: calc(100vh - env(safe-area-inset-top, 0px) - 44px);

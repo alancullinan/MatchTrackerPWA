@@ -23,12 +23,51 @@
     <link rel="preload" href="fonts/bebas-neue.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin />
     
+    <!-- Critical inline styles: these must stay inline and ahead of the stylesheet
+         links below. External CSS cannot paint until it is fetched and parsed, which
+         is what produced the white flash on launch. styles.css sets a background on
+         `body` only (never `html`), and tailwind-minimal.css deliberately makes
+         `body.bg-gray-900` transparent, so nothing else covers this gap. -->
+    <style>
+      html, body {
+        background-color: #0B1F14;
+        color-scheme: dark;
+      }
+      /* Views are shown by showView(), which sets inline style.display and so
+         overrides this. Without it, every section paints stacked before JS runs. */
+      .view { display: none; }
+      /* Launch splash. Also inline for the reason above - if this depended on
+         styles.css it could not paint early enough to be worth having. */
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #0B1F14;
+        opacity: 1;
+        transition: opacity 200ms ease-out;
+      }
+      #app-splash.is-hidden { opacity: 0; }
+      #app-splash img {
+        width: 96px;
+        height: 96px;
+      }
+    </style>
+
     <!-- Local Tailwind CSS for offline functionality -->
-    <link rel="stylesheet" href="tailwind-minimal.css?v=2.0.0" />
+    <link rel="stylesheet" href="tailwind-minimal.css?v=2.1.0" />
     <!-- Custom fallback styles -->
-    <link rel="stylesheet" href="styles.css?v=2.0.0" />
+    <link rel="stylesheet" href="styles.css?v=2.1.0" />
   </head>
     <body class="bg-gray-900 text-gray-100 min-h-screen">
+    <!-- Launch splash: covers the gap between first paint and init() finishing.
+         Dismissed by hideAppSplash() in script.js, which also has failsafes so a
+         thrown error in init() can never leave this overlay stranded on screen. -->
+    <div id="app-splash" aria-hidden="true">
+      <img src="icons/icon-192x192.png" alt="" />
+    </div>
     <!-- Landscape lock overlay: prompts the user to rotate to portrait. iOS Safari ignores
          the manifest orientation hint, so we enforce portrait-only via CSS media query. -->
     <div id="landscape-lock" aria-hidden="true">
@@ -921,8 +960,8 @@
     </main>
 
     <!-- Firebase (compat builds - the modular SDK needs a bundler, which this project has none) -->
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
     <script>
       // Public client identifier, not a secret - access is controlled by the
       // Realtime Database rules. NOTE: live.html carries a copy of this; change both.
@@ -937,7 +976,7 @@
       };
     </script>
 
-    <script src="script.js?v=2.0.0"></script>
+    <script defer src="script.js?v=2.1.0"></script>
     
     <!-- Service Worker Registration -->
     <script>

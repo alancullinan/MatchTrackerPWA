@@ -8334,6 +8334,15 @@
     });
   }
 
+  // Dismiss the launch splash added in index.html. Idempotent: the failsafes below
+  // mean this can fire more than once, and whichever call lands first wins.
+  function hideAppSplash() {
+    const splash = document.getElementById('app-splash');
+    if (!splash || splash.classList.contains('is-hidden')) return;
+    splash.classList.add('is-hidden');
+    splash.addEventListener('transitionend', () => splash.remove(), { once: true });
+  }
+
   // Initialise application
   async function init() {
     await loadAppState();
@@ -8352,8 +8361,14 @@
     // be shown again when opening match details via showView().
     const header = document.querySelector('header');
     if (header) header.style.display = 'none';
+    hideAppSplash();
   }
 
   // Kick off once DOM ready
   document.addEventListener('DOMContentLoaded', init);
+
+  // Failsafes: if init() throws, the splash is opaque and would otherwise trap the
+  // user on a blank screen. Never let that happen regardless of what init() does.
+  window.addEventListener('load', hideAppSplash);
+  setTimeout(hideAppSplash, 3000);
 })();
