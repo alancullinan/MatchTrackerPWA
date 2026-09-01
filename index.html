@@ -38,22 +38,83 @@
       .view { display: none; }
       /* Launch splash. Also inline for the reason above - if this depended on
          styles.css it could not paint early enough to be worth having. */
+      /* Declared inline as well as in styles.css: the splash paints before the
+         stylesheet loads, so without this the title would render in a fallback face
+         and then snap to Bebas mid-fade. The file is preloaded above and precached. */
+      @font-face {
+        font-family: 'Bebas Neue';
+        font-style: normal;
+        font-weight: 400;
+        font-display: block;
+        src: url('fonts/bebas-neue.woff2') format('woff2');
+      }
       #app-splash {
         position: fixed;
         inset: 0;
         z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        /* Nudge the icon slightly above true centre - dead-centre reads as low,
-           which is why native launch screens sit their logo a little high. */
-        padding-bottom: 8vh;
-        box-sizing: border-box;
         background-color: #0B1F14;
         opacity: 1;
         transition: opacity 200ms ease-out;
       }
       #app-splash.is-hidden { opacity: 0; }
+      /* Mirrors .home-shell so the title lands in the same place by construction
+         rather than by matching hardcoded offsets - its position depends on the
+         flex layout, and varies by ~200px between a small phone and a tablet. */
+      /* .home-shell paints a soft green glow behind the title (.home-shell::before).
+         Without it the splash is visibly flatter than the screen it fades into. */
+      #app-splash .splash-shell::before {
+        content: '';
+        position: absolute;
+        inset: -10% -20% auto -20%;
+        height: 60%;
+        background: radial-gradient(ellipse at center, rgba(47, 179, 107, 0.10) 0%, transparent 70%);
+        pointer-events: none;
+      }
+      #app-splash .splash-shell {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 78vh;
+        padding-top: env(safe-area-inset-top, 0px);
+        /* .home-shell sits inside <main>, which contributes 16px of top padding.
+           Reproduce it so the shell starts at the same y. */
+        margin-top: 16px;
+      }
+      /* .home-shell centres the title against the button stack below it, so the
+         title's position depends on that stack's height. The buttons measure a
+         constant 308px on every viewport, so reserving the same space here puts the
+         splash title on exactly the same baseline instead of ~40-64px too low. */
+      #app-splash .splash-spacer {
+        height: 308px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      /* Matches .home-title: same face, size, tracking, colour and glow, plus the
+         amber rule under it, so the crossfade lands on an identical heading. */
+      #app-splash .splash-title {
+        font-family: 'Bebas Neue', system-ui, sans-serif;
+        font-size: 3.25rem;
+        letter-spacing: 0.10em;
+        color: #F4F1E6;
+        text-transform: uppercase;
+        text-align: center;
+        line-height: 1;
+        margin-bottom: 48px;
+        text-shadow: 0 0 22px rgba(244, 241, 230, 0.18);
+      }
+      #app-splash .splash-title::after {
+        content: '';
+        display: block;
+        width: 64px;
+        height: 2px;
+        margin: 12px auto 0;
+        background-color: #FFB628;
+        box-shadow: 0 0 12px rgba(255, 182, 40, 0.55);
+      }
       #app-splash img {
         /* Sized relative to the viewport so it looks right on both phones and
            tablets, with bounds so it never gets silly at either extreme. */
@@ -71,16 +132,21 @@
     </style>
 
     <!-- Local Tailwind CSS for offline functionality -->
-    <link rel="stylesheet" href="tailwind-minimal.css?v=2.1.4" />
+    <link rel="stylesheet" href="tailwind-minimal.css?v=2.1.5" />
     <!-- Custom fallback styles -->
-    <link rel="stylesheet" href="styles.css?v=2.1.4" />
+    <link rel="stylesheet" href="styles.css?v=2.1.5" />
   </head>
     <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Launch splash: covers the gap between first paint and init() finishing.
          Dismissed by hideAppSplash() in script.js, which also has failsafes so a
          thrown error in init() can never leave this overlay stranded on screen. -->
     <div id="app-splash" aria-hidden="true">
-      <img src="icons/icon-512x512.png" alt="" />
+      <div class="splash-shell">
+        <div class="splash-title">Match Tracker</div>
+        <div class="splash-spacer">
+          <img src="icons/icon-512x512.png" alt="" />
+        </div>
+      </div>
     </div>
     <!-- Landscape lock overlay: prompts the user to rotate to portrait. iOS Safari ignores
          the manifest orientation hint, so we enforce portrait-only via CSS media query. -->
@@ -990,7 +1056,7 @@
       };
     </script>
 
-    <script defer src="script.js?v=2.1.4"></script>
+    <script defer src="script.js?v=2.1.5"></script>
     
     <!-- Service Worker Registration -->
     <script>
