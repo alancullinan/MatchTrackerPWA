@@ -1,4 +1,4 @@
-const CACHE_NAME = 'match-tracker-v2.2.1';
+const CACHE_NAME = 'match-tracker-v2.3.0';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -99,10 +99,33 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Navigations go network-first. The HTML is the only file that names the current
+  // ?v= asset URLs, so serving a stale copy from cache pins the whole app to the old
+  // version forever - the new index.html is never fetched, so its new ?v= strings are
+  // never requested, so a deploy can never take effect. Cache-first here is what made
+  // repeated relaunches keep showing the previous release.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put('/index.html', copy));
+          return response;
+        })
+        // Offline: fall back to whatever HTML we have. (`caches.match` returns a
+        // promise, so these must be chained - `a || b` would always take `a`.)
+        .catch(() => caches.match('/index.html')
+          .then(r => r || caches.match('/')))
+    );
+    return;
+  }
+
   event.respondWith(
     // ignoreSearch: the HTML requests script.js/styles.css with a ?v= cache-buster,
     // but the precache list stores them bare. Without this the precached copies never
     // match and every version bump sends them back to the network on launch.
+    // Safe for assets because a new deploy ships a new CACHE_NAME, so activate()
+    // wipes these entries - and the navigation above guarantees fresh HTML.
     caches.match(event.request, { ignoreSearch: true })
       .then(response => {
         // Return cached version or fetch from network
