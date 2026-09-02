@@ -1,2 +1,5 @@
 # Claude Code worktrees — these are local working trees, not part of the repo
 .claude/worktrees/
+
+# Test tooling only - the app itself ships no dependencies
+node_modules/
