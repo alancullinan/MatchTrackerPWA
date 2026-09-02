@@ -5797,7 +5797,10 @@
       if (match.currentPeriod === MatchPeriod.NOT_STARTED && appState.playerPanels.length > 0) {
         const importBtn = document.createElement('button');
         // Class, not id: both teams render into the same container.
-        importBtn.className = 'primary-btn panel-import-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2';
+        // No primary-btn/bg-blue-600 here: `button.bg-blue-600.primary-btn` in
+        // styles.css is more specific than .panel-import-btn and would repaint this
+        // as a solid green CTA, losing the ghost pill it shares with Swap.
+        importBtn.className = 'panel-import-btn';
         importBtn.type = 'button';
         importBtn.dataset.teamKey = key;
         importBtn.title = 'Import a panel into this team';

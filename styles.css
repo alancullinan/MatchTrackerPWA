@@ -1742,6 +1742,11 @@ body.match-view-active::before {
 /* --- Import button: same ghost pill as Swap, but an action rather than a
    mode toggle, so it has no active state and uses a download glyph. */
 .panel-import-btn {
+  /* Declared here rather than inherited from .primary-btn, which this button
+     deliberately no longer carries - see the note in script.js. Keeps the 44px
+     touch target and matches #swap-players-btn's height. */
+  justify-content: center;
+  min-height: 44px;
   font-family: var(--font-display) !important;
   font-size: 0.8125rem !important;
   letter-spacing: 0.16em !important;
