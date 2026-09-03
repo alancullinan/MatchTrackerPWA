@@ -404,14 +404,17 @@
         const file = new File([blob], filename, { type: 'application/json' });
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
-            // Files ONLY - deliberately no `text`. iOS "Save to Files" writes any
-            // accompanying text as a SECOND file, so the user gets a stray .txt
-            // alongside every backup. The timestamped filename already identifies
-            // the payload, which is what the text was there for.
-            await navigator.share({
-              title: 'MatchTracker backup',
-              files: [file]
-            });
+            // `files` ONLY - no `title`, no `text`.
+            //
+            // iOS "Save to Files" materialises ANY accompanying string field as
+            // its own document, so the user gets a stray file named "Text"
+            // beside every backup. Confirmed on a real device: removing `text`
+            // alone was not enough, `title` produces one too.
+            //
+            // The timestamped filename is what identifies the payload. Do not
+            // add these fields back for the sake of a nicer share sheet - the
+            // destination that matters is Files, not a chat.
+            await navigator.share({ files: [file] });
             await this.recordBackup();
             return { success: true, message: `Exported ${count} matches` };
           } catch (shareError) {

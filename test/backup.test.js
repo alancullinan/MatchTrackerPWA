@@ -135,7 +135,7 @@ function stubShare(page, outcome) {
       for (const f of files) {
         captured.push({ name: f.name, type: f.type, text: await f.text() });
       }
-      window.__shared.push({ title: data.title, text: data.text, files: captured });
+      window.__shared.push({ keys: Object.keys(data).sort(), files: captured });
       if (mode === 'abort') {
         const e = new Error('Share canceled');
         e.name = 'AbortError';
@@ -204,11 +204,13 @@ async function testCompletedShareRecordsBackup(browser) {
   // Timestamped to the minute, so two exports in one day cannot collide.
   check('filename is timestamped to the minute',
         /^match-tracker-backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/.test(file.name), true);
-  // No `text` field: iOS "Save to Files" writes accompanying text as a SECOND
-  // file, so sending any would litter a stray .txt beside every backup. The
-  // filename carries the identity instead. Regression guard - this shipped once.
-  check('no share text is sent (would save a stray .txt on iOS)',
-        result.shared[0].text === undefined, true);
+  // `files` must be the ONLY key. iOS "Save to Files" materialises any string
+  // field (title AND text) as its own document, so the user gets a stray file
+  // named "Text" beside every backup. Asserting the whole key set rather than
+  // named fields - checking them one at a time is what let `title` through
+  // after `text` was removed. Both shipped; confirmed on a real device.
+  check('share passes files and nothing else',
+        JSON.stringify(result.shared[0].keys), JSON.stringify(['files']));
 
   // The payload must actually contain the data, not just be well-named.
   let parsed = null;
