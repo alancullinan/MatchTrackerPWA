@@ -21,7 +21,7 @@ Since this is a vanilla JavaScript PWA with no build system:
   - `test/storage.test.js` covers the **storage layer**, for the same reason: the dual-store data-loss bug only appeared on a device that already had data, never on a fresh install. It pins the original bug (a save masked by a stale localStorage copy), the one-time migration, its idempotence, and - most importantly - that a migration which cannot verify leaves localStorage intact. Each assertion was verified by reintroducing the corresponding bug. **Run it before any change to `StorageManager`.**
   - `test/backup.test.js` covers **export and import**. Export path:, the only thing protecting against a lost or replaced phone. It stubs Web Share to pin that a completed share records `lastBackupAt` and hands over one round-trippable `.json`, that a **dismissed** share (AbortError) records nothing - otherwise the staleness indicator would claim a backup that never left the device - and that the download fallback still works. Verified by reintroducing each bug. Import path: that a differing match is a **conflict** rather than a silently skipped duplicate (the original bug - a backup could not repair a corrupted match while reporting success), that both resolutions do what they say and survive a reload, and that identical data is a silent no-op rather than a prompt.
   - All three suites need `window.__mtTest` (the small test seam at the bottom of `script.js`) to reach code inside the IIFE.
-- **Service Worker Updates**: When modifying cached files, increment `CACHE_NAME` in `sw.js` (currently v2.6.0) **and** bump the matching `?v=` query strings on `script.js`, `styles.css` and `tailwind-minimal.css` in `index.html`. Both are required: `caches.match()` keys on the full URL including the query string, so an unchanged `?v=` serves the old file from cache no matter what the cache version says
+- **Service Worker Updates**: When modifying cached files, increment `CACHE_NAME` in `sw.js` (currently v2.6.1) **and** bump the matching `?v=` query strings on `script.js`, `styles.css` and `tailwind-minimal.css` in `index.html`. Both are required: `caches.match()` keys on the full URL including the query string, so an unchanged `?v=` serves the old file from cache no matter what the cache version says
 - **Icon Generation**: Use `create-icons.html` for creating and testing new SVG icons
 - **Deployment Context**: Served from the root of `matchtracker.club` via GitHub Pages (custom domain set by the `CNAME` file at the repo root; `start_url` and `scope` in manifest.json are `/`). Deploys on push to `main` — no build step. The service worker registers `/sw.js` and precaches root-absolute paths, which only resolve correctly at a domain root; do not move the app back to a subpath without making those paths relative
 
@@ -34,7 +34,7 @@ This is a vanilla JavaScript single-page application with no external dependenci
 - **script.js** - All JavaScript logic in IIFE pattern (~6300+ lines)
 - **styles.css** - Mobile-first CSS with Tailwind-like utilities and custom components
 - **tailwind-minimal.css** - Local Tailwind CSS subset for offline functionality
-- **sw.js** - Service worker for PWA caching (cache version: v2.6.0)
+- **sw.js** - Service worker for PWA caching (cache version: v2.6.1)
 - **manifest.json** - PWA manifest with app shortcuts and icons
 
 ### View Architecture
@@ -262,7 +262,7 @@ Events are stored as objects with this structure:
 ### Development Workflow
 - Test changes by opening `index.html` in browser (no build step required)
 - For PWA features, use localhost or HTTPS (service worker requirement)
-- When modifying cached files, increment cache version in `sw.js` (currently v2.6.0)
+- When modifying cached files, increment cache version in `sw.js` (currently v2.6.1)
 - All changes take effect immediately - no compilation or build process
 
 ### Code Integration Patterns

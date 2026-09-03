@@ -565,6 +565,65 @@ async function testPanelConflicts(browser) {
   await page.close();
 }
 
+
+/**
+ * The Data Management modal must STAY OPEN after an import.
+ *
+ * It used to close itself two seconds after a successful import. That was
+ * tolerable when the message was a simple count, but the result can now report
+ * destructive work ("replaced 1, kept 2 unchanged") and there is no way to see
+ * that summary again once the modal is gone.
+ *
+ * Drives the real DOM - the picker, the buttons - because this is UI behaviour
+ * the data-layer tests above cannot see.
+ */
+async function testModalStaysOpenAfterImport(browser) {
+  console.log('\n  the import modal stays open so the summary can be read');
+  const page = await newPage(browser);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await clearOrigin(page);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  await seedMatches(page, [matchWithEvents('m1', 'Cork', 2)]);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  await page.evaluate(() => document.getElementById('home-data-management-btn').click());
+  await sleep(300);
+
+  // A purely additive import, so no conflict modal interrupts the flow.
+  const payload = backupOf([matchWithEvents('m2', 'Clare', 4)]);
+  const tmp = path.join(os.tmpdir(), 'mt-modal-import.json');
+  await fsp.writeFile(tmp, JSON.stringify(payload));
+  const input = await page.$('#import-file-input');
+  await input.uploadFile(tmp);
+  await sleep(300);
+  await page.evaluate(() => document.getElementById('import-data-btn').click());
+  await sleep(700);
+
+  const read = () => page.evaluate(() => ({
+    open: document.getElementById('data-management-modal').classList.contains('flex'),
+    status: document.getElementById('import-status').textContent,
+    selectBtn: document.getElementById('select-import-file-btn').textContent,
+  }));
+
+  const justAfter = await read();
+  check('the import reports what it did', /imported 1 new match/i.test(justAfter.status), true);
+  check('the modal is open immediately after', justAfter.open, true);
+
+  // The old behaviour closed at 2000ms; wait well past that.
+  await sleep(3500);
+  const later = await read();
+  check('and is STILL open after the old 2s auto-close', later.open, true);
+  check('with the summary still readable', later.status, justAfter.status);
+  // The picker is reset so another import can be started without reopening.
+  check('the file picker was reset', later.selectBtn, 'Select Import File');
+
+  await fsp.rm(tmp, { force: true }).catch(() => {});
+  await page.close();
+}
+
 // -------------------------------------------------------------------- main
 
 (async () => {
@@ -588,6 +647,7 @@ async function testPanelConflicts(browser) {
     await testIdenticalIsNotAConflict(browser);
     await testNewMatchesStillImport(browser);
     await testPanelConflicts(browser);
+    await testModalStaysOpenAfterImport(browser);
   } catch (err) {
     failures++;
     console.error('\n  harness error:', err && err.message);

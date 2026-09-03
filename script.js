@@ -1108,11 +1108,20 @@
         ? (result.changed === false ? 'text-sm text-gray-400' : 'text-sm text-green-400')
         : 'text-sm text-red-400';
 
+      // Deliberately does NOT auto-close. The result can now report destructive
+      // work ("replaced 1, kept 2 unchanged"), and once the modal closes there is
+      // no way to see that summary again. The user closes it when they have read
+      // it.
       if (result.success && result.changed) {
-        // Clear after successful import
-        setTimeout(() => {
-          hideDataManagementModal();
-        }, 2000);
+        // Clear the picker so the modal is ready for another import rather than
+        // still offering the file just consumed. resetImportState() also blanks
+        // the status line, so restore the summary after it - that message is the
+        // whole reason the modal is still open.
+        const message = statusDiv.textContent;
+        const className = statusDiv.className;
+        resetImportState();
+        statusDiv.textContent = message;
+        statusDiv.className = className;
       }
     } catch (error) {
       console.error('Import failed:', error);
