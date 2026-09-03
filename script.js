@@ -404,11 +404,12 @@
         const file = new File([blob], filename, { type: 'application/json' });
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
+            // Files ONLY - deliberately no `text`. iOS "Save to Files" writes any
+            // accompanying text as a SECOND file, so the user gets a stray .txt
+            // alongside every backup. The timestamped filename already identifies
+            // the payload, which is what the text was there for.
             await navigator.share({
-              // Make the file identifiable wherever it lands - a backup found in
-              // a chat months later should say what it is.
               title: 'MatchTracker backup',
-              text: `MatchTracker backup — ${count} ${count === 1 ? 'match' : 'matches'}, ${new Date().toLocaleDateString()}`,
               files: [file]
             });
             await this.recordBackup();
