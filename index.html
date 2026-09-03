@@ -132,9 +132,9 @@
     </style>
 
     <!-- Local Tailwind CSS for offline functionality -->
-    <link rel="stylesheet" href="tailwind-minimal.css?v=2.2.1" />
+    <link rel="stylesheet" href="tailwind-minimal.css?v=2.3.0" />
     <!-- Custom fallback styles -->
-    <link rel="stylesheet" href="styles.css?v=2.2.1" />
+    <link rel="stylesheet" href="styles.css?v=2.3.0" />
   </head>
     <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Launch splash: covers the gap between first paint and init() finishing.
@@ -902,6 +902,25 @@
         </div>
       </div>
 
+
+      <!-- Import Conflict Resolution Modal
+           Shown only when a backup contains matches that already exist on this
+           device with DIFFERENT content. Every conflict defaults to keeping the
+           device's copy, so tapping straight through changes nothing. -->
+      <div id="import-conflict-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-gray-800 text-gray-100 border border-gray-700 w-11/12 max-w-md max-h-[85vh] flex flex-col">
+          <div class="flex justify-between items-center p-4 border-b border-gray-700">
+            <button id="cancel-import-conflicts-btn" class="primary-btn bg-gray-600 hover:bg-gray-700 text-white px-4 py-2">Cancel</button>
+            <h3 class="text-lg font-bold">Already on device</h3>
+            <button id="confirm-import-conflicts-btn" class="primary-btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2">Import</button>
+          </div>
+          <div class="p-4 overflow-y-auto">
+            <p id="import-conflict-summary" class="text-sm text-gray-300 mb-1"></p>
+            <p class="text-xs text-gray-400 mb-4">Using the backup's version replaces the whole match — any changes made to it since the backup was taken will be lost.</p>
+            <div id="import-conflict-list"></div>
+          </div>
+        </div>
+      </div>
       <!-- Match Statistics Modal -->
       <div id="match-stats-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
         <div class="bg-gray-800 text-gray-100 border border-gray-700 w-11/12 max-w-2xl max-h-[80vh] flex flex-col">
@@ -1058,7 +1077,7 @@
       };
     </script>
 
-    <script defer src="script.js?v=2.2.1"></script>
+    <script defer src="script.js?v=2.3.0"></script>
     
     <!-- Service Worker Registration -->
     <script>

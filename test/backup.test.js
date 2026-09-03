@@ -20,6 +20,11 @@
  *
  * Case 2 is the subtle one and the reason this file exists.
  *
+ * The import half covers the mirror-image problem: a backup used to be unable to
+ * REPAIR a match, because importData merged by id and skipped anything already
+ * present - while reporting success. Those cases pin conflict detection, both
+ * resolutions, and that identical data is a silent no-op rather than a prompt.
+ *
  * Safety: serves a TEMP COPY of the repo, never the working tree.
  *
  * Run with:  npm test
@@ -315,6 +320,251 @@ async function testBackupTimestampSurvivesReload(browser) {
   await page.close();
 }
 
+
+// ------------------------------------------------------------ import tests
+
+/**
+ * Build a backup file in the page and hand it to the import path as a real
+ * File, the way the picker would. Returns the analysis, so a test can assert
+ * what an import WOULD do before anything is written.
+ */
+function analyzeBackup(page, payload) {
+  return page.evaluate(async (data) => {
+    const file = new File([JSON.stringify(data)], 'backup.json', { type: 'application/json' });
+    const analysis = await window.__mtTest.analyzeImport(file);
+    // Structured-clone safe summary plus the analysis itself for a follow-up apply.
+    window.__lastAnalysis = analysis;
+    return {
+      newMatches: analysis.newMatches.map((m) => m.id),
+      identical: analysis.identicalMatches.map((m) => m.id),
+      conflicts: analysis.conflicts.map((c) => c.id),
+      panelConflicts: analysis.panelConflicts.map((c) => c.id),
+      newPanels: analysis.newPanels.map((p) => p.id),
+    };
+  }, payload);
+}
+
+/** Apply the analysis captured by analyzeBackup, with the given resolutions. */
+function applyLast(page, resolutions) {
+  return page.evaluate(async (res) => {
+    const r = await window.__mtTest.applyImport(window.__lastAnalysis, res);
+    return { message: r.message, success: r.success, changed: r.changed };
+  }, resolutions);
+}
+
+/** A match with a controllable number of events, so two copies can differ. */
+function matchWithEvents(id, name, eventCount) {
+  const events = [];
+  for (let i = 0; i < eventCount; i++) {
+    events.push({ id: `${id}-e${i}`, type: 'shot', teamId: 't1', period: 'firstHalf', timeElapsed: i * 10 });
+  }
+  return {
+    id,
+    team1: { id: 't1', name: name, players: [] },
+    team2: { id: 't2', name: 'Away', players: [] },
+    competition: 'Test Cup', matchType: 'football',
+    dateTime: '2026-08-12T15:00:00.000Z',
+    events, currentPeriod: 'notStarted', elapsedTime: 0, isPaused: true,
+  };
+}
+
+const backupOf = (matches, panels) => ({
+  version: '1.0.0', exportDate: new Date().toISOString(),
+  matches, matchCount: matches.length,
+  playerPanels: panels || [], panelCount: (panels || []).length,
+  lastSelectedPanels: {},
+});
+
+/** Seed the device with the given matches, through the real storage layer. */
+async function seedMatches(page, matches) {
+  await page.evaluate(async (ms) => {
+    await window.__mtTest.saveData('matches', ms);
+  }, matches);
+}
+
+/**
+ * THE BUG. A match already present but DIFFERENT used to be lumped in with
+ * duplicates and silently dropped, so a backup could never repair a corrupted
+ * match - while the app reported success.
+ */
+async function testConflictIsDetected(browser) {
+  console.log('\n  a differing match is reported as a conflict, not skipped');
+  const page = await newPage(browser);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await clearOrigin(page);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  // Device holds a damaged copy (2 events); the backup holds the good one (9).
+  await seedMatches(page, [matchWithEvents('m1', 'Cork', 2)]);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  const a = await analyzeBackup(page, backupOf([matchWithEvents('m1', 'Cork', 9)]));
+  check('the differing match is a conflict', JSON.stringify(a.conflicts), JSON.stringify(['m1']));
+  check('and is not treated as new', a.newMatches.length, 0);
+  check('and is not treated as identical', a.identical.length, 0);
+  await page.close();
+}
+
+/** Keeping mine must leave the device copy exactly as it was. */
+async function testKeepMineChangesNothing(browser) {
+  console.log('\n  "keep mine" leaves the device copy untouched');
+  const page = await newPage(browser);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await clearOrigin(page);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+  await seedMatches(page, [matchWithEvents('m1', 'Cork', 2)]);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  await analyzeBackup(page, backupOf([matchWithEvents('m1', 'Cork', 9)]));
+  const r = await applyLast(page, { m1: 'mine' });
+  check('reports keeping it unchanged', /kept 1 unchanged/i.test(r.message), true);
+  check('event count is still the device copy', await page.evaluate(() => window.__mtTest.eventCount('m1')), 2);
+
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+  check('and still is after a reload', await page.evaluate(() => window.__mtTest.eventCount('m1')), 2);
+  await page.close();
+}
+
+/** The whole point: choosing the backup actually replaces the match. */
+async function testUseBackupReplaces(browser) {
+  console.log('\n  "use backup" replaces the match, and it sticks');
+  const page = await newPage(browser);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await clearOrigin(page);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+  await seedMatches(page, [matchWithEvents('m1', 'Cork', 2)]);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  await analyzeBackup(page, backupOf([matchWithEvents('m1', 'Cork', 9)]));
+  const r = await applyLast(page, { m1: 'theirs' });
+  check('reports the replacement', /replaced 1/i.test(r.message), true);
+  check('event count is now the backup copy', await page.evaluate(() => window.__mtTest.eventCount('m1')), 9);
+
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+  check('and survives a reload', await page.evaluate(() => window.__mtTest.eventCount('m1')), 9);
+  // Replaced, not duplicated.
+  check('the match was replaced, not added alongside',
+        (await page.evaluate(() => window.__mtTest.matchIds())).length, 1);
+  await page.close();
+}
+
+/**
+ * Cancelling must write NOTHING - not even the non-conflicting matches that
+ * came in the same file. A partial write on cancel would be its own trap.
+ */
+async function testCancelWritesNothing(browser) {
+  console.log('\n  cancelling imports nothing at all');
+  const page = await newPage(browser);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await clearOrigin(page);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+  await seedMatches(page, [matchWithEvents('m1', 'Cork', 2)]);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  // A file with one conflict AND one genuinely new match.
+  await analyzeBackup(page, backupOf([
+    matchWithEvents('m1', 'Cork', 9),
+    matchWithEvents('m2', 'Clare', 5),
+  ]));
+  // Cancelling means applyImport is never called at all - assert that state is
+  // untouched, which is what the UI guarantees by returning null.
+  const ids = await page.evaluate(() => window.__mtTest.matchIds());
+  check('no new match was added by analysis alone', JSON.stringify(ids), JSON.stringify(['m1']));
+  check('and the existing match is untouched', await page.evaluate(() => window.__mtTest.eventCount('m1')), 2);
+  await page.close();
+}
+
+/** Re-importing the same backup must be a silent no-op, not a prompt. */
+async function testIdenticalIsNotAConflict(browser) {
+  console.log('\n  re-importing the same backup is a no-op, not a conflict');
+  const page = await newPage(browser);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await clearOrigin(page);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  const match = matchWithEvents('m1', 'Cork', 4);
+  await seedMatches(page, [match]);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  const a = await analyzeBackup(page, backupOf([match]));
+  check('no conflict is raised', a.conflicts.length, 0);
+  check('it is recognised as identical', JSON.stringify(a.identical), JSON.stringify(['m1']));
+
+  const r = await applyLast(page, {});
+  check('and reports that nothing changed', r.changed, false);
+  check('with an honest message', /nothing to import/i.test(r.message), true);
+  await page.close();
+}
+
+/** Genuinely new matches still import, unchanged from before. */
+async function testNewMatchesStillImport(browser) {
+  console.log('\n  new matches still import normally');
+  const page = await newPage(browser);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await clearOrigin(page);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+  await seedMatches(page, [matchWithEvents('m1', 'Cork', 2)]);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  const a = await analyzeBackup(page, backupOf([matchWithEvents('m2', 'Clare', 3)]));
+  check('the unseen match is new', JSON.stringify(a.newMatches), JSON.stringify(['m2']));
+  check('and raises no conflict', a.conflicts.length, 0);
+
+  const r = await applyLast(page, {});
+  check('it is imported', /imported 1 new match/i.test(r.message), true);
+  check('both matches are now present',
+        (await page.evaluate(() => window.__mtTest.matchIds())).length, 2);
+  await page.close();
+}
+
+/** Panels carry the same skip-by-id bug and get the same treatment. */
+async function testPanelConflicts(browser) {
+  console.log('\n  panels conflict the same way matches do');
+  const page = await newPage(browser);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await clearOrigin(page);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  const mkPanel = (id, name, filled) => ({
+    id, name,
+    players: Array.from({ length: 30 }, (_, i) => ({
+      id: `${id}-p${i}`, name: i < filled ? `Player ${i}` : '', jerseyNumber: i + 1,
+    })),
+  });
+
+  await page.evaluate(async (p) => {
+    await window.__mtTest.saveData('playerPanels', [p]);
+  }, mkPanel('pan1', 'Seniors', 3));
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  const a = await analyzeBackup(page, backupOf([], [mkPanel('pan1', 'Seniors', 20)]));
+  check('the differing panel is a conflict', JSON.stringify(a.panelConflicts), JSON.stringify(['pan1']));
+  check('and is not added as a new panel', a.newPanels.length, 0);
+
+  await applyLast(page, { pan1: 'theirs' });
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+  check('the panel was replaced, not duplicated',
+        await page.evaluate(() => window.__mtTest.panelCount()), 1);
+  await page.close();
+}
+
 // -------------------------------------------------------------------- main
 
 (async () => {
@@ -331,6 +581,13 @@ async function testBackupTimestampSurvivesReload(browser) {
     await testDismissedShareRecordsNothing(browser);
     await testDownloadFallbackRecordsBackup(browser);
     await testBackupTimestampSurvivesReload(browser);
+    await testConflictIsDetected(browser);
+    await testKeepMineChangesNothing(browser);
+    await testUseBackupReplaces(browser);
+    await testCancelWritesNothing(browser);
+    await testIdenticalIsNotAConflict(browser);
+    await testNewMatchesStillImport(browser);
+    await testPanelConflicts(browser);
   } catch (err) {
     failures++;
     console.error('\n  harness error:', err && err.message);
