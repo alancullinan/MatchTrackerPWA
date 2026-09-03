@@ -6,7 +6,7 @@
  * automatically generating players for teams, running a match timer with
  * period control, recording various event types (shot, foul, card,
  * kickout, substitution, note), computing scores and persisting data
- * in localStorage. The UI is designed to work well on mobile devices.
+ * in IndexedDB. The UI is designed to work well on mobile devices.
  */
 
 (() => {
@@ -111,7 +111,7 @@
     PENALTY: 'penalty'
   };
 
-  // Application state persisted in localStorage
+  // Application state persisted in IndexedDB via StorageManager
   const appState = {
     matches: [], // array of match objects
     currentMatchId: null,
@@ -147,59 +147,58 @@
       });
     },
     
-    // Save data with fallback strategy
+    // The three keys the app persists. Named once so the migration below and
+    // any future whole-state operation cannot drift out of sync with reality.
+    KEYS: ['matches', 'playerPanels', 'lastSelectedPanels'],
+
+    // Marks the localStorage -> IndexedDB migration as done, so it runs at most
+    // once per device. Deliberately kept IN localStorage: it must survive
+    // alongside the old copies it guards, and it is a single short string.
+    MIGRATED_FLAG: 'storageMigratedToIDB',
+
+    /**
+     * Save one key. IndexedDB only.
+     *
+     * This used to write localStorage first and fall back to IndexedDB, while
+     * loadData() read localStorage first - two independent stores that silently
+     * diverged once localStorage hit quota, stranding newly recorded matches in
+     * IndexedDB where nothing ever read them. A single store cannot have that
+     * bug: there is no second copy to disagree with.
+     *
+     * @returns {Promise<boolean>} true if the data is durably stored. Callers
+     *   that care can react; previously this swallowed every error and returned
+     *   undefined, so failure was indistinguishable from success.
+     */
     async saveData(key, data) {
-      const dataToStore = {
-        key: key,
-        data: data,
-        timestamp: Date.now()
-      };
-      
-      // Try localStorage first (faster)
       try {
-        localStorage.setItem(key, JSON.stringify(data));
-        console.log(`Saved to localStorage: ${key}`);
-      } catch (localStorageError) {
-        console.warn('localStorage failed, trying IndexedDB:', localStorageError);
-        
-        // Fallback to IndexedDB
-        try {
-          const db = await this.initDB();
-          const transaction = db.transaction([this.STORE_NAME], 'readwrite');
-          const store = transaction.objectStore(this.STORE_NAME);
-          store.put(dataToStore);
-          await new Promise((resolve, reject) => {
-            transaction.oncomplete = () => resolve();
-            transaction.onerror = () => reject(transaction.error);
-          });
-          console.log(`Saved to IndexedDB: ${key}`);
-        } catch (indexedDBError) {
-          console.error('Both storage methods failed:', indexedDBError);
-          this.showStorageWarning();
-        }
+        const db = await this.initDB();
+        const transaction = db.transaction([this.STORE_NAME], 'readwrite');
+        transaction.objectStore(this.STORE_NAME).put({
+          key: key,
+          data: data,
+          timestamp: Date.now()
+        });
+        await new Promise((resolve, reject) => {
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => reject(transaction.error);
+          transaction.onabort = () => reject(transaction.error);
+        });
+        return true;
+      } catch (indexedDBError) {
+        console.error(`Failed to save ${key}:`, indexedDBError);
+        this.showStorageWarning();
+        return false;
       }
     },
-    
-    // Load data with fallback strategy
+
+    // Load one key. IndexedDB only - see saveData for why there is no fallback.
     async loadData(key) {
-      // Try localStorage first
-      try {
-        const stored = localStorage.getItem(key);
-        if (stored) {
-          return JSON.parse(stored);
-        }
-      } catch (localStorageError) {
-        console.warn('localStorage read failed, trying IndexedDB:', localStorageError);
-      }
-      
-      // Fallback to IndexedDB
       try {
         const db = await this.initDB();
         const transaction = db.transaction([this.STORE_NAME], 'readonly');
-        const store = transaction.objectStore(this.STORE_NAME);
-        const request = store.get(key);
-        
-        return new Promise((resolve, reject) => {
+        const request = transaction.objectStore(this.STORE_NAME).get(key);
+
+        return await new Promise((resolve, reject) => {
           request.onsuccess = () => {
             const result = request.result;
             resolve(result ? result.data : null);
@@ -207,52 +206,135 @@
           request.onerror = () => reject(request.error);
         });
       } catch (indexedDBError) {
-        console.error('Both storage methods failed for reading:', indexedDBError);
+        console.error(`Failed to load ${key}:`, indexedDBError);
         return null;
       }
     },
-    
-    // Get storage usage info
-    async getStorageInfo() {
-      const info = {
-        localStorage: { available: false, used: 0, total: 0 },
-        indexedDB: { available: false, used: 0, total: 0 }
-      };
-      
-      // Check localStorage
-      if (typeof Storage !== 'undefined') {
-        try {
-          const testKey = 'storage_test';
-          localStorage.setItem(testKey, 'test');
-          localStorage.removeItem(testKey);
-          info.localStorage.available = true;
-          
-          // Estimate localStorage usage
-          let used = 0;
-          for (let key in localStorage) {
-            if (localStorage.hasOwnProperty(key)) {
-              used += localStorage.getItem(key).length;
-            }
+
+    /**
+     * One-time move of existing data from localStorage into IndexedDB.
+     *
+     * Runs before the first load on an upgraded device. The ordering is the
+     * whole point: write everything, read it all back and verify it, and only
+     * then remove the localStorage originals. If anything fails or fails to
+     * verify, localStorage is left completely untouched - a device that cannot
+     * migrate keeps working off the old copy rather than losing it.
+     *
+     * Never delete an unverified copy: losing data during the fix for data loss
+     * would be the worst possible outcome.
+     */
+    async migrateFromLocalStorage() {
+      let pending;
+      try {
+        if (localStorage.getItem(this.MIGRATED_FLAG)) return; // already done
+        // Collect whatever the old build left behind.
+        pending = this.KEYS
+          .map((key) => ({ key, raw: localStorage.getItem(key) }))
+          .filter((entry) => entry.raw !== null)
+          .map((entry) => ({ key: entry.key, value: JSON.parse(entry.raw) }));
+      } catch (err) {
+        // Unreadable or unparseable localStorage: nothing safe to migrate, and
+        // nothing to delete either.
+        console.warn('Skipping storage migration:', err);
+        return;
+      }
+
+      if (pending.length === 0) {
+        // A fresh install has nothing to move. Still flag it, so this never
+        // runs again and cannot later pick up stray keys.
+        try { localStorage.setItem(this.MIGRATED_FLAG, '1'); } catch (err) { /* non-fatal */ }
+        return;
+      }
+
+      try {
+        for (const entry of pending) {
+          const saved = await this.saveData(entry.key, entry.value);
+          if (!saved) throw new Error(`write failed for ${entry.key}`);
+        }
+
+        // Verify by reading back through the real load path, not by trusting
+        // the write. A write that reports success but reads back empty is
+        // exactly the kind of failure this guard exists for.
+        for (const entry of pending) {
+          const readBack = await this.loadData(entry.key);
+          if (JSON.stringify(readBack) !== JSON.stringify(entry.value)) {
+            throw new Error(`verification failed for ${entry.key}`);
           }
-          info.localStorage.used = used;
-          info.localStorage.total = 10 * 1024 * 1024; // ~10MB typical limit
-        } catch (e) {
-          console.warn('localStorage not available:', e);
         }
+      } catch (err) {
+        console.error('Storage migration failed; keeping localStorage copy.', err);
+        this.showStorageWarning();
+        return; // localStorage untouched
       }
-      
-      // Check IndexedDB
-      if ('indexedDB' in window) {
-        try {
-          await this.initDB();
-          info.indexedDB.available = true;
-          // Note: Getting exact usage requires more complex implementation
-          info.indexedDB.total = 50 * 1024 * 1024; // Estimated available space
-        } catch (e) {
-          console.warn('IndexedDB not available:', e);
+
+      // Verified. Only now is it safe to drop the originals.
+      try {
+        for (const entry of pending) localStorage.removeItem(entry.key);
+        localStorage.setItem(this.MIGRATED_FLAG, '1');
+        console.log(`Migrated ${pending.length} key(s) to IndexedDB.`);
+      } catch (err) {
+        // The data is safely in IndexedDB; failing to tidy up is harmless, and
+        // re-running the migration next launch is idempotent.
+        console.warn('Migrated, but could not clear localStorage:', err);
+      }
+    },
+
+    /**
+     * Ask the browser not to evict this origin's storage.
+     *
+     * The app had never called this, so storage was "best-effort" and could be
+     * cleared - on iOS, after roughly a week of disuse. Chrome usually grants it
+     * for installed PWAs; Safari is less predictable and may refuse, which is
+     * not an error. This reduces eviction risk but cannot eliminate it: only an
+     * off-device backup survives a cleared or replaced device.
+     */
+    async requestPersistence() {
+      try {
+        if (!navigator.storage || !navigator.storage.persist) return false;
+        if (await navigator.storage.persisted()) return true;
+        return await navigator.storage.persist();
+      } catch (err) {
+        return false; // unsupported or refused - carry on regardless
+      }
+    },
+    
+    /**
+     * Report real storage usage.
+     *
+     * This used to count localStorage CHARACTERS (not bytes) against a guessed
+     * 10MB cap, and pair it with a hardcoded 50MB "IndexedDB space" that
+     * measured nothing at all. navigator.storage.estimate() is the only honest
+     * source now the real limit is a share of free disk rather than a fixed
+     * number. It is absent on older Safari, hence `measured`: callers must be
+     * able to tell "not measurable" from "zero".
+     */
+    async getStorageInfo() {
+      const info = { available: false, measured: false, used: 0, quota: 0, persisted: false };
+
+      if (!('indexedDB' in window)) return info;
+
+      try {
+        await this.initDB();
+        info.available = true;
+      } catch (e) {
+        console.warn('IndexedDB not available:', e);
+        return info;
+      }
+
+      try {
+        if (navigator.storage && navigator.storage.estimate) {
+          const estimate = await navigator.storage.estimate();
+          info.used = estimate.usage || 0;
+          info.quota = estimate.quota || 0;
+          info.measured = info.quota > 0;
         }
+        if (navigator.storage && navigator.storage.persisted) {
+          info.persisted = await navigator.storage.persisted();
+        }
+      } catch (e) {
+        console.warn('Storage estimate unavailable:', e);
       }
-      
+
       return info;
     },
     
@@ -398,21 +480,29 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
       };
       
+      if (!info.available) {
+        return '<div class="text-yellow-400">⚠️ No storage available</div>';
+      }
+
       let html = '';
-      
-      if (info.localStorage.available) {
-        const usedPercent = ((info.localStorage.used / info.localStorage.total) * 100).toFixed(1);
-        html += `<div>localStorage: ${formatBytes(info.localStorage.used)} / ${formatBytes(info.localStorage.total)} (${usedPercent}%)</div>`;
+
+      if (info.measured) {
+        const usedPercent = ((info.used / info.quota) * 100).toFixed(1);
+        html += `<div>Used: ${formatBytes(info.used)} of ${formatBytes(info.quota)} (${usedPercent}%)</div>`;
+        // Long-tail now that the ceiling is disk-sized rather than ~5MB, but
+        // still worth flagging before it becomes a problem.
+        if (info.used / info.quota > 0.8) {
+          html += '<div class="text-yellow-400">⚠️ Storage is nearly full — export a backup.</div>';
+        }
+      } else {
+        // Older Safari has no estimate(); say so rather than inventing a number.
+        html += '<div>Storage available (usage not reported by this browser)</div>';
       }
-      
-      if (info.indexedDB.available) {
-        html += `<div>IndexedDB: Available (~${formatBytes(info.indexedDB.total)} space)</div>`;
-      }
-      
-      if (!info.localStorage.available && !info.indexedDB.available) {
-        html = '<div class="text-yellow-400">⚠️ No storage available</div>';
-      }
-      
+
+      html += info.persisted
+        ? '<div class="text-green-400">Storage is persistent</div>'
+        : '<div>Storage is best-effort — the browser may clear it if unused. Export backups.</div>';
+
       return html;
     }
   };
@@ -3457,14 +3547,23 @@
     }
   }
 
-  // Save matches using enhanced storage system
+  // Persist the whole app state.
+  //
+  // Returns true only if all three keys were durably written. Most of the ~30
+  // callers do not await this, so the return value is not yet acted on
+  // everywhere - but StorageManager now surfaces a warning to the user itself
+  // when a write fails, which is what the old silent path was missing.
   async function saveAppState() {
     try {
-      await StorageManager.saveData('matches', appState.matches);
-      await StorageManager.saveData('playerPanels', appState.playerPanels);
-      await StorageManager.saveData('lastSelectedPanels', appState.lastSelectedPanels);
+      const results = await Promise.all([
+        StorageManager.saveData('matches', appState.matches),
+        StorageManager.saveData('playerPanels', appState.playerPanels),
+        StorageManager.saveData('lastSelectedPanels', appState.lastSelectedPanels)
+      ]);
+      return results.every(Boolean);
     } catch (err) {
       console.error('Failed to save app state', err);
+      return false;
     }
   }
 
@@ -3476,7 +3575,7 @@
   /**
    * Delete a match from the application state and update persistent storage.  This helper
    * removes the match with the given ID from the matches array, updates
-   * localStorage and refreshes the match list view.  If the currently viewed
+   * persistent storage and refreshes the match list view.  If the currently viewed
    * match is deleted, the app will return to the list view.  User confirmation
    * should be performed by the caller.
    *
@@ -8363,7 +8462,14 @@
 
   // Initialise application
   async function init() {
+    // Must precede loadAppState(): on a device upgrading from the old
+    // dual-store build, the data still lives in localStorage and IndexedDB is
+    // empty, so loading first would show an empty app.
+    await StorageManager.migrateFromLocalStorage();
     await loadAppState();
+    // Ask to be exempt from eviction. Fire-and-forget: it may be refused, and
+    // nothing downstream depends on the answer.
+    StorageManager.requestPersistence();
     // Clear broadcasts left running on old matches (Realtime DB has no TTL).
     cleanupStaleBroadcasts();
     renderMatchList(); // Prepare match list data even though we don't show it initially
@@ -8381,6 +8487,16 @@
     if (header) header.style.display = 'none';
     hideAppSplash();
   }
+
+  // Test seam. Everything above lives inside this IIFE and is otherwise
+  // unreachable, so test/storage.test.js - which drives a real browser - has no
+  // way to exercise the storage layer directly. Exposing these three is enough
+  // for it to save, load and count without reaching into app internals.
+  window.__mtTest = {
+    saveData: (key, data) => StorageManager.saveData(key, data),
+    loadData: (key) => StorageManager.loadData(key),
+    matchCount: () => appState.matches.length,
+  };
 
   // Kick off once DOM ready
   document.addEventListener('DOMContentLoaded', init);
