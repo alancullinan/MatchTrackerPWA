@@ -19,8 +19,9 @@ Since this is a vanilla JavaScript PWA with no build system:
   - The suite covers the service worker **upgrade path**, because every serious caching bug here has been an upgrade bug: the app worked perfectly on a fresh install while serving a stale version forever to anyone who already had it. It installs an "old" release, deploys a "new" one, and asserts the client actually ends up running the new code. It serves a temp copy, never the working tree.
   - **Run it before any change to `sw.js` or the SW registration in `index.html`.** Both regressions that shipped (cache-first navigations, and a missing `ignoreSearch`) are covered - each was verified by reintroducing the bug and confirming the suite fails.
   - `test/storage.test.js` covers the **storage layer**, for the same reason: the dual-store data-loss bug only appeared on a device that already had data, never on a fresh install. It pins the original bug (a save masked by a stale localStorage copy), the one-time migration, its idempotence, and - most importantly - that a migration which cannot verify leaves localStorage intact. Each assertion was verified by reintroducing the corresponding bug. **Run it before any change to `StorageManager`.**
-  - Both suites need `window.__mtTest` (the small test seam at the bottom of `script.js`) to reach code inside the IIFE.
-- **Service Worker Updates**: When modifying cached files, increment `CACHE_NAME` in `sw.js` (currently v2.4.0) **and** bump the matching `?v=` query strings on `script.js`, `styles.css` and `tailwind-minimal.css` in `index.html`. Both are required: `caches.match()` keys on the full URL including the query string, so an unchanged `?v=` serves the old file from cache no matter what the cache version says
+  - `test/backup.test.js` covers the **export path**, the only thing protecting against a lost or replaced phone. It stubs Web Share to pin that a completed share records `lastBackupAt` and hands over one round-trippable `.json`, that a **dismissed** share (AbortError) records nothing - otherwise the staleness indicator would claim a backup that never left the device - and that the download fallback still works. Verified by reintroducing each bug.
+  - All three suites need `window.__mtTest` (the small test seam at the bottom of `script.js`) to reach code inside the IIFE.
+- **Service Worker Updates**: When modifying cached files, increment `CACHE_NAME` in `sw.js` (currently v2.5.0) **and** bump the matching `?v=` query strings on `script.js`, `styles.css` and `tailwind-minimal.css` in `index.html`. Both are required: `caches.match()` keys on the full URL including the query string, so an unchanged `?v=` serves the old file from cache no matter what the cache version says
 - **Icon Generation**: Use `create-icons.html` for creating and testing new SVG icons
 - **Deployment Context**: Served from the root of `matchtracker.club` via GitHub Pages (custom domain set by the `CNAME` file at the repo root; `start_url` and `scope` in manifest.json are `/`). Deploys on push to `main` — no build step. The service worker registers `/sw.js` and precaches root-absolute paths, which only resolve correctly at a domain root; do not move the app back to a subpath without making those paths relative
 
@@ -33,7 +34,7 @@ This is a vanilla JavaScript single-page application with no external dependenci
 - **script.js** - All JavaScript logic in IIFE pattern (~6300+ lines)
 - **styles.css** - Mobile-first CSS with Tailwind-like utilities and custom components
 - **tailwind-minimal.css** - Local Tailwind CSS subset for offline functionality
-- **sw.js** - Service worker for PWA caching (cache version: v2.4.0)
+- **sw.js** - Service worker for PWA caching (cache version: v2.5.0)
 - **manifest.json** - PWA manifest with app shortcuts and icons
 
 ### View Architecture
@@ -239,10 +240,10 @@ Events are stored as objects with this structure:
 - **Running Score Calculation**: Each shared event shows the match score at that point in time
 
 ### Data Management Features
-- **Export**: Download all matches and player panels as a single JSON file
+- **Export**: Share or download all matches and player panels as a single JSON file. Prefers `navigator.share()` (the share sheet), falling back to `<a download>` - a synthetic download click is unreliable in an installed iOS PWA, which is the app's main target. Filenames are timestamped to the minute so same-day exports cannot collide. Only a **completed** export sets `lastBackupAt`; a dismissed share sheet rejects with `AbortError` and is treated as a cancellation, not a backup
 - **Import**: Restore data from backup JSON files
 - **Storage Info**: View real usage and quota via `navigator.storage.estimate()`
-- **Backup Strategy**: Users can manually export data; the only defence against eviction or a lost device
+- **Backup Strategy**: Users manually export data; the only defence against a lost, wiped or replaced device, since on-device storage (however durable) does not survive one. The Data Management modal shows when the last backup happened, and steers users to "Save to Files"/iCloud Drive rather than a chat app
 
 ### Match List Filtering
 - **Real-time Search**: Filter input at top of match list
@@ -261,7 +262,7 @@ Events are stored as objects with this structure:
 ### Development Workflow
 - Test changes by opening `index.html` in browser (no build step required)
 - For PWA features, use localhost or HTTPS (service worker requirement)
-- When modifying cached files, increment cache version in `sw.js` (currently v2.4.0)
+- When modifying cached files, increment cache version in `sw.js` (currently v2.5.0)
 - All changes take effect immediately - no compilation or build process
 
 ### Code Integration Patterns
