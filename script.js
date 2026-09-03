@@ -119,7 +119,8 @@
     editingEventId: null, // currently edited event id
     editingMatchId: null, // holds ID of match being edited via the form
     playerPanels: [], // array of player panel objects
-    lastSelectedPanels: {} // stores last selected panel for each team (matchId-teamKey)
+    lastSelectedPanels: {}, // stores last selected panel for each team (matchId-teamKey)
+    lastBackupAt: null // ISO timestamp of the last successful export, or null
   };
 
   /* Enhanced Storage System with IndexedDB fallback */
@@ -147,8 +148,10 @@
       });
     },
     
-    // The three keys the app persists. Named once so the migration below and
-    // any future whole-state operation cannot drift out of sync with reality.
+    // The keys that could exist in the OLD localStorage store, for the
+    // migration below. Deliberately not "every key the app persists":
+    // lastBackupAt postdates the migration and never lived in localStorage, so
+    // adding it here would make the migration look for something never written.
     KEYS: ['matches', 'playerPanels', 'lastSelectedPanels'],
 
     // Marks the localStorage -> IndexedDB migration as done, so it runs at most
@@ -365,10 +368,23 @@
   /* Data Export/Import System */
   
   const DataManager = {
-    // Export all match data to JSON
-    exportData() {
+    /**
+     * Export everything the app persists as a single JSON file.
+     *
+     * Prefers the native share sheet. The old synthetic `<a download>` click is
+     * the least reliable way to produce a file in an INSTALLED iOS PWA, which is
+     * exactly where this app runs - it can silently produce nothing. The share
+     * sheet reliably yields a file and lets the user route it to Files, iCloud
+     * Drive, AirDrop or a chat. Same capability-check-then-fall-back shape the
+     * app already uses for sharing event images.
+     *
+     * Only a genuinely completed share or download sets `lastBackupAt`:
+     * navigator.share() rejects with AbortError when the sheet is dismissed, and
+     * recording a cancelled share as a backup would make staleness tracking lie.
+     */
+    async exportData() {
       try {
-        const exportData = {
+        const payload = {
           version: '1.0.0',
           exportDate: new Date().toISOString(),
           matches: appState.matches,
@@ -377,25 +393,77 @@
           panelCount: appState.playerPanels.length,
           lastSelectedPanels: appState.lastSelectedPanels
         };
-        
-        const jsonString = JSON.stringify(exportData, null, 2);
+
+        const jsonString = JSON.stringify(payload, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
+        // Timestamped: the old name was date-only, so two exports on one day
+        // collided - the second would overwrite or be renamed by the target.
+        const filename = `match-tracker-backup-${this.backupTimestamp()}.json`;
+        const count = payload.matchCount;
+
+        const file = new File([blob], filename, { type: 'application/json' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              // Make the file identifiable wherever it lands - a backup found in
+              // a chat months later should say what it is.
+              title: 'MatchTracker backup',
+              text: `MatchTracker backup — ${count} ${count === 1 ? 'match' : 'matches'}, ${new Date().toLocaleDateString()}`,
+              files: [file]
+            });
+            await this.recordBackup();
+            return { success: true, message: `Exported ${count} matches` };
+          } catch (shareError) {
+            // Dismissing the sheet is a normal user action, not a failure.
+            if (shareError && shareError.name === 'AbortError') {
+              return { success: false, message: 'Export cancelled', cancelled: true };
+            }
+            // Anything else: fall through to the download path rather than
+            // leaving the user with no way to get their data out.
+            console.warn('Share failed, falling back to download:', shareError);
+          }
+        }
+
+        // Fallback: direct download (desktop, and older browsers).
         const url = URL.createObjectURL(blob);
-        
-        // Create download link
         const link = document.createElement('a');
         link.href = url;
-        link.download = `match-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+        link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
-        return { success: true, message: `Exported ${exportData.matchCount} matches` };
+
+        await this.recordBackup();
+        return { success: true, message: `Exported ${count} matches` };
       } catch (error) {
         console.error('Export failed:', error);
         return { success: false, message: `Export failed: ${error.message}` };
       }
+    },
+
+    // Filename-safe local timestamp, to the minute: 2026-09-03-1432.
+    // Local rather than ISO/UTC so the name matches the day the user thinks it is.
+    backupTimestamp() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+    },
+
+    // Remember when data last left the device. This is the only thing that makes
+    // "your backup is stale" answerable - the app previously had no idea whether
+    // a backup had ever been taken.
+    async recordBackup() {
+      appState.lastBackupAt = new Date().toISOString();
+      await StorageManager.saveData('lastBackupAt', appState.lastBackupAt);
+    },
+
+    // Whole days since the last backup, or null if there has never been one.
+    daysSinceBackup() {
+      if (!appState.lastBackupAt) return null;
+      const then = new Date(appState.lastBackupAt).getTime();
+      if (Number.isNaN(then)) return null;
+      return Math.floor((Date.now() - then) / 86400000);
     },
     
     // Import match data from JSON file
@@ -822,6 +890,7 @@
     
     // Load storage info
     loadStorageInfo();
+    updateBackupStatus();
   }
   
   function hideDataManagementModal() {
@@ -838,18 +907,55 @@
     storageInfoDiv.innerHTML = await DataManager.formatStorageInfo();
   }
   
-  function exportData() {
+  async function exportData() {
     const statusDiv = document.getElementById('export-status');
-    const result = DataManager.exportData();
-    
-    statusDiv.textContent = result.message;
-    statusDiv.className = result.success ? 'text-sm text-green-400' : 'text-sm text-red-400';
-    
+    const btn = document.getElementById('export-data-btn');
+
+    // The share sheet is modal and can sit open for a while; stop a second tap
+    // building a second copy of the whole state in the meantime.
+    if (btn) btn.disabled = true;
+    statusDiv.textContent = 'Preparing backup…';
+    statusDiv.className = 'text-sm text-gray-400';
+
+    try {
+      const result = await DataManager.exportData();
+
+      statusDiv.textContent = result.message;
+      // A dismissed share sheet is a normal choice, not an error - say so in
+      // neutral grey rather than alarming red.
+      statusDiv.className = result.success
+        ? 'text-sm text-green-400'
+        : (result.cancelled ? 'text-sm text-gray-400' : 'text-sm text-red-400');
+
+      if (result.success) updateBackupStatus();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+
     // Clear status after 3 seconds
     setTimeout(() => {
       statusDiv.textContent = '';
       statusDiv.className = 'text-sm text-gray-400';
     }, 3000);
+  }
+
+  // Show when data last left the device, in the Data Management modal.
+  function updateBackupStatus() {
+    const el = document.getElementById('backup-status');
+    if (!el) return;
+
+    const days = DataManager.daysSinceBackup();
+    if (days === null) {
+      el.textContent = 'No backup taken yet on this device.';
+      el.className = 'text-sm text-yellow-400 mb-3';
+      return;
+    }
+
+    const when = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+    el.textContent = `Last backup: ${when}.`;
+    // 30 days: routine risk is already covered by persistent on-device storage,
+    // so this only needs to catch a genuinely long gap.
+    el.className = days > 30 ? 'text-sm text-yellow-400 mb-3' : 'text-sm text-gray-400 mb-3';
   }
   
   let selectedImportFile = null;
@@ -3545,11 +3651,20 @@
       console.warn('Failed to load last selected panels from storage', err);
       appState.lastSelectedPanels = {};
     }
+
+    // When data last left the device. Null on a device that has never exported
+    // - which is not the same as "backed up long ago", so callers must handle it.
+    try {
+      appState.lastBackupAt = await StorageManager.loadData('lastBackupAt');
+    } catch (err) {
+      console.warn('Failed to load last backup timestamp from storage', err);
+      appState.lastBackupAt = null;
+    }
   }
 
   // Persist the whole app state.
   //
-  // Returns true only if all three keys were durably written. Most of the ~30
+  // Returns true only if every key was durably written. Most of the ~30
   // callers do not await this, so the return value is not yet acted on
   // everywhere - but StorageManager now surfaces a warning to the user itself
   // when a write fails, which is what the old silent path was missing.
@@ -8496,6 +8611,9 @@
     saveData: (key, data) => StorageManager.saveData(key, data),
     loadData: (key) => StorageManager.loadData(key),
     matchCount: () => appState.matches.length,
+    exportData: () => DataManager.exportData(),
+    lastBackupAt: () => appState.lastBackupAt,
+    daysSinceBackup: () => DataManager.daysSinceBackup(),
   };
 
   // Kick off once DOM ready

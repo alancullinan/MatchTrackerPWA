@@ -192,8 +192,18 @@ async function testUpgradeReachesClient(browser, state) {
   check('client ends up on the new release', after.title, 'MT 2.0.0');
   check('and requests the new asset URLs', after.script, 'script.js?v=2.0.0');
 
-  const caches = await evalStable(page, () => window.caches.keys());
-  check('old cache was cleaned up', caches.includes('match-tracker-test-v1'), false);
+  // Poll rather than read once. The old cache is deleted in the new worker's
+  // activate handler, which runs asynchronously after the client is already on
+  // the new release - so a single immediate read races it and fails
+  // intermittently on a slow run. Polling still fails a worker that never
+  // cleans up; it only tolerates one that is slightly slower to get there.
+  let cacheNames = [];
+  for (let i = 0; i < 10; i++) {
+    cacheNames = await evalStable(page, () => window.caches.keys());
+    if (!cacheNames.includes('match-tracker-test-v1')) break;
+    await sleep(500);
+  }
+  check('old cache was cleaned up', cacheNames.includes('match-tracker-test-v1'), false);
   await page.close();
 }
 

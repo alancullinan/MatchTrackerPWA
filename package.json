@@ -4,9 +4,10 @@
   "private": true,
   "description": "Test tooling only. The app itself is a zero-dependency vanilla PWA with no build step - nothing here is shipped to the browser.",
   "scripts": {
-    "test": "node test/sw-upgrade.test.js && node test/storage.test.js",
+    "test": "node test/sw-upgrade.test.js && node test/storage.test.js && node test/backup.test.js",
     "test:sw": "node test/sw-upgrade.test.js",
-    "test:storage": "node test/storage.test.js"
+    "test:storage": "node test/storage.test.js",
+    "test:backup": "node test/backup.test.js"
   },
   "devDependencies": {
     "puppeteer": "^24.0.0"
