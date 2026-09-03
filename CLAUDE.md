@@ -15,10 +15,12 @@ Since this is a vanilla JavaScript PWA with no build system:
   - `npx live-server` (if live-server is installed)
   - `php -S localhost:8000` (PHP)
 - **Testing PWA Features**: Must use HTTPS or localhost for service worker functionality
-- **Tests**: `npm install` once, then `npm test` runs `test/sw-upgrade.test.js`. This is the ONLY dependency in the project and it is test tooling - the app itself remains a zero-dependency vanilla PWA with no build step, and nothing from `node_modules` is ever served to a browser.
+- **Tests**: `npm install` once, then `npm test` runs `test/sw-upgrade.test.js` and `test/storage.test.js` (individually: `npm run test:sw`, `npm run test:storage`). Puppeteer is the ONLY dependency in the project and it is test tooling - the app itself remains a zero-dependency vanilla PWA with no build step, and nothing from `node_modules` is ever served to a browser.
   - The suite covers the service worker **upgrade path**, because every serious caching bug here has been an upgrade bug: the app worked perfectly on a fresh install while serving a stale version forever to anyone who already had it. It installs an "old" release, deploys a "new" one, and asserts the client actually ends up running the new code. It serves a temp copy, never the working tree.
   - **Run it before any change to `sw.js` or the SW registration in `index.html`.** Both regressions that shipped (cache-first navigations, and a missing `ignoreSearch`) are covered - each was verified by reintroducing the bug and confirming the suite fails.
-- **Service Worker Updates**: When modifying cached files, increment `CACHE_NAME` in `sw.js` (currently v2.0.0) **and** bump the matching `?v=` query strings on `script.js`, `styles.css` and `tailwind-minimal.css` in `index.html`. Both are required: `caches.match()` keys on the full URL including the query string, so an unchanged `?v=` serves the old file from cache no matter what the cache version says
+  - `test/storage.test.js` covers the **storage layer**, for the same reason: the dual-store data-loss bug only appeared on a device that already had data, never on a fresh install. It pins the original bug (a save masked by a stale localStorage copy), the one-time migration, its idempotence, and - most importantly - that a migration which cannot verify leaves localStorage intact. Each assertion was verified by reintroducing the corresponding bug. **Run it before any change to `StorageManager`.**
+  - Both suites need `window.__mtTest` (the small test seam at the bottom of `script.js`) to reach code inside the IIFE.
+- **Service Worker Updates**: When modifying cached files, increment `CACHE_NAME` in `sw.js` (currently v2.4.0) **and** bump the matching `?v=` query strings on `script.js`, `styles.css` and `tailwind-minimal.css` in `index.html`. Both are required: `caches.match()` keys on the full URL including the query string, so an unchanged `?v=` serves the old file from cache no matter what the cache version says
 - **Icon Generation**: Use `create-icons.html` for creating and testing new SVG icons
 - **Deployment Context**: Served from the root of `matchtracker.club` via GitHub Pages (custom domain set by the `CNAME` file at the repo root; `start_url` and `scope` in manifest.json are `/`). Deploys on push to `main` — no build step. The service worker registers `/sw.js` and precaches root-absolute paths, which only resolve correctly at a domain root; do not move the app back to a subpath without making those paths relative
 
@@ -31,7 +33,7 @@ This is a vanilla JavaScript single-page application with no external dependenci
 - **script.js** - All JavaScript logic in IIFE pattern (~6300+ lines)
 - **styles.css** - Mobile-first CSS with Tailwind-like utilities and custom components
 - **tailwind-minimal.css** - Local Tailwind CSS subset for offline functionality
-- **sw.js** - Service worker for PWA caching (cache version: v1.7.0)
+- **sw.js** - Service worker for PWA caching (cache version: v2.4.0)
 - **manifest.json** - PWA manifest with app shortcuts and icons
 
 ### View Architecture
@@ -76,7 +78,7 @@ Home View
 - **Panel Import**: Import an entire panel into a match team in one action from the Edit Players screen. Only offered before throw-in (`MatchPeriod.NOT_STARTED`); the button is hidden once the match starts, since relabelling players would rewrite the names shown against already-recorded events. Overwrites all 30 names in place — player `id`s are never regenerated, so events keep resolving correctly
 - **Match Statistics**: View detailed shooting accuracy, scorers breakdown, and team statistics
 - **Data Management**: Export all matches to JSON file and import backups
-- **Data Persistence**: Dual storage strategy with localStorage primary and IndexedDB fallback
+- **Data Persistence**: IndexedDB via `StorageManager`, with a one-time migration off the legacy localStorage store
 - **Match Filtering**: Real-time text filtering of match list by team names or competition
 
 ## Match Types & Scoring
@@ -90,7 +92,7 @@ Home View
 The entire application logic is contained in a single IIFE (Immediately Invoked Function Expression):
 
 - **Enumerations**: Defined at the top (MatchPeriod, EventType, ShotOutcome, ShotType, CardType, etc.)
-- **State Management**: All data stored in browser localStorage with automatic persistence
+- **State Management**: All data stored in IndexedDB with automatic persistence
 - **Event System**: Comprehensive event logging with timestamps and match periods
 - **Function Organization**: ~125+ functions organized by feature area:
   - Match CRUD operations
@@ -132,7 +134,7 @@ All modals follow a consistent pattern: Cancel button (left), title (center), Do
 ## Data Structure
 
 ### Match Data
-Matches are stored in localStorage with this structure:
+Matches are stored in IndexedDB with this structure:
 - Match metadata (teams, competition, date, venue, referee, match type)
 - Timer state (current period, elapsed time, running status)
 - Events array (shots, fouls, cards, substitutions, notes)
@@ -145,13 +147,17 @@ Player panels are stored separately and can be reused across matches:
 - The slot **is** the jersey number, so duplicate numbers are impossible and a panel imports into a team 1:1
 - Empty slots are meaningful and are preserved on save (names are never filtered out, and the list is never sorted alphabetically)
 - `normalizePanel()` migrates legacy panels (which stored only `{id, name}`) into 30 slots, filling 1..N in stored order. It is idempotent and runs from `loadAppState()`, `DataManager.importData()`, and `showPanelEditor()`
-- Panels are stored in `playerPanels` key in localStorage
+- Panels are stored under the `playerPanels` key in IndexedDB
 
 ### Storage Architecture
-The app uses a dual-storage strategy via `StorageManager`:
-- **Primary**: localStorage (faster, ~5-10MB quota)
-- **Fallback**: IndexedDB (larger quota, used when localStorage is full)
-- All saves attempt localStorage first, then automatically fall back to IndexedDB
+The app uses **IndexedDB only**, via `StorageManager` (`MatchTrackerDB` / `matches` store, keyed by `key`).
+
+It previously kept two stores - writing localStorage-first with an IndexedDB fallback, but *reading* localStorage-first. The stores are independent, so once localStorage hit quota, new saves diverted to IndexedDB while every launch kept returning the older localStorage copy: recently recorded matches vanished silently. **Do not reintroduce a second store** - a single store cannot have that bug. `test/storage.test.js` pins it.
+
+- `saveData()` returns a **boolean**; it no longer swallows errors, and calls `showStorageWarning()` when a write genuinely fails
+- `migrateFromLocalStorage()` runs once, before `loadAppState()` in `init()`. It writes all three keys, verifies them by reading back, and only then removes the localStorage originals - **never delete an unverified copy**. A `storageMigratedToIDB` flag (kept in localStorage) makes it idempotent
+- `getStorageInfo()` uses `navigator.storage.estimate()`; `requestPersistence()` calls `navigator.storage.persist()` once at startup to reduce eviction risk
+- Persistence is not eviction-proof: iOS clears storage for sites unused ~7 days, and a larger quota does not change that. Only an off-device export survives it
 - Data is stored with timestamps for potential sync features
 
 ## UI Patterns
@@ -167,7 +173,7 @@ The app uses a dual-storage strategy via `StorageManager`:
 ### Timer System
 - **setInterval-based** timer with pause/resume functionality
 - **Period transitions**: Automatic progression through match periods (1st Half → Half Time → 2nd Half → etc.)
-- **State persistence**: Timer state saved to localStorage on every update
+- **State persistence**: Timer state saved to IndexedDB on every update
 - **Period-sensitive UI**: Event buttons disabled during non-playing periods (Half Time, Full Time, etc.)
 - **Live timer editing**: Click period/timer display to open editor view
   - Real-time sync: Timer continues running in background while editing
@@ -235,8 +241,8 @@ Events are stored as objects with this structure:
 ### Data Management Features
 - **Export**: Download all matches and player panels as a single JSON file
 - **Import**: Restore data from backup JSON files
-- **Storage Info**: View current localStorage usage and available space
-- **Backup Strategy**: Users can manually export data before localStorage fills up
+- **Storage Info**: View real usage and quota via `navigator.storage.estimate()`
+- **Backup Strategy**: Users can manually export data; the only defence against eviction or a lost device
 
 ### Match List Filtering
 - **Real-time Search**: Filter input at top of match list
@@ -255,7 +261,7 @@ Events are stored as objects with this structure:
 ### Development Workflow
 - Test changes by opening `index.html` in browser (no build step required)
 - For PWA features, use localhost or HTTPS (service worker requirement)
-- When modifying cached files, increment cache version in `sw.js` (currently v1.7.0)
+- When modifying cached files, increment cache version in `sw.js` (currently v2.4.0)
 - All changes take effect immediately - no compilation or build process
 
 ### Code Integration Patterns
@@ -271,5 +277,5 @@ Events are stored as objects with this structure:
 - **No external dependencies**: Project uses only vanilla JavaScript, HTML, and CSS
 - **Single HTML file**: All views and modals are contained in `index.html` (~860 lines)
 - **IIFE architecture**: All JavaScript is wrapped in a single Immediately Invoked Function Expression
-- **LocalStorage persistence**: All data is stored in browser localStorage with automatic saving
+- **IndexedDB persistence**: All data is stored in IndexedDB with automatic saving
 - **Mobile-first design**: All UI components are optimized for touch interaction
