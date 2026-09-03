@@ -399,7 +399,15 @@
         // Timestamped: the old name was date-only, so two exports on one day
         // collided - the second would overwrite or be renamed by the target.
         const filename = `match-tracker-backup-${this.backupTimestamp()}.json`;
-        const count = payload.matchCount;
+
+        // Name everything the file actually carries. Reporting only the match
+        // count made a panels-only export read as "Exported 0 matches", which
+        // looks like a failure, and left the user unable to tell whether their
+        // panels were in the backup at all.
+        const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+        const parts = [plural(payload.matchCount, 'match', 'matches')];
+        if (payload.panelCount > 0) parts.push(plural(payload.panelCount, 'panel', 'panels'));
+        const exportedMessage = `Exported ${parts.join(' and ')}`;
 
         const file = new File([blob], filename, { type: 'application/json' });
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -416,7 +424,7 @@
             // destination that matters is Files, not a chat.
             await navigator.share({ files: [file] });
             await this.recordBackup();
-            return { success: true, message: `Exported ${count} matches` };
+            return { success: true, message: exportedMessage };
           } catch (shareError) {
             // Dismissing the sheet is a normal user action, not a failure.
             if (shareError && shareError.name === 'AbortError') {
@@ -439,7 +447,7 @@
         URL.revokeObjectURL(url);
 
         await this.recordBackup();
-        return { success: true, message: `Exported ${count} matches` };
+        return { success: true, message: exportedMessage };
       } catch (error) {
         console.error('Export failed:', error);
         return { success: false, message: `Export failed: ${error.message}` };

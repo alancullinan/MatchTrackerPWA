@@ -624,6 +624,61 @@ async function testModalStaysOpenAfterImport(browser) {
   await page.close();
 }
 
+
+/**
+ * The export result must name everything the file carries, not just matches.
+ *
+ * Reporting only the match count meant a user with panels could not tell whether
+ * they were in the backup, and a panels-only export read as "Exported 0
+ * matches" - which looks like a failure when it is nothing of the kind.
+ */
+async function testExportReportsPanelsToo(browser) {
+  console.log('\n  the export result names panels as well as matches');
+  const page = await newPage(browser);
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await clearOrigin(page);
+  await stubShare(page, 'ok');
+  await page.goto(url(), { waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  const panel = (id, name) => ({
+    id, name,
+    players: Array.from({ length: 30 }, (_, i) => ({
+      id: `${id}-p${i}`, name: i < 5 ? `Player ${i}` : '', jerseyNumber: i + 1,
+    })),
+  });
+
+  // Matches AND panels.
+  await page.evaluate(async (p) => {
+    await window.__mtTest.saveData('playerPanels', [p[0], p[1]]);
+  }, [panel('pan1', 'Seniors'), panel('pan2', 'U21')]);
+  await seedMatch(page);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+
+  const both = await page.evaluate(async () => (await window.__mtTest.exportData()).message);
+  check('reports both counts', both, 'Exported 1 match and 2 panels');
+
+  // Panels only - the case that used to read as "Exported 0 matches".
+  await page.evaluate(async () => { await window.__mtTest.saveData('matches', []); });
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+  const panelsOnly = await page.evaluate(async () => (await window.__mtTest.exportData()).message);
+  check('still names the panels with no matches', panelsOnly, 'Exported 0 matches and 2 panels');
+
+  // No panels - the message must not gain an empty clause.
+  await page.evaluate(async () => {
+    await window.__mtTest.saveData('playerPanels', []);
+    await window.__mtTest.saveData('matches', []);
+  });
+  await page.reload({ waitUntil: 'networkidle0' });
+  await waitForBoot(page);
+  const neither = await page.evaluate(async () => (await window.__mtTest.exportData()).message);
+  check('omits panels entirely when there are none', neither, 'Exported 0 matches');
+
+  await page.close();
+}
+
 // -------------------------------------------------------------------- main
 
 (async () => {
@@ -640,6 +695,7 @@ async function testModalStaysOpenAfterImport(browser) {
     await testDismissedShareRecordsNothing(browser);
     await testDownloadFallbackRecordsBackup(browser);
     await testBackupTimestampSurvivesReload(browser);
+    await testExportReportsPanelsToo(browser);
     await testConflictIsDetected(browser);
     await testKeepMineChangesNothing(browser);
     await testUseBackupReplaces(browser);
