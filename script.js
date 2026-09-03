@@ -470,67 +470,157 @@
       return Math.floor((Date.now() - then) / 86400000);
     },
     
-    // Import match data from JSON file
-    async importData(file) {
-      try {
-        const text = await this.readFileAsText(file);
-        const importData = JSON.parse(text);
-        
-        // Validate import data structure
-        if (!importData.matches || !Array.isArray(importData.matches)) {
-          throw new Error('Invalid backup file format');
+    /**
+     * Read a backup and work out what importing it would do. PURE - inspects
+     * state, never changes it, so the caller can show the user the consequences
+     * before anything is written.
+     *
+     * Splits incoming records THREE ways, where the old code split them two:
+     *
+     *   new         - not on this device, import as before
+     *   identical   - byte-for-byte what we already hold, skip silently: there
+     *                 is no decision for the user to make
+     *   conflicting - same id, DIFFERENT content
+     *
+     * That third case is the bug this fixes. It used to be lumped in with
+     * "duplicates" and dropped, so a backup could never repair a corrupted
+     * match, and the app reported success while doing nothing.
+     */
+    async analyzeImport(file) {
+      const text = await this.readFileAsText(file);
+      const parsed = JSON.parse(text);
+
+      if (!parsed.matches || !Array.isArray(parsed.matches)) {
+        throw new Error('Invalid backup file format');
+      }
+      for (const match of parsed.matches) {
+        if (!match.id || !match.team1 || !match.team2) {
+          throw new Error('Invalid match data in backup file');
         }
-        
-        // Validate match structure (basic validation)
-        for (const match of importData.matches) {
-          if (!match.id || !match.team1 || !match.team2) {
-            throw new Error('Invalid match data in backup file');
+      }
+
+      // Exact equality is all that is needed to tell "already have this" from
+      // "these differ". Key order is stable here because both sides originate
+      // from the same app writing the same shape.
+      const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+      const byId = new Map(appState.matches.map((m) => [m.id, m]));
+      const newMatches = [];
+      const identicalMatches = [];
+      const conflicts = [];
+
+      for (const incoming of parsed.matches) {
+        const mine = byId.get(incoming.id);
+        if (!mine) newMatches.push(incoming);
+        else if (same(mine, incoming)) identicalMatches.push(incoming);
+        else conflicts.push({ id: incoming.id, mine: mine, theirs: incoming });
+      }
+
+      // Panels carry the same skip-by-id bug, so they get the same treatment.
+      const incomingPanels = Array.isArray(parsed.playerPanels) ? parsed.playerPanels : [];
+      const panelsById = new Map(appState.playerPanels.map((p) => [p.id, p]));
+      const newPanels = [];
+      const panelConflicts = [];
+
+      for (const incoming of incomingPanels) {
+        // Backups may predate jersey numbers; migrate before comparing, or a
+        // legacy panel would look like a conflict against its own migration.
+        normalizePanel(incoming);
+        const mine = panelsById.get(incoming.id);
+        if (!mine) newPanels.push(incoming);
+        else if (!same(mine, incoming)) panelConflicts.push({ id: incoming.id, mine: mine, theirs: incoming });
+      }
+
+      return {
+        newMatches: newMatches,
+        identicalMatches: identicalMatches,
+        conflicts: conflicts,
+        newPanels: newPanels,
+        panelConflicts: panelConflicts,
+        lastSelectedPanels: (parsed.lastSelectedPanels && typeof parsed.lastSelectedPanels === 'object')
+          ? parsed.lastSelectedPanels
+          : null
+      };
+    },
+
+    /**
+     * Apply an analysed import.
+     *
+     * `resolutions` maps a conflicting id to 'mine' or 'theirs'. Anything not
+     * named defaults to KEEPING the device's copy - the destructive choice must
+     * always be explicit, never a fallback.
+     *
+     * Replaces the whole match rather than merging events: an event edited on
+     * both sides has no correct answer, and merging can produce a match that
+     * existed in neither copy.
+     */
+    async applyImport(analysis, resolutions) {
+      resolutions = resolutions || {};
+      try {
+        let replaced = 0;
+
+        appState.matches.push(...analysis.newMatches);
+
+        for (const conflict of analysis.conflicts) {
+          if (resolutions[conflict.id] !== 'theirs') continue; // keep mine
+          const index = appState.matches.findIndex((m) => m.id === conflict.id);
+          if (index >= 0) {
+            appState.matches[index] = conflict.theirs;
+            replaced++;
           }
         }
-        
-        // Merge with existing matches (avoid duplicates by ID)
-        const existingIds = new Set(appState.matches.map(m => m.id));
-        const newMatches = importData.matches.filter(m => !existingIds.has(m.id));
-        
-        appState.matches.push(...newMatches);
-        
-        // Import player panels if they exist
-        let newPanelsCount = 0;
-        if (importData.playerPanels && Array.isArray(importData.playerPanels)) {
-          // Merge with existing panels (avoid duplicates by ID)
-          const existingPanelIds = new Set(appState.playerPanels.map(p => p.id));
-          const newPanels = importData.playerPanels.filter(p => !existingPanelIds.has(p.id));
 
-          // Backups may predate jersey numbers; migrate before they enter state.
-          newPanels.forEach(normalizePanel);
-          appState.playerPanels.push(...newPanels);
-          newPanelsCount = newPanels.length;
+        analysis.newPanels.forEach(normalizePanel);
+        appState.playerPanels.push(...analysis.newPanels);
+
+        let panelsReplaced = 0;
+        for (const conflict of analysis.panelConflicts) {
+          if (resolutions[conflict.id] !== 'theirs') continue;
+          const index = appState.playerPanels.findIndex((p) => p.id === conflict.id);
+          if (index >= 0) {
+            appState.playerPanels[index] = conflict.theirs;
+            panelsReplaced++;
+          }
         }
-        
-        // Import last selected panels if they exist
-        if (importData.lastSelectedPanels && typeof importData.lastSelectedPanels === 'object') {
-          // Merge with existing last selected panels (imported ones take precedence)
-          appState.lastSelectedPanels = { ...appState.lastSelectedPanels, ...importData.lastSelectedPanels };
+
+        if (analysis.lastSelectedPanels) {
+          appState.lastSelectedPanels = Object.assign({}, appState.lastSelectedPanels, analysis.lastSelectedPanels);
         }
-        
-        await saveAppState();
+
+        const saved = await saveAppState();
         renderMatchList();
-        
-        let message = `Imported ${newMatches.length} new matches (${importData.matches.length - newMatches.length} duplicates skipped)`;
-        if (newPanelsCount > 0) {
-          message += ` and ${newPanelsCount} new player panels`;
+
+        if (!saved) {
+          return { success: false, message: 'Import failed: could not save to storage' };
         }
-        
-        return { 
-          success: true, 
-          message: message
-        };
+
+        // Say what actually happened. The old message reported "N duplicates
+        // skipped" as a success even when nothing at all had changed.
+        const added = analysis.newMatches.length;
+        const kept = analysis.conflicts.length - replaced;
+        const parts = [];
+        if (added) parts.push(`imported ${added} new ${added === 1 ? 'match' : 'matches'}`);
+        if (replaced) parts.push(`replaced ${replaced}`);
+        if (kept) parts.push(`kept ${kept} unchanged`);
+        if (analysis.newPanels.length) parts.push(`added ${analysis.newPanels.length} panels`);
+        if (panelsReplaced) parts.push(`replaced ${panelsReplaced} panels`);
+
+        if (parts.length === 0) {
+          return {
+            success: true,
+            changed: false,
+            message: 'Nothing to import \\u2014 this backup matches what you already have'
+          };
+        }
+
+        const message = parts.join(', ');
+        return { success: true, changed: true, message: message.charAt(0).toUpperCase() + message.slice(1) };
       } catch (error) {
         console.error('Import failed:', error);
         return { success: false, message: `Import failed: ${error.message}` };
       }
     },
-    
+
     // Helper to read file as text
     readFileAsText(file) {
       return new Promise((resolve, reject) => {
@@ -983,34 +1073,181 @@
   
   async function importData() {
     if (!selectedImportFile) return;
-    
+
     const importBtn = document.getElementById('import-data-btn');
     const statusDiv = document.getElementById('import-status');
-    
+
     // Show loading state
     importBtn.textContent = 'Importing...';
     importBtn.disabled = true;
     statusDiv.textContent = 'Processing import file...';
     statusDiv.className = 'text-sm text-blue-400';
-    
+
     try {
-      const result = await DataManager.importData(selectedImportFile);
-      
+      // Two phases: work out what this file would do, then - only once the user
+      // has resolved any conflicts - actually write it. Nothing is mutated until
+      // applyImport() runs, so cancelling is genuinely free.
+      const analysis = await DataManager.analyzeImport(selectedImportFile);
+
+      let resolutions = {};
+      if (analysis.conflicts.length > 0 || analysis.panelConflicts.length > 0) {
+        resolutions = await showImportConflictModal(analysis);
+        if (resolutions === null) {
+          // Cancelled: import NOTHING, not even the non-conflicting matches. A
+          // partial write on cancel would be its own trap.
+          statusDiv.textContent = 'Import cancelled';
+          statusDiv.className = 'text-sm text-gray-400';
+          return;
+        }
+      }
+
+      const result = await DataManager.applyImport(analysis, resolutions);
+
       statusDiv.textContent = result.message;
-      statusDiv.className = result.success ? 'text-sm text-green-400' : 'text-sm text-red-400';
-      
-      if (result.success) {
+      statusDiv.className = result.success
+        ? (result.changed === false ? 'text-sm text-gray-400' : 'text-sm text-green-400')
+        : 'text-sm text-red-400';
+
+      if (result.success && result.changed) {
         // Clear after successful import
         setTimeout(() => {
           hideDataManagementModal();
         }, 2000);
       }
+    } catch (error) {
+      console.error('Import failed:', error);
+      statusDiv.textContent = `Import failed: ${error.message}`;
+      statusDiv.className = 'text-sm text-red-400';
     } finally {
       // Reset button state
       importBtn.textContent = 'Import Matches';
       importBtn.disabled = false;
     }
   }
+
+  /**
+   * Ask the user what to do about each conflicting record.
+   *
+   * Resolves to a map of id -> 'mine' | 'theirs', or null if cancelled. Every
+   * conflict starts on 'mine': the destructive option must be chosen
+   * deliberately, never arrived at by tapping through.
+   */
+  function showImportConflictModal(analysis) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('import-conflict-modal');
+      const list = document.getElementById('import-conflict-list');
+      const summary = document.getElementById('import-conflict-summary');
+      const cancelBtn = document.getElementById('cancel-import-conflicts-btn');
+      const confirmBtn = document.getElementById('confirm-import-conflicts-btn');
+
+      const choices = {};
+      const all = [
+        ...analysis.conflicts.map((c) => ({ ...c, kind: 'match' })),
+        ...analysis.panelConflicts.map((c) => ({ ...c, kind: 'panel' })),
+      ];
+      all.forEach((c) => { choices[c.id] = 'mine'; });
+
+      const n = all.length;
+      summary.textContent = `${n} ${n === 1 ? 'item is' : 'items are'} already on this device with different content.`;
+
+      list.innerHTML = '';
+      all.forEach((conflict) => {
+        list.appendChild(buildConflictRow(conflict, choices));
+      });
+
+      const close = (value) => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        cancelBtn.removeEventListener('click', onCancel);
+        confirmBtn.removeEventListener('click', onConfirm);
+        resolve(value);
+      };
+      const onCancel = () => close(null);
+      const onConfirm = () => close(choices);
+
+      cancelBtn.addEventListener('click', onCancel);
+      confirmBtn.addEventListener('click', onConfirm);
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    });
+  }
+
+  // One conflict: both copies described, with a two-way toggle between them.
+  function buildConflictRow(conflict, choices) {
+    const row = document.createElement('div');
+    row.className = 'mb-4 pb-4 border-b border-gray-700';
+
+    const title = document.createElement('div');
+    title.className = 'font-semibold mb-2';
+    title.textContent = conflict.kind === 'panel'
+      ? `Panel: ${conflict.theirs.name || 'Unnamed'}`
+      : describeMatch(conflict.theirs);
+    row.appendChild(title);
+
+    const opts = document.createElement('div');
+    opts.className = 'grid grid-cols-2 gap-2';
+
+    const buttons = {};
+    [['mine', 'Keep mine', conflict.mine], ['theirs', 'Use backup', conflict.theirs]].forEach(([key, label, copy]) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.conflictId = conflict.id;
+      btn.dataset.choice = key;
+      btn.className = 'text-left px-3 py-2 rounded border';
+      btn.innerHTML =
+        `<div class="text-sm font-semibold">${label}</div>` +
+        `<div class="text-xs opacity-80">${describeCopy(copy, conflict.kind)}</div>`;
+      btn.addEventListener('click', () => {
+        choices[conflict.id] = key;
+        paint();
+      });
+      buttons[key] = btn;
+      opts.appendChild(btn);
+    });
+
+    function paint() {
+      Object.entries(buttons).forEach(([key, btn]) => {
+        const selected = choices[conflict.id] === key;
+        // "Use backup" is the destructive choice, so it reads amber when armed
+        // rather than looking like just another selection.
+        const activeClass = key === 'theirs'
+          ? 'border-yellow-500 bg-yellow-900 text-yellow-100'
+          : 'border-blue-500 bg-blue-900 text-blue-100';
+        btn.className = 'text-left px-3 py-2 rounded border ' +
+          (selected ? activeClass : 'border-gray-600 bg-gray-700 text-gray-300');
+      });
+    }
+    paint();
+
+    row.appendChild(opts);
+    return row;
+  }
+
+  // "Cork v Kerry — 12 Aug 2026"
+  function describeMatch(match) {
+    const teams = `${match.team1 ? match.team1.name : '?'} v ${match.team2 ? match.team2.name : '?'}`;
+    const date = formatShareDate(match.dateTime);
+    return date ? `${teams} — ${date}` : teams;
+  }
+
+  // What actually distinguishes two copies of the same record: the score and how
+  // many events it holds. Team names and date are identical by definition here.
+  function describeCopy(copy, kind) {
+    if (kind === 'panel') {
+      return `${countPanelPlayers(copy)} players named`;
+    }
+    const events = Array.isArray(copy.events) ? copy.events.length : 0;
+    try {
+      const s1 = computeTeamScore(copy, 'team1');
+      const s2 = computeTeamScore(copy, 'team2');
+      const fmt = (s) => `${s.goals}-${String(s.points).padStart(2, '0')}`;
+      return `${fmt(s1)} vs ${fmt(s2)} · ${events} ${events === 1 ? 'event' : 'events'}`;
+    } catch {
+      return `${events} ${events === 1 ? 'event' : 'events'}`;
+    }
+  }
+
   
   function resetImportState() {
     selectedImportFile = null;
@@ -8618,6 +8855,16 @@
     exportData: () => DataManager.exportData(),
     lastBackupAt: () => appState.lastBackupAt,
     daysSinceBackup: () => DataManager.daysSinceBackup(),
+    // Import: analyze is pure, apply mutates. Exposed separately so a test can
+    // assert what an import WOULD do without performing it.
+    analyzeImport: (file) => DataManager.analyzeImport(file),
+    applyImport: (analysis, resolutions) => DataManager.applyImport(analysis, resolutions),
+    matchIds: () => appState.matches.map((m) => m.id),
+    eventCount: (id) => {
+      const m = appState.matches.find((x) => x.id === id);
+      return m && Array.isArray(m.events) ? m.events.length : -1;
+    },
+    panelCount: () => appState.playerPanels.length,
   };
 
   // Kick off once DOM ready
