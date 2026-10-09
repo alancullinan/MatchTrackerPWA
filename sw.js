@@ -1,56 +1,59 @@
-const CACHE_NAME = 'match-tracker-v2.6.2';
+const CACHE_NAME = 'match-tracker-v2.6.3';
+// Paths are relative to this file, so the app works wherever it is served from
+// (it lives at a subpath on GitHub Pages: alancullinan.github.io/MatchTrackerPWA/).
+// A root-absolute path (starting with /) would point outside the app.
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/script.js',
-  '/styles.css',
-  '/tailwind-minimal.css',
-  '/manifest.json',
+  './',
+  'index.html',
+  'script.js',
+  'styles.css',
+  'tailwind-minimal.css',
+  'manifest.json',
   // Self-hosted fonts (offline-first)
-  '/fonts/bebas-neue.woff2',
-  '/fonts/manrope.woff2',
-  '/fonts/jetbrains-mono.woff2',
+  'fonts/bebas-neue.woff2',
+  'fonts/manrope.woff2',
+  'fonts/jetbrains-mono.woff2',
   // Icons
-  '/icons/back-grey-blue.svg',
-  '/icons/back.svg',
-  '/icons/broadcast.svg',
-  '/icons/burger.svg',
-  '/icons/card.svg',
-  '/icons/delete.svg',
-  '/icons/edit-grey-blue.svg',
-  '/icons/edit.svg',
-  '/icons/export.svg',
-  '/icons/flag-grey-green.svg',
-  '/icons/flag-grey-orange.svg',
-  '/icons/flag-grey-white.svg',
-  '/icons/flag.svg',
-  '/icons/foul.svg',
-  '/icons/greenflag.svg',
-  '/icons/kickout.svg',
-  '/icons/miss.svg',
-  '/icons/note.svg',
-  '/icons/orangeflag.svg',
-  '/icons/pause.svg',
-  '/icons/play.svg',
-  '/icons/players.svg',
-  '/icons/plus-blue-white.svg',
-  '/icons/plus.svg',
-  '/icons/redcard.svg',
-  '/icons/stats.svg',
-  '/icons/sub.svg',
-  '/icons/team-grey-blue.svg',
-  '/icons/trash-grey-pink.svg',
-  '/icons/whiteflag.svg',
-  '/icons/yellowcard.svg',
+  'icons/back-grey-blue.svg',
+  'icons/back.svg',
+  'icons/broadcast.svg',
+  'icons/burger.svg',
+  'icons/card.svg',
+  'icons/delete.svg',
+  'icons/edit-grey-blue.svg',
+  'icons/edit.svg',
+  'icons/export.svg',
+  'icons/flag-grey-green.svg',
+  'icons/flag-grey-orange.svg',
+  'icons/flag-grey-white.svg',
+  'icons/flag.svg',
+  'icons/foul.svg',
+  'icons/greenflag.svg',
+  'icons/kickout.svg',
+  'icons/miss.svg',
+  'icons/note.svg',
+  'icons/orangeflag.svg',
+  'icons/pause.svg',
+  'icons/play.svg',
+  'icons/players.svg',
+  'icons/plus-blue-white.svg',
+  'icons/plus.svg',
+  'icons/redcard.svg',
+  'icons/stats.svg',
+  'icons/sub.svg',
+  'icons/team-grey-blue.svg',
+  'icons/trash-grey-pink.svg',
+  'icons/whiteflag.svg',
+  'icons/yellowcard.svg',
   // App icons (will be created)
-  '/icons/icon-72x72.png',
-  '/icons/icon-96x96.png',
-  '/icons/icon-128x128.png',
-  '/icons/icon-144x144.png',
-  '/icons/icon-152x152.png',
-  '/icons/icon-192x192.png',
-  '/icons/icon-384x384.png',
-  '/icons/icon-512x512.png'
+  'icons/icon-72x72.png',
+  'icons/icon-96x96.png',
+  'icons/icon-128x128.png',
+  'icons/icon-144x144.png',
+  'icons/icon-152x152.png',
+  'icons/icon-192x192.png',
+  'icons/icon-384x384.png',
+  'icons/icon-512x512.png'
 ];
 
 // Install event - cache resources
@@ -109,13 +112,13 @@ self.addEventListener('fetch', event => {
       fetch(event.request)
         .then(response => {
           const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put('/index.html', copy));
+          caches.open(CACHE_NAME).then(cache => cache.put('index.html', copy));
           return response;
         })
         // Offline: fall back to whatever HTML we have. (`caches.match` returns a
         // promise, so these must be chained - `a || b` would always take `a`.)
-        .catch(() => caches.match('/index.html')
-          .then(r => r || caches.match('/')))
+        .catch(() => caches.match('index.html')
+          .then(r => r || caches.match('./')))
     );
     return;
   }
@@ -155,7 +158,7 @@ self.addEventListener('fetch', event => {
       .catch(() => {
         // If both cache and network fail, show offline page for HTML requests
         if (event.request.destination === 'document') {
-          return caches.match('/index.html');
+          return caches.match('index.html');
         }
       })
   );
@@ -174,8 +177,8 @@ self.addEventListener('push', event => {
   if (event.data) {
     const options = {
       body: event.data.text(),
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png',
+      icon: 'icons/icon-192x192.png',
+      badge: 'icons/icon-72x72.png',
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
