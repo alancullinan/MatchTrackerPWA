@@ -24,6 +24,10 @@ const os = require('os');
 
 const REPO = path.resolve(__dirname, '..');
 const PORT = 8199;
+// Served under a subpath, as on GitHub Pages (alancullinan.github.io/MatchTrackerPWA/).
+// Anything outside it 404s, so a root-absolute path in the app fails these tests.
+const BASE = '/MatchTrackerPWA/';
+const APP_URL = `http://localhost:${PORT}${BASE}`;
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -49,7 +53,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function startServer(state) {
   const server = http.createServer(async (req, res) => {
     const urlPath = decodeURIComponent(req.url.split('?')[0]);
-    const rel = urlPath === '/' ? '/index.html' : urlPath;
+    if (!urlPath.startsWith(BASE)) { res.writeHead(404).end('not found'); return; }
+    const sub = urlPath.slice(BASE.length);
+    const rel = sub === '' ? 'index.html' : sub;
     const file = path.join(state.dir, rel);
     // Keep the server inside the served directory.
     if (!file.startsWith(state.dir)) { res.writeHead(403).end(); return; }
@@ -166,7 +172,7 @@ async function testUpgradeReachesClient(browser, state) {
   await setVersion(state.dir, 'match-tracker-test-v1', '1.0.0');
 
   const page = await newPage(browser);
-  await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });
+  await page.goto(APP_URL, { waitUntil: 'networkidle0' });
   await waitForController(page);
   await sleep(1200);
 
@@ -183,7 +189,7 @@ async function testUpgradeReachesClient(browser, state) {
   // yields a half-updated page (new title, script tag not yet readable).
   let after = before;
   for (let i = 0; i < 6; i++) {
-    await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });
+    await page.goto(APP_URL, { waitUntil: 'networkidle0' });
     await sleep(2000);
     after = await readRelease(page).catch(() => after);
     if (after.title === 'MT 2.0.0' && after.script === 'script.js?v=2.0.0') break;
@@ -217,7 +223,7 @@ async function testVersionedAssetsResolve(browser, state) {
   await setVersion(state.dir, 'match-tracker-test-v3', '3.0.0');
 
   const page = await newPage(browser);
-  await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });
+  await page.goto(APP_URL, { waitUntil: 'networkidle0' });
   await waitForController(page);
   await sleep(1500);
 
@@ -234,8 +240,8 @@ async function testVersionedAssetsResolve(browser, state) {
   const probe = await evalStable(page, async () => {
     const ok = async (u) => { try { return (await fetch(u)).ok; } catch { return false; } };
     return {
-      script: await ok('/script.js?v=3.0.0'),
-      styles: await ok('/styles.css?v=3.0.0'),
+      script: await ok('script.js?v=3.0.0'),
+      styles: await ok('styles.css?v=3.0.0'),
     };
   });
   check('script.js?v= served from cache, not network', probe.script, true);
@@ -264,7 +270,7 @@ async function testNavigationsAreNetworkFirst(browser, state) {
   await setVersion(state.dir, 'match-tracker-test-v5', '5.0.0');
 
   const page = await newPage(browser);
-  await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });
+  await page.goto(APP_URL, { waitUntil: 'networkidle0' });
   await waitForController(page);
   await sleep(1500);
 
@@ -278,7 +284,7 @@ async function testNavigationsAreNetworkFirst(browser, state) {
   // Must be a REAL navigation: the SW branches on `event.request.mode ===
   // 'navigate'`, and a plain fetch('/') has mode 'cors', so it would take the
   // asset path and wrongly look like a cache-first bug.
-  await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
   await sleep(800);
   const served = await evalStable(page, () => document.title);
 
@@ -292,7 +298,7 @@ async function testOfflineStillWorks(browser, state) {
   await setVersion(state.dir, 'match-tracker-test-v4', '4.0.0');
 
   const page = await newPage(browser);
-  await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });
+  await page.goto(APP_URL, { waitUntil: 'networkidle0' });
   await waitForController(page);
   await sleep(1500);
 
@@ -328,7 +334,7 @@ async function testOfflineStillWorks(browser, state) {
     server = await startServer(state);
     browser = await puppeteer.launch({ headless: 'new' });
 
-    console.log(`service worker upgrade tests  (serving a copy at :${PORT})`);
+    console.log(`service worker upgrade tests  (serving a copy at ${APP_URL})`);
     await testUpgradeReachesClient(browser, state);
     await testVersionedAssetsResolve(browser, state);
     await testNavigationsAreNetworkFirst(browser, state);
